@@ -1,4 +1,3 @@
-```markdown
 ---
 name: Video-Maker - Edição e Criativos de Alta Retenção
 description: Standard procedures for editing high-retention VSLs, creating dynamic Meta Ads video ads, and maximizing thumbstop ratios.
