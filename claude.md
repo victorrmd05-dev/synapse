@@ -7,11 +7,23 @@ Este documento define as regras fundamentais de comportamento e operação para 
 *   **Criação de Arquivos do Paperclip (Paperclip as Code):** APENAS os arquivos que serão lidos pela IA do Paperclip, ou seja, as configurações de agentes (`agent.md`), instruções de habilidades (`SKILL.md`) e prompts internos, devem ser gerados **estritamente em Inglês**. Isso garante a máxima performance dos modelos de linguagem.
 
 ## 2. Arquitetura e Padrões (Alavanca AI Blueprint)
+
+### ⛔ REGRA OBRIGATÓRIA DE FORMATAÇÃO — NUNCA IGNORAR ⛔
+**TODO arquivo `agent.md` e `SKILL.md` DEVE começar com a linha literal ` ```markdown ` na primeira linha do arquivo.** Isso é OBRIGATÓRIO para o Paperclip renderizar o conteúdo corretamente. Se você criar ou editar qualquer `agent.md` ou `SKILL.md` sem essa linha no topo, o arquivo vai quebrar na interface do Paperclip. **NUNCA remova essa linha. NUNCA esqueça de adicioná-la. Sem exceções.**
+
+Exemplo correto (primeira linha do arquivo):
+```
+```markdown
+# Nome do Agente
+## Role
+...
+```
+
 *   **Protocolo de Agentes:** Ao escrever instruções que envolvam comunicação ou delegação entre agentes, utilize sempre o protocolo interno de links no formato markdown: `[@Nome do Agente](agent://nome-da-pasta)`.
 *   **Respeito à Hierarquia:** Mantenha as responsabilidades isoladas. Exemplo: O `ceo` orquestra via Telegram, o `minerador` coleta dados com APIs, e o `copywriting` escreve. Não misture as funções ao criar ou atualizar seus respectivos `agent.md` ou `SKILL.md`.
 *   **Formatos Padronizados:** 
-    *   Arquivos de agente sempre se chamam `agent.md`.
-    *   Arquivos de skill sempre se chamam `SKILL.md` e devem iniciar com Frontmatter YAML contendo `name` e `description`.
+    *   Arquivos de agente sempre se chamam `agent.md` e DEVEM iniciar com ` ```markdown ` na primeira linha.
+    *   Arquivos de skill sempre se chamam `SKILL.md` e DEVEM iniciar com ` ```markdown ` na primeira linha, seguido do Frontmatter YAML contendo `name` e `description`.
 
 ## 3. Foco do Negócio
 *   **Objetivo Principal:** A Alavanca AI busca geração de caixa rápido no Brasil via infoprodutos, VSLs e dropshipping de alta performance. Todo código gerado, integrações sugeridas (Supabase, Scrape Creators API, Higgsfield, Meta Ads) e processos desenhados devem focar na escala, conversão e automação.
