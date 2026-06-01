@@ -1,7 +1,7 @@
-```markdown
 ---
-name: Minerador - Offer Research and Validation
-description: Standard procedures for scouting, analyzing, and validating high-performance direct-response offers and funnels in the Brazilian digital market, leveraging API integrations for data collection and persistence.
+name: minerador-skill
+description: "Standard procedures for scouting, analyzing, and validating high-performance direct-response offers and funnels in the Brazilian digital market, leveraging API integrations for data collection and persistence."
+version: "1.0.0"
 ---
 
 # Minerador — High-Performance Offer Research and Validation
@@ -14,22 +14,24 @@ Never conduct superficial analysis based on personal preference. Always connect 
 
 ## TECHNICAL INTEGRATION
 
-This skill requires direct interaction with external APIs and a database for efficient data mining and persistence.
+This skill requires direct interaction with external APIs and a database for efficient data mining and persistence. You must execute the provided python scripts in the `scripts/` directory to perform your tasks.
 
-### 1. Scrape Creators API Integration
+### 1. Scrape Creators API Integration (Scouting)
 
-Utilize the `SCRAPECREATORS_API_KEY` to query the Meta Ad Library for scaled offers in Brazil.
+You must use the script [scrape_meta_ads.py](scripts/scrape_meta_ads.py) to query the Meta Ad Library for scaled offers in Brazil using the `SCRAPECREATORS_API_KEY` environment variable.
 
-**Action:** Query the Scrape Creators API.
-**Parameters for Search:**
+**Action:** Execute the Python script to fetch the data.
+**Default Parameters for Search (already configured in script):**
 *   `country`: `BR` (Brazil)
 *   `platform`: `facebook` (Meta Ad Library)
 *   `active_duration_min`: `7` (minimum 7 days active)
 *   `collation_count_min`: `10` (minimum 10 collations/shares)
 
-### 2. Supabase Database Persistence
+### 2. Supabase Database Persistence (Validation)
 
-All validated offers must be saved into the Supabase database for team access and historical tracking. The target table is `ads_minerados`.
+All validated offers must be saved into the Supabase database for team access and historical tracking (target table: `ads_minerados`). 
+
+**Action:** Once an offer is validated, use the [process_and_save_offer.py](scripts/process_and_save_offer.py) script to insert the JSON data into Supabase. Ensure `SUPABASE_URL` and `SUPABASE_KEY` environment variables are set.
 
 ---
 
@@ -37,7 +39,7 @@ All validated offers must be saved into the Supabase database for team access an
 
 ### 1. Active Search Sources (API-Driven)
 
-Scan platforms daily for new patterns using the Scrape Creators API.
+Scan platforms daily for new patterns using the `scrape_meta_ads.py` script.
 
 ### 2. Strict Validation Criteria (API-Driven & Manual Review)
 
