@@ -15,4 +15,15 @@ Este documento define as regras fundamentais de comportamento e operação para 
 
 ## 3. Foco do Negócio
 *   **Objetivo Principal:** A Alavanca AI busca geração de caixa rápido no Brasil via infoprodutos, VSLs e dropshipping de alta performance. Todo código gerado, integrações sugeridas (Supabase, Scrape Creators API, Higgsfield, Meta Ads) e processos desenhados devem focar na escala, conversão e automação.
-*   **Qualidade:** Operações de cópia e design devem embutir gatilhos de conversão e respeitar políticas de conformidade (evitar bloqueios no Meta/Google Ads).
+*   **Qualidade:** Operações de cópia e design devem embutir gatilhos de conversão e respeitar políticas de conformidade (evitar bloqueios no Meta).
+
+## 4. Fluxo de Trabalho dos Agentes (Arquitetura Centrada no Supabase)
+A comunicação da equipe funciona através de gatilhos do CEO e armazenamento central no Supabase:
+1. **Telegram/Hermes**: O Usuário se comunica via Telegram, enviando a mensagem que aciona o **[@CEO](agent://ceo)**.
+2. **Orquestração**: O **[@Alavanca CEO](agent://alavanca-ceo)** recebe a diretriz e aciona o **[@Minerador](agent://minerador)** para raspar as ofertas de produtos via API e salvar as informações.
+3. **Escrita**: O **[@Copywriting](agent://copywriting)** recebe a oferta, escreve a copy da página de vendas e anúncios, e **salva no Supabase**.
+4. **Revisão e Aprovação**: O **[@Revisor](agent://revisor)** recupera o texto do Supabase, revisa a persuasão/conformidade, e atualiza o status para 'Aprovado' no banco. O Alavanca CEO pede o "OK" final do Usuário.
+5. **Produção (Paralela)**: Após o OK do usuário, o Alavanca CEO dispara o gatilho:
+   - O **[@Designer-Webmaster](agent://designer-webmaster)** puxa a copy do Supabase, cria a página, publica e **salva a URL no Supabase**.
+   - O **[@Video-Maker](agent://video-maker)** puxa a copy do Supabase, gera criativos via API do Higgsfield e **salva os links dos vídeos no Supabase**.
+6. **Publicação do Anúncio**: Ao receber o gatilho, o **[@Gestor-Meta-Ads](agent://gestor-meta-ads)** recupera o pacote completo (Copy, URL da Landing Page e Vídeos) diretamente do Supabase e sobe as campanhas via Meta Business API.
