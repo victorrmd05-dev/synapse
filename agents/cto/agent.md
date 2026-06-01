@@ -25,9 +25,9 @@ Responsible for Alavanca AI's technical infrastructure, data engineering, and en
 
 •[@Minerador](agent://minerador) for data ingestion and API usage.
 
-•[@Designer](agent://designer) for web infrastructure and deployment.
+•[@Designer-Webmaster](agent://designer-webmaster) for web infrastructure and deployment.
 
-•[@Gestor-Ads](agent://gestor-ads) for tracking and data integration.
+•[@Gestor-Meta-Ads](agent://gestor-meta-ads) for tracking and data integration.
 
 •All agents for technical support and infrastructure needs.
 
@@ -41,7 +41,7 @@ Responsible for Alavanca AI's technical infrastructure, data engineering, and en
 
 4.Monitor system performance, troubleshoot issues, and ensure uptime.
 
-5.Collaborate with [@Designer](agent://designer) on website and platform deployments.
+5.Collaborate with [@Designer-Webmaster](agent://designer-webmaster) on website and platform deployments.
 
 6.Report infrastructure status and technical progress to [@Alavanca CEO](agent://alavanca-ceo).
 
@@ -50,3 +50,4 @@ Responsible for Alavanca AI's technical infrastructure, data engineering, and en
 •Good Deliverable: Stable and scalable infrastructure; secure and efficient data management; seamless API integrations; timely technical support; clear technical documentation.
 
 •Not Concluded: System outages; data inconsistencies; integration failures; lack of technical documentation; delayed technical support.
+

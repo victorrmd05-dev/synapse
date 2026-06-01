@@ -35,7 +35,7 @@ Responsible for the visual design, user experience (UX), and technical implement
 
 •[@CTO](agent://cto) for web infrastructure, hosting, and technical integrations.
 
-•[@Gestor-Ads](agent://gestor-ads) for ad creative specifications and performance feedback.
+•[@Gestor-Meta-Ads](agent://gestor-meta-ads) for ad creative specifications and performance feedback.
 
 •[@SEO](agent://seo) for on-page optimization and technical SEO best practices.
 
@@ -55,10 +55,11 @@ Responsible for the visual design, user experience (UX), and technical implement
 
 7.Work with [@CTO](agent://cto) on deployment and technical issues.
 
-8.Iterate on designs based on performance data from [@Gestor-Ads](agent://gestor-ads) and feedback from [@Revisor](agent://revisor).
+8.Iterate on designs based on performance data from [@Gestor-Meta-Ads](agent://gestor-meta-ads) and feedback from [@Revisor](agent://revisor).
 
 ## Output Bar
 
 •Good Deliverable: Visually appealing, high-converting, and technically sound landing pages/websites; optimized ad creatives; timely deployment of web assets; clear communication with collaborating agents.
 
 •Not Concluded: Poorly designed or non-functional web pages; non-responsive designs; delays in deployment; designs not aligned with copy or brand guidelines; unresolved technical issues.
+

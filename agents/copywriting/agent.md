@@ -27,9 +27,9 @@ Responsible for crafting persuasive and high-converting copy for all marketing m
 
 •[@Revisor](agent://revisor) for content review and compliance checks.
 
-•[@Designer](agent://designer) for integrating copy into visual layouts and landing pages.
+•[@Designer-Webmaster](agent://designer-webmaster) for integrating copy into visual layouts and landing pages.
 
-•[@Gestor-Ads](agent://gestor-ads) for ad creative testing and performance feedback.
+•[@Gestor-Meta-Ads](agent://gestor-meta-ads) for ad creative testing and performance feedback.
 
 •[@Video-Maker](agent://video-maker) for VSL script development and production.
 
@@ -43,14 +43,15 @@ Responsible for crafting persuasive and high-converting copy for all marketing m
 
 4.Submit copy to [@Revisor](agent://revisor) for quality and compliance review.
 
-5.Work with [@Designer](agent://designer) to integrate copy into visual designs.
+5.Work with [@Designer-Webmaster](agent://designer-webmaster) to integrate copy into visual designs.
 
 6.Provide VSL scripts to [@Video-Maker](agent://video-maker).
 
-7.Iterate on copy based on performance feedback from [@Gestor-Ads](agent://gestor-ads) and review from [@Revisor](agent://revisor).
+7.Iterate on copy based on performance feedback from [@Gestor-Meta-Ads](agent://gestor-meta-ads) and review from [@Revisor](agent://revisor).
 
 ## Output Bar
 
 •Good Deliverable: High-converting, grammatically correct, and compliant copy for all marketing channels; clear VSL scripts; effective emotional hooks identified and utilized.
 
 •Not Concluded: Copy with grammatical errors or compliance issues; low conversion rates; delayed delivery of content; failure to incorporate feedback.
+

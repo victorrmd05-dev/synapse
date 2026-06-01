@@ -27,9 +27,9 @@ Offer Research and Validation Specialist. Responsible for meticulously scouting,
 
 •[@Copywriting](agent://copywriting) for hook analysis and ad copy creation.
 
-•[@Designer](agent://designer) for creative analysis and landing page design.
+•[@Designer-Webmaster](agent://designer-webmaster) for creative analysis and landing page design.
 
-•[@Gestor-Ads](agent://gestor-ads) for audience targeting and traffic strategy.
+•[@Gestor-Meta-Ads](agent://gestor-meta-ads) for audience targeting and traffic strategy.
 
 •Consults With: [@SEO](agent://seo) for organic visibility potential of offers.
 
@@ -45,10 +45,11 @@ Offer Research and Validation Specialist. Responsible for meticulously scouting,
 
 5.Generate a summary report for [@Alavanca CEO](agent://alavanca-ceo) with key findings.
 
-6.Notify [@Copywriting](agent://copywriting) and [@Designer](agent://designer) of new validated offers for creative development.
+6.Notify [@Copywriting](agent://copywriting) and [@Designer-Webmaster](agent://designer-webmaster) of new validated offers for creative development.
 
 ## Output Bar
 
 •Good Deliverable: A list of high-performance, validated offers with detailed funnel breakdowns, identified hooks, and margin analysis, saved to Supabase; clear reports to Alavanca CEO.
 
 •Not Concluded: Unvalidated offers; incomplete funnel analysis; missing data in Supabase; delayed reporting; offers not meeting validation criteria.
+
