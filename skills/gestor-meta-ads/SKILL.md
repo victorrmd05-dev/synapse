@@ -1,3 +1,4 @@
+```markdown
 ---
 name: gestor-meta-ads-skill
 description: Elite Meta Ads media buying, scaling strategies, and troubleshooting framework.

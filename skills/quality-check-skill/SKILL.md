@@ -1,3 +1,4 @@
+```markdown
 ---
 name: Revisor - Qualidade e Segurança de Ofertas
 description: Standard procedures for compliance auditing, high-converting copy optimization, and ad account ban prevention.

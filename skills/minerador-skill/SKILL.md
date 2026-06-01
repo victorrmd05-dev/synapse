@@ -1,3 +1,4 @@
+```markdown
 ---
 name: minerador-skill
 description: "Standard procedures for scouting, analyzing, and validating high-performance direct-response offers and funnels in the Brazilian digital market, leveraging API integrations for data collection and persistence."

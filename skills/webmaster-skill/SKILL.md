@@ -1,3 +1,4 @@
+```markdown
 ---
 name: designer-webmaster-skill
 description: "Premium Design Manager & Webmaster: AI reasoning engine for high-end UI/UX, Frontend development, and platform publishing (Shopify/WordPress) based on luxury brand design systems (Apple, Nike, Shopify, Ferrari, BMW, Lamborghini). Use this skill when generating UI, creating design systems, or acting as an elite frontend engineer and webmaster."
