@@ -2,11 +2,12 @@
 /*
 
 # ========================================================
-# EXCEÇÕES: As únicas pastas que DEVEM subir pro GitHub
+# EXCEÇÕES: As únicas coisas que DEVEM subir pro GitHub
 # (Paperclip as Code)
 # ========================================================
 !/agents/
 !/skills/
 
-# Arquivos de configuração essenciais do Git
+# Arquivos essenciais
+!/README.md
 !/.gitignore
