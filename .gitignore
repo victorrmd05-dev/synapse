@@ -1,4 +1,12 @@
-traducao/
-Alavanca AI Blueprint_ Estrutura de Agentes e Skills.md
-Proposta_ Gerenciamento de Agentes e Skills do Paperclip via GitHub (Paperclip as Code).md
-workspace/
+# Ignora todos os arquivos e pastas na raiz do projeto por padrão
+/*
+
+# ========================================================
+# EXCEÇÕES: As únicas pastas que DEVEM subir pro GitHub
+# (Paperclip as Code)
+# ========================================================
+!/agents/
+!/skills/
+
+# Arquivos de configuração essenciais do Git
+!/.gitignore
