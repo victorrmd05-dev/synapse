@@ -10,4 +10,5 @@
 
 # Arquivos essenciais
 !/README.md
+!/claude.md
 !/.gitignore
