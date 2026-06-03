@@ -1,40 +1,111 @@
-# Alavanca AI Core (Paperclip as Code)
+<div align="center">
 
-Este repositório serve como o "cérebro" e a infraestrutura como código (Infrastructure as Code) para a agência **Alavanca AI**, operando dentro do ecossistema do Paperclip.
+<img src="https://img.shields.io/badge/Status-Em_Desenvolvimento-green?style=for-the-badge" alt="Status Badge"/>
+<img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js" alt="Next.js Badge"/>
+<img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript Badge"/>
+<img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS Badge"/>
 
-## 🧠 Filosofia Principal
-- **Paperclip as Code:** O GitHub é a fonte da verdade. Todas as lógicas, prompts e conexões entre agentes nascem aqui e são sincronizadas para o Paperclip.
-- **Protocolo Interno (`agent://`):** Para que um agente invoque ou delegue tarefas a outro nativamente no Paperclip, utilizamos **sempre** o formato markdown `[@Nome do Agente](agent://nome-da-pasta)`. Nunca usar URLs absolutas (`https://...`).
-- **Modularidade (Fim do foco apenas em VSL):** O sistema agora é preparado para lidar com múltiplos formatos (Advertoriais, Landing Pages, Shorts, Imagens, Vídeos Longos), orquestrados através de um robusto banco de dados relacional.
+# 🚀 MetaScale
+### Dashboard de Alta Performance & Auditoria de Tráfego com Inteligência Artificial
 
----
-
-## ⚙️ Fluxo de Trabalho e Arquitetura (Integração Supabase)
-
-O coração do Alavanca AI roda 100% integrado ao Supabase. Todo o processo criativo flui através de 5 tabelas centrais (`setup_supabase_workflow.sql`):
-
-1. **`ads_minerados` e `campanhas_producao`:** 
-   O **[@Minerador](agent://minerador)** busca anúncios validados na ScrapeCreators API, pontua a qualidade com IA e salva em `ads_minerados`. Quando aprovado pelo usuário, ele ganha uma linha na tabela-mestre `campanhas_producao`.
-2. **`workflow_copywriting`:** 
-   O **[@Copywriting](agent://copywriting)** escreve roteiros e textos e submete para avaliação. O **[@Revisor](agent://revisor)** audita e marca `revisor_ok = true`.
-3. **`workflow_design` e `workflow_video`:** 
-   O **[@Designer-Webmaster](agent://designer-webmaster)** e o **[@Video-Maker](agent://video-maker)** geram as mídias finais usando as copys aprovadas. O Revisor faz o pente fino e aprova as URLs finais para uso.
-4. **`workflow_relatorios_trafego` (Auto-Evolução):** 
-   O **[@Gestor-Meta-Ads](agent://gestor-meta-ads)** sobe as campanhas no Meta e, posteriormente, injeta relatórios de performance (JSONB) no banco. A IA lê esses dados para extrair insights reais e ficar mais inteligente a cada campanha.
+</div>
 
 ---
 
-## 🗂️ Estrutura de Diretórios
-```
-alavanca-ai-core/
-├── agents/             # Arquivos agent.md de cada membro da equipe
-├── skills/             # Funcionalidades, integrações e scripts (Minerador, Vídeo, etc.)
-├── banco_de_dados/     # Scripts .sql para recriar as tabelas e políticas do Supabase
-├── documentacao/       # Notas de design, manuais técnicos e log de resolução de bugs
-├── claude.md           # Regras operacionais rígidas e core do assistente de IA local
-└── README.md           # Documentação central do projeto
+**MetaScale** é um ecossistema premium de Business Intelligence e Inteligência Artificial desenvolvido para infoprodutores, e-commerces, dropshippers e agências focadas em alta escala. 
+
+Com o MetaScale, você transcende as métricas básicas. O sistema consolida dados reais do **Meta Ads** em tempo real através da API Oficial, acoplando um **Motor de Auditoria IA de Elite** (`ads-meta-senior`) desenhado com os mais modernos frameworks de escala de tráfego pago.
+
+---
+
+## ✨ Principais Funcionalidades
+
+- **📈 Dashboard em Tempo Real:** Consolidação de métricas essenciais como Investimento, ROAS real, CPA e funil completo.
+- **🧠 Gestor de Tráfego Sênior Integrado:** Uma IA autônoma que analisa suas campanhas seguindo a doutrina de escala matemática rigorosa (`Lucro -> ROAS -> Eficiência -> Estabilidade -> Escala`).
+- **🎯 Funil de Conversão Premium:** Identificação imediata de gargalos no funil (Connect Rate, Checkout Rate, Purchase Rate).
+- **🤖 Claude Ads Health:** Auditoria instantânea através de uma pontuação (0 a 100) calibrada com as melhores práticas de mídia paga do mercado, rodando mais de 250 verificações ativas.
+- **📄 Exportação Automática de Relatórios:** Geração de PDFs premium com análises aprofundadas, perfeitos para enviar aos seus clientes ou diretoria.
+- **🎨 Design Glassmorphism Premium:** Uma interface visualmente deslumbrante, focada na usabilidade (Dark Mode, fluidez e responsividade extrema).
+
+---
+
+## 🏗️ A Regra de Ouro (80x10x10)
+
+Nosso motor de auditoria IA baseia-se nos pilares definitivos da alta conversão:
+
+- **Connect Rate (LPV / Cliques) $\ge$ 80%** 🚀
+- **Checkout Rate (IC / LPV) $\ge$ 10%** 🛒
+- **Purchase Rate (Compras / IC) $\ge$ 10%** 💰
+
+---
+
+## 🛠️ Tecnologias Utilizadas
+
+- **Frontend:** Next.js (App Router), React, TypeScript, Tailwind CSS
+- **Inteligência Artificial:** Integração via API de LLMs focados em auditoria (Claude/GPT)
+- **Design System:** UI/UX Glassmorphism (Aesthetics premium)
+- **Arquitetura de Agentes:** Sub-personas inteligentes operando nos bastidores (*Copywriter, Designer, Strategist, Engine*)
+
+---
+
+## 💻 Como Rodar o Projeto Localmente
+
+Siga os passos abaixo para iniciar o MetaScale em sua máquina:
+
+### Pré-requisitos
+- **Node.js** (v18 ou superior)
+- **NPM** ou **Yarn**
+
+### Passo a Passo
+
+1. **Clone o repositório**
+   ```bash
+   git clone https://github.com/Thuglife22741/MetaScale.git
+   cd MetaScale
+   ```
+
+2. **Instale as dependências**
+   ```bash
+   npm install
+   ```
+
+3. **Configure as Variáveis de Ambiente**
+   Copie o arquivo de exemplo e insira suas credenciais:
+   ```bash
+   cp .env.local.example .env.local
+   ```
+   *Certifique-se de preencher o `META_ADS_API_TOKEN` e a `IA_API_KEY`.*
+
+4. **Inicie o servidor de desenvolvimento**
+   ```bash
+   npm run dev
+   ```
+   Acesse [http://localhost:3000](http://localhost:3000) no seu navegador.
+
+---
+
+## ☁️ Deploy (Produção)
+
+O MetaScale foi projetado para ser **VPS-Ready**. Toda a lógica de auditoria (`src/lib/ai-agents/`) é processada internamente pelo backend Next.js, tornando o deploy prático e seguro em plataformas como **Vercel**, **Railway**, **Render** ou qualquer **VPS** (Ubuntu, Debian).
+
+**Variáveis de Ambiente Recomendadas na Produção:**
+```env
+META_ADS_API_TOKEN="seu_token_meta"
+IA_API_KEY="sua_chave_ia"
+NEXT_PUBLIC_API_URL="https://seu-dominio.com/api"
 ```
 
-## 🔒 Segurança e Versionamento
-O projeto possui um `.gitignore` em formato de *allow-list*. 
-**Apenas as pastas `agents/`, `skills/` e arquivos estritamente de documentação sobem para o repositório público/privado.** Tokens de API, chaves do Supabase (`.mcp.json`) e outras informações sensíveis da máquina do usuário são rigorosamente ignoradas para evitar vazamento de dados.
+---
+
+## 🤝 Autor e Contato
+
+**Desenvolvido por Fernando Cerqueira (Thuglife22741)**
+
+- 📧 Email: **fernandoborgescerqueira@gmail.com**
+- 🐙 GitHub: [Thuglife22741](https://github.com/Thuglife22741)
+
+---
+
+<div align="center">
+  <i>"Desenvolvido com foco em máxima lucratividade e eficiência de dados. MetaScale — Métrica certa, escala garantida."</i>
+</div>
