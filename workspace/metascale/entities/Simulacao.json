@@ -1,0 +1,45 @@
+{
+  "name": "Simulacao",
+  "type": "object",
+  "properties": {
+    "orcamentoTotal": { "type": "number", "description": "Orçamento Total/Diário" },
+    "ctr": { "type": "number", "description": "CTR (Taxa de Clique) em porcentagem" },
+    "connectRate": { "type": "number", "description": "Connect Rate em porcentagem" },
+    "conversaoPagina": { "type": "number", "description": "Conversão da Página (LP) em porcentagem" },
+    "conversaoCheckout": { "type": "number", "description": "Conversão do Checkout em porcentagem" },
+    "ticketMedio": { "type": "number", "description": "Ticket Médio do produto" },
+    "margemProduto": { "type": "number", "description": "Margem do Produto em porcentagem" },
+    "moeda": {
+      "type": "string",
+      "enum": ["BRL", "USD", "EUR"],
+      "default": "BRL",
+      "description": "Moeda utilizada nos valores"
+    },
+    "nome": { "type": "string", "description": "Nome da simulação (Opcional na UI)" },
+    "data": { "type": "string", "format": "date-time", "description": "Data da simulação (Gerada no banco)" },
+    "resultados": {
+      "type": "object",
+      "properties": {
+        "cliques": { "type": "number", "description": "Cliques estimados (baseado no orçamento e cpc_base)" },
+        "visualizacoesPagina": { "type": "number" },
+        "iniciacaoCompra": { "type": "number" },
+        "compras": { "type": "number" },
+        "faturamento": { "type": "number" },
+        "cpa": { "type": "number" },
+        "roas": { "type": "number" },
+        "lucro": { "type": "number" },
+        "lucroPorcentagem": { "type": "number", "description": "Margem de Lucro projetada" },
+        "conversaoGlobal": { "type": "number", "description": "Conversão final da ponta a ponta" }
+      }
+    }
+  },
+  "required": [
+    "orcamentoTotal",
+    "ctr",
+    "connectRate",
+    "conversaoPagina",
+    "conversaoCheckout",
+    "ticketMedio",
+    "margemProduto"
+  ]
+}

@@ -1,14 +1,16 @@
-# Ignora todos os arquivos e pastas na raiz do projeto por padrão
-/*
-
 # ========================================================
-# EXCEÇÕES: As únicas coisas que DEVEM subir pro GitHub
-# (Paperclip as Code)
+# REGRAS DO GITIGNORE (Padrão)
 # ========================================================
-!/agents/
-!/skills/
 
-# Arquivos essenciais
-!/README.md
-!/claude.md
-!/.gitignore
+# Arquivos de sistema e configurações locais de Agentes
+.agents/
+.gemini/
+.mcp.json
+skills-lock.json
+
+# Ignora dependências locais e arquivos temporários caso existam na raiz
+node_modules/
+.env
+.env.*
+*.log
+.DS_Store
