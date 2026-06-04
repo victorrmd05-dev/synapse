@@ -1,13 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, User, CheckCircle2, XCircle, RefreshCw, AlertTriangle, MessageSquare, PlayCircle } from 'lucide-react';
+import { Bell, User, CheckCircle2, XCircle, RefreshCw, AlertTriangle, MessageSquare, PlayCircle, Save, LayoutDashboard, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import TipTapEditor from '../../components/TipTapEditor';
 
 export default function RevisorPage() {
   const [fila, setFila] = useState<any[]>([]);
   const [activeItem, setActiveItem] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [editedTextPagina, setEditedTextPagina] = useState('');
+  const [editedTextLegendas, setEditedTextLegendas] = useState('');
+  const [activeTab, setActiveTab] = useState<'pagina' | 'legendas'>('pagina');
 
   useEffect(() => {
     fetchFila();
@@ -23,6 +27,16 @@ export default function RevisorPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (activeItem) {
+      setEditedTextPagina(activeItem.conteudo_texto || '');
+      setEditedTextLegendas(activeItem.meta_ads_copy || '');
+    } else {
+      setEditedTextPagina('');
+      setEditedTextLegendas('');
+    }
+  }, [activeItem]);
+
   async function fetchFila() {
     const { data: allData } = await supabase
       .from('workflow_copywriting')
@@ -35,22 +49,21 @@ export default function RevisorPage() {
         .filter(item => item.aprovado_humano !== true)
         .map(item => {
           const text = item.conteudo_texto || '';
-          const ganchoMatch = text.match(/GANCHO.*?([\s\S]*?)========================================/);
-          const mecanismoMatch = text.match(/MÓDULO.*?([\s\S]*?)========================================/);
-          const ctaMatch = text.match(/CTA FINAL.*?([\s\S]*?)$/);
+          
+          const lines = text.split(/\r?\n/).filter((line: string) => line.trim().length > 0);
+          const firstLine = lines.length > 0 ? lines[0].replace(/#+/g, '').replace(/\*/g, '').replace(/={3,}/g, '').trim() : 'Copy Sem Título';
 
           return {
             id: item.id,
-            title: text.split('\n')[0] || 'Copy Sem Título',
+            title: firstLine,
             description: text.substring(0, 100) + '...',
-            copy_gancho: ganchoMatch ? ganchoMatch[1].trim() : text.substring(0, 200),
-            copy_mecanismo: mecanismoMatch ? mecanismoMatch[1].trim() : 'Mecanismo Único...',
-            copy_cta: ctaMatch ? ctaMatch[1].trim() : 'Clique aqui...'
+            conteudo_texto: item.conteudo_texto || '',
+            meta_ads_copy: item.meta_ads_copy || ''
           };
         });
 
       setFila(mappedData);
-      if (mappedData.length > 0 && !activeItem) {
+      if (mappedData.length > 0 && (!activeItem || !mappedData.find(i => i.id === activeItem.id))) {
         setActiveItem(mappedData[0]);
       }
     }
@@ -60,10 +73,14 @@ export default function RevisorPage() {
     if (!activeItem) return;
     setIsProcessing(true);
     
-    // Marca como falso para o agente de copy saber que precisa refazer
+    // Atualizar o texto antes de rejeitar para salvar o progresso ou feedback do revisor
     const { error } = await supabase
       .from('workflow_copywriting')
-      .update({ revisor_ok: false })
+      .update({ 
+        revisor_ok: false,
+        conteudo_texto: editedTextPagina,
+        meta_ads_copy: editedTextLegendas
+      })
       .eq('id', activeItem.id);
 
     if (!error) {
@@ -80,6 +97,13 @@ export default function RevisorPage() {
     if (!activeItem) return;
     setIsProcessing(true);
     
+    // Atualizar o texto final
+    await supabase.from('workflow_copywriting').update({ 
+      conteudo_texto: editedTextPagina,
+      meta_ads_copy: editedTextLegendas,
+      aprovado_humano: true 
+    }).eq('id', activeItem.id);
+
     // Insere na tabela workflow_design sinalizando para o Webmaster
     const { error: designError } = await supabase
       .from('workflow_design')
@@ -93,8 +117,6 @@ export default function RevisorPage() {
       // Removemos localmente da fila para sumir da tela do revisor
       setFila(prev => prev.filter(p => p.id !== activeItem.id));
       setActiveItem(null);
-      // Opcional: Atualizar a tabela de copy indicando aprovação final
-      await supabase.from('workflow_copywriting').update({ aprovado_humano: true }).eq('id', activeItem.id);
     } else {
       console.error(designError);
       alert("Erro ao enviar para o Design. Verifique a tabela workflow_design.");
@@ -102,33 +124,40 @@ export default function RevisorPage() {
     setIsProcessing(false);
   }
 
+  async function salvarCopy() {
+    if (!activeItem) return;
+    setIsProcessing(true);
+    
+    const { error } = await supabase
+      .from('workflow_copywriting')
+      .update({ 
+        conteudo_texto: editedTextPagina,
+        meta_ads_copy: editedTextLegendas
+      })
+      .eq('id', activeItem.id);
+
+    if (error) {
+      console.error(error);
+      alert("Erro ao salvar copy.");
+    }
+    
+    setIsProcessing(false);
+  }
+
+
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col animate-in fade-in duration-500 overflow-hidden">
-      {/* Top Bar */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-surface-elevated shrink-0">
-        <div className="relative w-full max-w-lg">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="text-secondary" size={16} />
-          </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-surface-elevated rounded-lg bg-[#13131b] text-text-primary placeholder-secondary focus:outline-none focus:border-primary text-sm transition-colors"
-            placeholder="Pesquisar itens em revisão..."
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-xs font-medium text-status-yellow bg-status-yellow/10 px-3 py-1.5 rounded-full border border-status-yellow/20">
-            <AlertTriangle size={14} />
-            {fila.length} Itens Pendentes
-          </div>
-        </div>
-      </div>
-
       <div className="flex-1 flex gap-8 overflow-hidden">
         
         {/* Fila de Revisão */}
         <div className="w-[340px] flex flex-col shrink-0 overflow-y-auto custom-scrollbar pr-2">
-          <h2 className="text-white font-bold text-lg mb-4">Aguardando Revisão</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white font-bold text-lg">Aguardando Revisão</h2>
+            <div className="flex items-center gap-2 text-[10px] font-medium text-status-yellow bg-status-yellow/10 px-2 py-1 rounded-full border border-status-yellow/20 uppercase tracking-wider">
+              <AlertTriangle size={12} />
+              {fila.length} Pendentes
+            </div>
+          </div>
           
           <div className="space-y-3">
             {fila.map((item) => (
@@ -147,8 +176,7 @@ export default function RevisorPage() {
                   </span>
                   <span className="text-[10px] text-secondary">ID: {item.id.split('-')[0]}</span>
                 </div>
-                <h3 className="text-white font-bold text-sm mb-1">{item.title}</h3>
-                <p className="text-xs text-secondary line-clamp-2">{item.description}</p>
+                <h3 className="text-white font-bold text-sm mb-1 line-clamp-2">{item.title}</h3>
               </div>
             ))}
           </div>
@@ -158,8 +186,8 @@ export default function RevisorPage() {
         <div className="flex-1 flex flex-col bg-surface border border-surface-elevated rounded-xl overflow-hidden">
           <div className="p-5 border-b border-surface-elevated flex items-center justify-between bg-[#0a0a0f]">
             <div>
-              <h2 className="text-lg font-bold text-white mb-1">Revisão de Conteúdo</h2>
-              <p className="text-xs text-secondary">Analise a copy gerada e aprove para produção</p>
+              <h2 className="text-lg font-bold text-white mb-1">Editor & Revisão</h2>
+              <p className="text-xs text-secondary">Analise a copy gerada, edite livremente e aprove para produção</p>
             </div>
             {activeItem && (
               <div className="flex gap-3">
@@ -169,6 +197,13 @@ export default function RevisorPage() {
                   className="flex items-center gap-2 px-4 py-2 bg-status-red/10 hover:bg-status-red/20 text-status-red border border-status-red/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   <XCircle size={16} /> Rejeitar e Refazer
+                </button>
+                <button 
+                  onClick={salvarCopy}
+                  disabled={isProcessing}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#3b82f6]/10 hover:bg-[#3b82f6]/20 text-[#3b82f6] border border-[#3b82f6]/20 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  <Save size={16} /> Salvar
                 </button>
                 <button 
                   onClick={aprovarCopy}
@@ -183,35 +218,34 @@ export default function RevisorPage() {
 
           {activeItem ? (
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6 flex gap-6">
-              <div className="flex-1 space-y-6">
-                <div>
-                  <h3 className="text-sm font-bold text-secondary uppercase tracking-wider mb-3">Gancho (Hook)</h3>
-                  <div className="p-4 bg-[#0F0F13] border border-surface-elevated rounded-lg relative group">
-                    <button className="absolute top-2 right-2 p-1.5 bg-surface rounded text-secondary hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MessageSquare size={14} />
-                    </button>
-                    <p className="text-sm text-white leading-relaxed">{activeItem.copy_gancho}</p>
-                  </div>
+              {/* Main Editor Area */}
+              <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F0F13] border border-surface-elevated rounded-xl">
+                <div className="flex items-center gap-6 px-6 pt-4 border-b border-surface-elevated bg-[#0a0a0f] shrink-0">
+                  <button 
+                    onClick={() => setActiveTab('pagina')}
+                    className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'pagina' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
+                    <LayoutDashboard size={16} /> Página de Vendas
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('legendas')}
+                    className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'legendas' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
+                    <FileText size={16} /> Legendas de Ads
+                  </button>
                 </div>
-
-                <div>
-                  <h3 className="text-sm font-bold text-secondary uppercase tracking-wider mb-3">Mecanismo Único</h3>
-                  <div className="p-4 bg-[#0F0F13] border border-surface-elevated rounded-lg relative group">
-                    <button className="absolute top-2 right-2 p-1.5 bg-surface rounded text-secondary hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MessageSquare size={14} />
-                    </button>
-                    <p className="text-sm text-white leading-relaxed">{activeItem.copy_mecanismo}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-bold text-secondary uppercase tracking-wider mb-3">Call to Action</h3>
-                  <div className="p-4 bg-[#0F0F13] border border-surface-elevated rounded-lg relative group">
-                    <button className="absolute top-2 right-2 p-1.5 bg-surface rounded text-secondary hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                      <MessageSquare size={14} />
-                    </button>
-                    <p className="text-sm text-white leading-relaxed">{activeItem.copy_cta}</p>
-                  </div>
+                <div className="flex-1 flex flex-col overflow-hidden">
+                  {activeTab === 'pagina' ? (
+                    <TipTapEditor 
+                      key="editor-pagina"
+                      content={editedTextPagina} 
+                      onChange={setEditedTextPagina} 
+                    />
+                  ) : (
+                    <TipTapEditor 
+                      key="editor-legendas"
+                      content={editedTextLegendas} 
+                      onChange={setEditedTextLegendas} 
+                    />
+                  )}
                 </div>
               </div>
 
@@ -239,7 +273,7 @@ export default function RevisorPage() {
                   <h3 className="text-xs font-bold text-secondary uppercase tracking-wider mb-3">Notas do Copywriter</h3>
                   <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
                     <p className="text-xs text-secondary leading-relaxed">
-                      "Foquei bastante no gatilho de urgência no CTA e utilizei o ângulo de 'Medo da Dor' sugerido pela IA."
+                      &quot;A copy reflete o conteúdo integral da Sales Page ou das Legendas de Ads geradas. Edite as seções, remova marcações e finalize o texto que será passado para o Webmaster ou Designer.&quot;
                     </p>
                   </div>
                 </div>

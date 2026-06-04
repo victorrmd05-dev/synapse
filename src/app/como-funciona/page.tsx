@@ -64,7 +64,7 @@ export default function ComoFuncionaPage() {
       <div className="mt-16 bg-gradient-to-r from-[#6366F1]/10 to-[#A855F7]/10 border border-[#6366F1]/20 rounded-2xl p-8 text-center">
         <h2 className="text-2xl font-semibold text-white mb-4">Governança de Elite</h2>
         <p className="text-[#8B8BA0] max-w-2xl mx-auto leading-relaxed">
-          O MetaScale não foi criado para ser mais um dashboard genérico. Ele foi forjado para responder à única pergunta que importa no tráfego pago: <strong className="text-[#F1F1F3]">"Se eu injetar dinheiro hoje, eu vou lucrar amanhã?"</strong>. Completude absoluta, sem atalhos.
+          O MetaScale não foi criado para ser mais um dashboard genérico. Ele foi forjado para responder à única pergunta que importa no tráfego pago: <strong className="text-[#F1F1F3]">&quot;Se eu injetar dinheiro hoje, eu vou lucrar amanhã?&quot;</strong>. Completude absoluta, sem atalhos.
         </p>
       </div>
     </div>

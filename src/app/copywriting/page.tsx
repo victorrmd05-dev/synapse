@@ -37,15 +37,19 @@ export default function CopywritingPage() {
         const mecanismoMatch = text.match(/MÓDULO.*?([\s\S]*?)========================================/);
         const ctaMatch = text.match(/CTA FINAL.*?([\s\S]*?)$/);
 
+        // Pega a primeira linha com conteúdo para ser o título do projeto
+        const lines = text.split(/\r?\n/).filter((line: string) => line.trim().length > 0);
+        const firstLine = lines.length > 0 ? lines[0].replace(/#+/g, '').replace(/\*/g, '').replace(/={3,}/g, '').trim() : 'Copy Sem Título';
+
         return {
           id: item.id,
-          priority: item.revisor_ok ? 'APROVADO' : 'EM REVISÃO',
-          title: text.split('\\n')[0] || 'Copy Sem Título',
+          priority: item.revisor_ok ? 'APROVADO' : 'RASCUNHO',
+          title: firstLine,
           description: text.substring(0, 100) + '...',
           copy_gancho: ganchoMatch ? ganchoMatch[1].trim() : text.substring(0, 200),
           copy_mecanismo: mecanismoMatch ? mecanismoMatch[1].trim() : 'Mecanismo Único...',
           copy_cta: ctaMatch ? ctaMatch[1].trim() : 'Clique aqui...',
-          atributos_json: { nicho: 'Vários', preco: '-' },
+          atributos_json: item.atributos_json || { nicho: 'Vários', preco: '-' },
           conteudo_texto: item.conteudo_texto || '',
           meta_ads_copy: item.meta_ads_copy || ''
         };
@@ -105,19 +109,17 @@ export default function CopywritingPage() {
                     : 'bg-surface border-surface-elevated hover:border-surface-elevated/80 opacity-70 hover:opacity-100'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                    item.priority === 'ALTA PRIORIDADE' ? 'bg-primary/20 text-primary' : 'bg-surface-elevated text-secondary'
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                    item.priority === 'APROVADO' ? 'bg-[#22c55e]/20 text-[#22c55e]' : 'bg-surface-elevated text-secondary'
                   }`}>
                     {item.priority}
                   </span>
-                  <span className="text-[10px] text-secondary">Recente</span>
+                  <FileText size={14} className={activeItem?.id === item.id ? "text-primary" : "text-secondary"} />
                 </div>
-                <h3 className="text-white font-bold mb-1">{item.title}</h3>
-                <p className="text-xs text-secondary mb-3 line-clamp-2">{item.description}</p>
-                <div className="flex items-center gap-2 text-secondary">
-                  <FileText size={14} className={activeItem?.id === item.id ? "text-primary" : ""} />
-                  <Video size={14} />
+                <h3 className="text-white font-bold text-sm mb-2 line-clamp-2 leading-snug">{item.title}</h3>
+                <div className="flex items-center gap-2 text-secondary text-xs mt-3">
+                  <span>{item.atributos_json?.nicho || 'Nicho indefinido'}</span>
                 </div>
               </div>
             ))}
@@ -243,7 +245,7 @@ export default function CopywritingPage() {
 
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6 relative overflow-hidden">
             <h3 className="text-[10px] font-bold text-primary uppercase mb-2">Insight da IA</h3>
-            <p className="text-xs text-white leading-relaxed">"O público alvo responde melhor a anúncios que enfatizam resultados rápidos e facilidade de uso."</p>
+            <p className="text-xs text-white leading-relaxed">&quot;O público alvo responde melhor a anúncios que enfatizam resultados rápidos e facilidade de uso.&quot;</p>
             <Sparkles size={40} className="absolute -bottom-2 -right-2 text-primary opacity-10" />
           </div>
 
