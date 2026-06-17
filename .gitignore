@@ -5,6 +5,9 @@
 .gemini/
 .mcp.json
 skills-lock.json
+
+# Paperclip Agents & Skills (Local Only)
+paperclip_config/
 # dependencies
 node_modules
 .pnp

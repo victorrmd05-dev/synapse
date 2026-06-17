@@ -10,6 +10,7 @@
 
 </div>
 
+
 ---
 
 **MetaScale** é um ecossistema premium de Business Intelligence e Inteligência Artificial desenvolvido para infoprodutores, e-commerces, dropshippers e agências focadas em alta escala. 

@@ -46,7 +46,7 @@ export default function RevisorPage() {
 
     if (allData) {
       const mappedData = allData
-        .filter(item => item.aprovado_humano !== true)
+        .filter(item => item.data_aprovacao === null)
         .map(item => {
           const text = item.conteudo_texto || '';
           
@@ -55,6 +55,7 @@ export default function RevisorPage() {
 
           return {
             id: item.id,
+            campanha_id: item.campanha_id,
             title: firstLine,
             description: text.substring(0, 100) + '...',
             conteudo_texto: item.conteudo_texto || '',
@@ -98,19 +99,26 @@ export default function RevisorPage() {
     setIsProcessing(true);
     
     // Atualizar o texto final
-    await supabase.from('workflow_copywriting').update({ 
+    const { error: copyError } = await supabase.from('workflow_copywriting').update({ 
       conteudo_texto: editedTextPagina,
       meta_ads_copy: editedTextLegendas,
-      aprovado_humano: true 
+      data_aprovacao: new Date().toISOString()
     }).eq('id', activeItem.id);
+
+    if (copyError) {
+      console.error(copyError);
+      alert("Erro ao atualizar a copy.");
+      setIsProcessing(false);
+      return;
+    }
 
     // Insere na tabela workflow_design sinalizando para o Webmaster
     const { error: designError } = await supabase
       .from('workflow_design')
       .insert([{
-        copywriting_id: activeItem.id,
-        nome_projeto: activeItem.title,
-        status_geral: 'Aguardando Design'
+        campanha_id: activeItem.campanha_id,
+        tipo_design: 'Landing Page',
+        notas_revisao: activeItem.title
       }]);
 
     if (!designError) {

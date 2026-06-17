@@ -85,7 +85,7 @@ export default function DesignPage() {
                     {lp.status || 'RASCUNHO'}
                   </span>
                 </div>
-                <h3 className="text-white font-bold text-sm mb-1">{lp.title || lp.tipo_design || 'Landing Page Nova'}</h3>
+                <h3 className="text-white font-bold text-sm mb-1">{lp.title || lp.notas_revisao || lp.tipo_design || 'Landing Page Nova'}</h3>
                 <div className="flex items-center gap-2 text-xs text-secondary">
                   <Briefcase size={12} /> {lp.niche || 'Nicho indefinido'}
                 </div>
