@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, RefreshCw, Star, X, Database, CheckCircle2, Globe, BookOpen, Video as VideoIcon, PlayCircle, Trash2 } from 'lucide-react';
+import { Search, RefreshCw, Star, X, Database, CheckCircle2, Globe, BookOpen, Video as VideoIcon, PlayCircle, Trash2, Sparkles, Loader2, Heart } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function MineracaoPage() {
@@ -11,6 +11,11 @@ export default function MineracaoPage() {
   const [selectedAd, setSelectedAd] = useState<any | null>(null);
   const [isApproving, setIsApproving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [miningQuery, setMiningQuery] = useState("Frete Grátis");
+  const [isMining, setIsMining] = useState(false);
+  const [miningMsg, setMiningMsg] = useState<string | null>(null);
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
 
   useEffect(() => {
     fetchProdutos();
@@ -56,6 +61,9 @@ export default function MineracaoPage() {
           id: ad.id,
           title: ad.ad_title || 'Anúncio sem título',
           score: ad.score_escala || 0,
+          categoria_ia: ad.categoria_ia || null,
+          notas_ia: ad.notas_ia || null,
+          favorito: ad.favorito || false,
           image_url: hdImage || 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?q=80&w=600',
           page_name: ad.page_name || 'Desconhecido',
           page_profile_pic_url: ad.page_profile_pic_url || '',
@@ -71,6 +79,35 @@ export default function MineracaoPage() {
       
       setProdutos(uniqueData);
       setStats({ produtos: uniqueData.length, criativos: uniqueData.length * 3 });
+    }
+  }
+
+  async function minerar() {
+    const query = miningQuery.trim();
+    if (!query || isMining) return;
+    setIsMining(true);
+    setMiningMsg(null);
+    try {
+      const res = await fetch('/api/mineracao/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, country: 'BR', limit: 8, apenas_validados: true }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        setMiningMsg(`❌ ${json.error || `HTTP ${res.status}`}${json.detalhe ? ' — ' + json.detalhe : ''}`);
+      } else {
+        const bl = json.bloqueados_lista_negra ?? 0;
+        setMiningMsg(
+          `✓ "${json.query}": ${json.avaliados} avaliados · ${bl} bloqueados pela lista negra · ${json.inseridos} salvos no painel.` +
+          (json.inseridos === 0 ? ' Nenhuma oferta boa nessa keyword — tente outra.' : '')
+        );
+        await fetchProdutos();
+      }
+    } catch (e: any) {
+      setMiningMsg(`❌ Falha de rede: ${e?.message || 'erro desconhecido'}`);
+    } finally {
+      setIsMining(false);
     }
   }
 
@@ -112,6 +149,55 @@ export default function MineracaoPage() {
     setIsDeleting(false);
   }
 
+  async function toggleFavorito(ad: any, e?: React.MouseEvent) {
+    if (e) e.stopPropagation();
+    const novoValor = !ad.favorito;
+
+    // Atualização otimista (UI responde na hora; Realtime confirma depois)
+    setProdutos(prev => prev.map(p => (p.id === ad.id ? { ...p, favorito: novoValor } : p)));
+    if (selectedAd?.id === ad.id) setSelectedAd({ ...selectedAd, favorito: novoValor });
+
+    const { error } = await supabase
+      .from('ads_minerados')
+      .update({ favorito: novoValor })
+      .eq('id', ad.id);
+
+    if (error) {
+      console.error(error);
+      // Reverte em caso de falha
+      setProdutos(prev => prev.map(p => (p.id === ad.id ? { ...p, favorito: ad.favorito } : p)));
+      if (selectedAd?.id === ad.id) setSelectedAd({ ...selectedAd, favorito: ad.favorito });
+      alert("Erro ao favoritar anúncio.");
+    }
+  }
+
+  async function excluirNaoFavoritados() {
+    const naoFavoritados = produtos.filter(p => !p.favorito);
+    if (naoFavoritados.length === 0) {
+      alert("Não há anúncios não favoritados para excluir.");
+      return;
+    }
+    if (!window.confirm(
+      `Isso vai excluir PERMANENTEMENTE ${naoFavoritados.length} anúncio(s) não favoritado(s) do banco de dados, mantendo apenas os ${produtos.length - naoFavoritados.length} favoritado(s). Continuar?`
+    )) return;
+
+    setIsPurging(true);
+
+    const { error } = await supabase
+      .from('ads_minerados')
+      .delete()
+      .eq('favorito', false);
+
+    if (!error) {
+      setProdutos(prev => prev.filter(p => p.favorito));
+    } else {
+      console.error(error);
+      alert("Erro ao excluir anúncios não favoritados.");
+    }
+
+    setIsPurging(false);
+  }
+
   return (
     <div className="relative min-h-full pb-20 animate-in fade-in duration-500">
       <div className="flex items-center justify-between border-b border-surface-elevated pb-4 mb-8">
@@ -137,16 +223,73 @@ export default function MineracaoPage() {
           <h1 className="text-3xl font-bold text-white tracking-tight mb-1">Mineração de Produtos</h1>
           <p className="text-secondary text-sm">Inteligência Artificial processando tendências globais do Meta Ads.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-secondary tracking-wider uppercase">Filtros Ativos:</span>
-          <span className="px-3 py-1.5 bg-surface border border-surface-elevated rounded-md text-xs text-white font-medium hover:bg-surface-elevated cursor-pointer transition-colors">Score &gt; 85</span>
-          <span className="px-3 py-1.5 bg-surface border border-surface-elevated rounded-md text-xs text-white font-medium hover:bg-surface-elevated cursor-pointer transition-colors">Últimas 24h</span>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={miningQuery}
+            onChange={(e) => setMiningQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') minerar(); }}
+            disabled={isMining}
+            placeholder="Palavra-chave (ex: Frete Grátis)"
+            className="px-3 py-2 w-60 bg-[#13131b] border border-surface-elevated rounded-lg text-sm text-text-primary placeholder-secondary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50 transition-colors"
+          />
+          <button
+            onClick={minerar}
+            disabled={isMining || !miningQuery.trim()}
+            className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors shadow-[0_0_20px_rgba(99,102,241,0.3)] disabled:opacity-50 whitespace-nowrap"
+          >
+            {isMining
+              ? <><Loader2 size={16} className="animate-spin" /> Minerando…</>
+              : <><Sparkles size={16} /> Minerar com IA</>}
+          </button>
         </div>
+      </div>
+
+      {(miningMsg || isMining) && (
+        <div className="mb-6 -mt-3 text-sm">
+          {isMining ? (
+            <span className="text-secondary flex items-center gap-2">
+              <Loader2 size={14} className="animate-spin" />
+              Buscando na Meta Ad Library e avaliando cada anúncio com a IA — pode levar até ~1 min.
+            </span>
+          ) : (
+            <span className={miningMsg?.startsWith('❌') ? 'text-status-red' : 'text-status-green'}>{miningMsg}</span>
+          )}
+        </div>
+      )}
+
+      {/* Toolbar de curadoria */}
+      <div className="flex items-center justify-between mb-6 gap-3 flex-wrap">
+        <button
+          onClick={() => setShowOnlyFavorites(v => !v)}
+          className={`px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors border ${
+            showOnlyFavorites
+              ? 'bg-primary/15 text-primary border-primary/40'
+              : 'bg-surface text-secondary border-surface-elevated hover:text-white'
+          }`}
+        >
+          <Heart size={16} className={showOnlyFavorites ? 'fill-primary' : ''} />
+          {showOnlyFavorites ? 'Mostrando favoritos' : 'Só favoritos'}
+          <span className="ml-1 text-xs opacity-70">({produtos.filter(p => p.favorito).length})</span>
+        </button>
+
+        <button
+          onClick={excluirNaoFavoritados}
+          disabled={isPurging || produtos.filter(p => !p.favorito).length === 0}
+          className="px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors bg-status-red/10 hover:bg-status-red/20 text-status-red border border-status-red/20 disabled:opacity-40"
+        >
+          {isPurging
+            ? <><Loader2 size={16} className="animate-spin" /> Excluindo…</>
+            : <><Trash2 size={16} /> Excluir não favoritados ({produtos.filter(p => !p.favorito).length})</>}
+        </button>
       </div>
 
       {/* Product Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 lg:gap-8 gap-6">
-        {produtos.filter(p => p.title.toLowerCase().includes(search.toLowerCase())).map((item) => (
+        {produtos
+          .filter(p => p.title.toLowerCase().includes(search.toLowerCase()))
+          .filter(p => !showOnlyFavorites || p.favorito)
+          .map((item) => (
           <div 
             key={item.id} 
             onClick={() => setSelectedAd(item)}
@@ -163,6 +306,17 @@ export default function MineracaoPage() {
                 <Star size={12} className="text-yellow-400" />
                 <span className="text-xs font-bold text-white">SCORE {item.score}</span>
               </div>
+              <button
+                onClick={(e) => toggleFavorito(item, e)}
+                title={item.favorito ? 'Remover dos favoritos' : 'Favoritar anúncio'}
+                className={`absolute top-3 left-3 p-2 rounded-full backdrop-blur-md border shadow-xl transition-colors ${
+                  item.favorito
+                    ? 'bg-primary/80 border-primary text-white'
+                    : 'bg-black/60 border-white/10 text-white/80 hover:text-white'
+                }`}
+              >
+                <Heart size={16} className={item.favorito ? 'fill-white' : ''} />
+              </button>
             </div>
 
             <div className="p-5 flex-1 flex flex-col">
@@ -212,9 +366,22 @@ export default function MineracaoPage() {
             {/* Modal Header Actions */}
             <div className="flex justify-between items-center p-3 border-b border-[#3E4042]">
               <span className="text-[#B0B3B8] font-semibold text-sm ml-2">Espião de Anúncios</span>
-              <button onClick={() => setSelectedAd(null)} className="p-2 bg-[#3A3B3C] hover:bg-[#4E4F50] rounded-full text-[#E4E6EB] transition-colors">
-                <X size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleFavorito(selectedAd)}
+                  title={selectedAd.favorito ? 'Remover dos favoritos' : 'Favoritar anúncio'}
+                  className={`p-2 rounded-full transition-colors ${
+                    selectedAd.favorito
+                      ? 'bg-primary text-white'
+                      : 'bg-[#3A3B3C] hover:bg-[#4E4F50] text-[#E4E6EB]'
+                  }`}
+                >
+                  <Heart size={18} className={selectedAd.favorito ? 'fill-white' : ''} />
+                </button>
+                <button onClick={() => setSelectedAd(null)} className="p-2 bg-[#3A3B3C] hover:bg-[#4E4F50] rounded-full text-[#E4E6EB] transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {/* Scrollable Ad Content */}
@@ -264,6 +431,36 @@ export default function MineracaoPage() {
                 <button className="bg-[#3A3B3C] text-[#E4E6EB] font-semibold text-sm px-4 py-1.5 rounded-md shrink-0">
                   {selectedAd.cta_text}
                 </button>
+              </div>
+
+              {/* Análise da IA (Minerador) */}
+              <div className="p-5 border-b border-[#3E4042]">
+                <h3 className="text-[#B0B3B8] text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Sparkles size={14} className="text-primary" />
+                  Análise da IA
+                </h3>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`px-3 py-1.5 rounded-lg flex items-center gap-2 font-bold text-sm ${
+                    selectedAd.score >= 70
+                      ? 'bg-status-green/10 text-status-green border border-status-green/20'
+                      : selectedAd.score >= 50
+                        ? 'bg-status-yellow/10 text-status-yellow border border-status-yellow/20'
+                        : 'bg-status-red/10 text-status-red border border-status-red/20'
+                  }`}>
+                    <Star size={14} />
+                    Score {selectedAd.score}/100
+                  </div>
+                  {selectedAd.categoria_ia && (
+                    <span className="px-3 py-1.5 rounded-lg bg-[#3A3B3C] text-[#E4E6EB] text-sm font-medium">
+                      {selectedAd.categoria_ia}
+                    </span>
+                  )}
+                </div>
+                {selectedAd.notas_ia ? (
+                  <p className="text-[#B0B3B8] text-sm leading-relaxed whitespace-pre-wrap">{selectedAd.notas_ia}</p>
+                ) : (
+                  <p className="text-[#6E7174] text-sm italic">Sem notas da IA para este anúncio.</p>
+                )}
               </div>
 
               {/* Spy Tools Actions */}
