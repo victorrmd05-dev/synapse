@@ -1,0 +1,7 @@
+{
+  "slug": "alavanca-ceo",
+  "nome": "Alavanca CEO",
+  "modelo": "claude-sonnet-4-6",
+  "max_tokens": 4000,
+  "ativo": true
+}

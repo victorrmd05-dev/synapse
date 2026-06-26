@@ -1,0 +1,7 @@
+{
+  "slug": "gestor-meta-ads",
+  "nome": "Gestor-Meta-Ads",
+  "modelo": "claude-sonnet-4-6",
+  "max_tokens": 4000,
+  "ativo": true
+}

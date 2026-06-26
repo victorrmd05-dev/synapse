@@ -18,7 +18,8 @@ import {
   ChevronDown,
   ChevronRight,
   Megaphone,
-  Calculator
+  Calculator,
+  Bot
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -156,15 +157,14 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto space-y-4 pt-4 border-t border-surface-elevated">
-        <button className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-primary/20">
-          <Plus size={18} />
-          Nova Campanha
-        </button>
-        
         <div className="space-y-1">
           <Link href="/configuracoes" className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${pathname === '/configuracoes' ? 'text-white bg-surface' : 'text-secondary hover:text-white hover:bg-surface'}`}>
             <Settings size={18} />
             Configurações
+          </Link>
+          <Link href="/agents" className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${pathname.startsWith('/agents') ? 'text-white bg-surface' : 'text-secondary hover:text-white hover:bg-surface'}`}>
+            <Bot size={18} />
+            Agents Config
           </Link>
           <Link href="/suporte" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-secondary hover:text-white hover:bg-surface transition-colors">
             <HelpCircle size={18} />

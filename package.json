@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "agents:pull": "node scripts/agents-pull.mjs",
+    "agents:push": "node scripts/agents-push.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
@@ -17,6 +19,7 @@
     "lucide-react": "^1.14.0",
     "marked": "^18.0.5",
     "next": "14.2.35",
+    "openai": "^6.44.0",
     "react": "^18",
     "react-dom": "^18",
     "recharts": "^3.8.1"

@@ -4,6 +4,23 @@ import React, { useState, useEffect } from 'react';
 import { Search, RefreshCw, Star, X, Database, CheckCircle2, Globe, BookOpen, Video as VideoIcon, PlayCircle, Trash2, Sparkles, Loader2, Heart } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
+// Países para mineração. A jogada clássica de dropshipping/low-ticket é garimpar
+// ofertas já VALIDADAS na gringa (EUA, Europa) e trazer pro Brasil. O código ISO-2
+// é o que a ScrapeCreators espera no parâmetro `country`.
+const PAISES = [
+  { code: 'BR', label: '🇧🇷 Brasil' },
+  { code: 'US', label: '🇺🇸 Estados Unidos' },
+  { code: 'GB', label: '🇬🇧 Reino Unido' },
+  { code: 'PT', label: '🇵🇹 Portugal' },
+  { code: 'ES', label: '🇪🇸 Espanha' },
+  { code: 'IT', label: '🇮🇹 Itália' },
+  { code: 'DE', label: '🇩🇪 Alemanha' },
+  { code: 'FR', label: '🇫🇷 França' },
+  { code: 'CA', label: '🇨🇦 Canadá' },
+  { code: 'AU', label: '🇦🇺 Austrália' },
+  { code: 'MX', label: '🇲🇽 México' },
+];
+
 export default function MineracaoPage() {
   const [search, setSearch] = useState("");
   const [produtos, setProdutos] = useState<any[]>([]);
@@ -12,6 +29,7 @@ export default function MineracaoPage() {
   const [isApproving, setIsApproving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [miningQuery, setMiningQuery] = useState("Frete Grátis");
+  const [miningCountry, setMiningCountry] = useState("BR");
   const [isMining, setIsMining] = useState(false);
   const [miningMsg, setMiningMsg] = useState<string | null>(null);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
@@ -40,16 +58,24 @@ export default function MineracaoPage() {
     if (!error && data) {
       const mappedData = data.map(ad => {
         let hdImage = ad.image_url;
-        let videos = ad.video_urls || [];
-        
+        let videos: string[] = ad.video_urls || [];
+
         try {
           if (ad.raw_json) {
             const raw = typeof ad.raw_json === 'string' ? JSON.parse(ad.raw_json) : ad.raw_json;
-            if (raw.snapshot) {
-              if (raw.snapshot.images && raw.snapshot.images.length > 0) {
-                hdImage = raw.snapshot.images[0].original_image_url || raw.snapshot.images[0].resized_image_url || hdImage;
-              } else if (raw.snapshot.videos && raw.snapshot.videos.length > 0) {
-                hdImage = raw.snapshot.videos[0].video_preview_image_url || hdImage;
+            const snap = raw.snapshot;
+            if (snap) {
+              if (snap.images && snap.images.length > 0) {
+                hdImage = snap.images[0].original_image_url || snap.images[0].resized_image_url || hdImage;
+              } else if (snap.videos && snap.videos.length > 0) {
+                hdImage = snap.videos[0].video_preview_image_url || hdImage;
+              }
+              // Fallback: se a coluna video_urls estiver vazia, extrai o vídeo do raw_json
+              if (videos.length === 0) {
+                const allVideos = [...(snap.videos || []), ...(snap.extra_videos || [])];
+                videos = allVideos
+                  .map((v: any) => v?.video_hd_url || v?.video_sd_url)
+                  .filter((u: any) => typeof u === 'string' && u.length > 0);
               }
             }
           }
@@ -91,15 +117,16 @@ export default function MineracaoPage() {
       const res = await fetch('/api/mineracao/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, country: 'BR', limit: 8, apenas_validados: true }),
+        body: JSON.stringify({ query, country: miningCountry, limit: 8, apenas_validados: true }),
       });
       const json = await res.json();
       if (!res.ok || json.error) {
         setMiningMsg(`❌ ${json.error || `HTTP ${res.status}`}${json.detalhe ? ' — ' + json.detalhe : ''}`);
       } else {
         const bl = json.bloqueados_lista_negra ?? 0;
+        const paisLabel = PAISES.find(p => p.code === json.country)?.label ?? json.country;
         setMiningMsg(
-          `✓ "${json.query}": ${json.avaliados} avaliados · ${bl} bloqueados pela lista negra · ${json.inseridos} salvos no painel.` +
+          `✓ ${paisLabel} · "${json.query}": ${json.avaliados} avaliados · ${bl} bloqueados pela lista negra · ${json.inseridos} salvos no painel.` +
           (json.inseridos === 0 ? ' Nenhuma oferta boa nessa keyword — tente outra.' : '')
         );
         await fetchProdutos();
@@ -224,6 +251,17 @@ export default function MineracaoPage() {
           <p className="text-secondary text-sm">Inteligência Artificial processando tendências globais do Meta Ads.</p>
         </div>
         <div className="flex items-center gap-2">
+          <select
+            value={miningCountry}
+            onChange={(e) => setMiningCountry(e.target.value)}
+            disabled={isMining}
+            title="País de origem dos anúncios (minere ofertas validadas na gringa)"
+            className="px-3 py-2 bg-[#13131b] border border-surface-elevated rounded-lg text-sm text-text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            {PAISES.map((p) => (
+              <option key={p.code} value={p.code}>{p.label}</option>
+            ))}
+          </select>
           <input
             type="text"
             value={miningQuery}
