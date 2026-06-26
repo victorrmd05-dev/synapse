@@ -144,7 +144,11 @@ Responda APENAS em JSON com este formato exato:
       // mantém o texto bruto em parecer
     }
 
-    // 6. Salvar o parecer e mover para "revisado_ia" (aguardando decisão humana)
+    // 6. Salvar o parecer e mover para "revisado_ia" (aguardando decisão humana).
+    //    GUARDA CONTRA CORRIDA: a chamada à IA é lenta (~10s); nesse meio-tempo o
+    //    humano pode ter aprovado/rejeitado. Só gravamos o parecer se a copy
+    //    ainda estiver 'aguardando_revisao_ia' — senão a decisão já foi tomada e
+    //    este parecer é obsoleto (não pode sobrescrever 'aprovado'/'rejeitado').
     const { data: registro, error: updateError } = await supabase
       .from('workflow_copywriting')
       .update({
@@ -153,14 +157,25 @@ Responda APENAS em JSON com este formato exato:
         revisao_ia_parecer: parecer,
       })
       .eq('id', copy_id)
+      .eq('status', 'aguardando_revisao_ia')
       .select()
-      .single();
+      .maybeSingle();
 
     if (updateError) {
       return Response.json(
         { error: 'Falha ao salvar parecer da IA', detalhe: updateError.message },
         { status: 500 }
       );
+    }
+
+    if (!registro) {
+      // A copy já saiu da fila de revisão (humano decidiu antes). Parecer descartado.
+      return Response.json({
+        sucesso: true,
+        descartado: true,
+        motivo: 'Copy já foi decidida pelo operador antes da revisão da IA terminar.',
+        score,
+      });
     }
 
     return Response.json({

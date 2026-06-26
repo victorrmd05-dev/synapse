@@ -1,7 +1,7 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-06-26 — Copywriting migrado para OpenAI; **Revisor construído e validado** (IA revisora + aprovação/rejeição); correção do badge do Design.
+> Última atualização: 2026-06-26 — **Motor do Designer construído** (gera HTML via gpt-4o/Claude, com injeção de marca de luxo + Firecrawl + imagens reais); botão "play" na fila de Design; correção de corrida no Revisor.
 
 ---
 
@@ -215,7 +215,50 @@ Card na fila do `/design` mostrava **"RASCUNHO"** para copy já aprovada pelo Re
 - **Correção (sem schema):** helper `getDesignStatus(lp)` em `src/app/design/page.tsx` **deriva o
   rótulo das colunas reais** (nunca desincroniza): sem `codigo_html` → **Aguardando Design**;
   com HTML → **Pronta p/ Revisão**; `data_aprovacao` → **Aprovada p/ Tráfego**; `url_recurso` →
-  **No Ar**. (O motor do Designer — gerar HTML + deploy — continua pendente, Prioridade 3.)
+  **No Ar**.
+
+## 🎨 Designer-Webmaster — MOTOR CONSTRUÍDO (26/06/2026)
+Terceiro agente com mãos. Gera a landing page de verdade, com controle manual de fila.
+
+- **Ferramentas de design instaladas:** 2 repos clonados em
+  `agentes/designer-webmaster/references/` — **`awesome-design-md`** (74 marcas de luxo, cada
+  `DESIGN.md` com tokens reais; **versionado**) e **`ui-ux-pro-max-skill`** (ferramenta dev,
+  **gitignored**). MCP **Magic (21st.dev)** adicionado ao config de usuário do Claude Code (dev-time).
+- **Motor de injeção dinâmica de marca** (`src/lib/design/brandReferences.ts`): detecta o nicho do
+  produto → escolhe a marca-referência (estética→Apple, fitness→Nike, luxo/auto→Ferrari,
+  cripto/gaming→Lamborghini, e-commerce→Shopify… fallback Apple) → **injeta o `DESIGN.md` real**
+  no prompt. Cada página nasce ancorada num sistema de luxo, não em "AI slop". `next.config.mjs`
+  empacota os `DESIGN.md` no bundle (`outputFileTracingIncludes`, sob `experimental` no Next 14).
+- **Mãos — rota nova** `src/app/api/design/generate/route.ts`: copy aprovada (conteúdo) + produto
+  minerado (nicho + **imagens reais**: `image_url`/`extra_image_urls`…) + **Firecrawl** (estrutura
+  da LP do concorrente via `link_url` + mais imagens) + marca injetada → gera HTML completo
+  (Tailwind CDN, mobile-first, SVG inline). Salva em `workflow_design.codigo_html` **e em disco**
+  (`lps/<projeto>-<id>.html`, gitignored) como rede de segurança pra edição manual.
+- **Firecrawl** (`src/lib/firecrawl.ts`): scraping best-effort (no-op sem chave). Chave
+  `FIRECRAWL_API_KEY` no `.env.local`. Serve pro Designer **entender a página que está remodelando**.
+- **Provider do desenho configurável** (`DESIGN_PROVIDER` no `.env.local`): **`openai`** (default,
+  `gpt-4o` COMPLETO — não o mini) ou **`anthropic`** (Claude, melhor em frontend).
+  ⚠️ **Claude bloqueado por ora:** conta Anthropic **sem créditos** ("credit balance too low").
+  Por isso o default caiu no `gpt-4o`. Trocar pra `anthropic` quando houver saldo.
+- **Botão "play" na fila** (`src/app/design/page.tsx`): geração **manual, uma de cada vez** — o
+  Fernando segura a fila no ponto de criação da página e escolhe qual produto vira a 1ª oferta.
+  Play por card + CTA grande no preview; estado "Gerando…" local; preview renderiza via Realtime.
+- **Cérebro atualizado:** `AGENTS.md` + `SKILL.md` (Seção 0/0.1) documentam como usar os blocos
+  injetados (marca, estrutura do concorrente, imagens reais; nunca inventar URL de imagem).
+- **Validação:** página gerada ponta a ponta pelo painel (gpt-4o). **Qualidade ainda mediana** —
+  o salto real virá com o Claude (crédito) e/ou refino de prompt. Mecânica do fluxo: OK.
+
+## 🔁 Revisor — correção de corrida (26/06/2026)
+Bug encontrado ao ligar o motor do Designer: uma copy **aprovada** estava com `status='revisado_ia'`
+(em vez de `aprovado`), embora `revisor_ok=true` e `data_aprovacao` preenchidos.
+- **Causa raiz (corrida):** a IA revisora é lenta (~10s). Se o humano aprova **antes** dela terminar,
+  o `UPDATE status='revisado_ia'` da revisão **sobrescreve** a aprovação.
+- **Correção 1 — `/api/revisor/review`:** o update do parecer agora é **guardado** por
+  `.eq('status','aguardando_revisao_ia')` (+ `maybeSingle`); se a copy já saiu da fila, o parecer é
+  **descartado** (não sobrescreve decisão tomada).
+- **Correção 2 — `/api/design/generate`:** busca a copy aprovada por **`revisor_ok=true` +
+  `data_aprovacao IS NOT NULL`** (sinal real), não por `status='aprovado'` — imune à corrida.
+- Registro travado realinhado no banco (`status='aprovado'`).
 
 ---
 
@@ -225,7 +268,7 @@ Card na fila do `/design` mostrava **"RASCUNHO"** para copy já aprovada pelo Re
 | Minerador | ✅ régua nova | ✅ `/api/mineracao/run` | **Validado ponta a ponta** |
 | Copywriting | ✅ sync | ✅ `/api/copywriting/generate` (OpenAI `gpt-4o-mini`) | **Validado** |
 | Revisor | ✅ sync | ✅ `/api/revisor/review` (OpenAI `gpt-4o-mini`) | **Validado ponta a ponta** |
-| Designer-Webmaster | ⚠️ sync | ❌ falta motor (gerar HTML) + deploy | UI/fila ok; badge corrigido. Motor pendente |
+| Designer-Webmaster | ✅ marca+Firecrawl+imagens | ✅ `/api/design/generate` (gpt-4o; Claude p/ saldo) | **Motor OK** (qualidade a refinar); falta deploy |
 | Video-Maker | ⚠️ sync | ❌ falta Higgsfield | Pendente |
 | Gestor-Meta-Ads | ⚠️ sync | ❌ falta rota | Pendente |
 | CEO / CTO | ✅ sync | aprovação/suporte | Camada humana + futura automação |
@@ -238,8 +281,12 @@ Card na fila do `/design` mostrava **"RASCUNHO"** para copy já aprovada pelo Re
 - [ ] (Opcional) Dropdown de keywords prontas na tela de mineração.
 - [x] ~~Migrar copywriting para provider confiável~~ → **feito: OpenAI `gpt-4o-mini`** (26/06).
 - [x] ~~Próximo agente da esteira: Revisor~~ → **feito e validado** (`/api/revisor/review`, 26/06).
-- [ ] **Próximo agente: Designer-Webmaster** — motor `/api/design/generate` (gera `codigo_html`)
-      + deploy `/api/deploy` (GitHub Pages → Cloudflare). Conectar botão "Aprovar para Tráfego".
+- [x] ~~Designer-Webmaster: motor `/api/design/generate`~~ → **feito** (gpt-4o/Claude + marca +
+      Firecrawl + imagens reais + botão play). **Qualidade a refinar** (Claude com crédito / prompt).
+- [ ] **Designer: deploy** `/api/deploy` (GitHub Pages → Cloudflare) + conectar "Aprovar para Tráfego";
+      salvar URL pública em `workflow_design.url_recurso`.
+- [ ] **Designer: subir a qualidade visual** — pôr crédito na Anthropic e `DESIGN_PROVIDER=anthropic`,
+      e/ou refinar o prompt do motor (usar o `ui-ux-pro-max` + Magic MCP como apoio de dev).
 - [ ] Templates por agente na Agents Config (ex: Designer-Webmaster → exemplos de LP; entra junto com a decisão landing page x Shopify por produto).
 - [ ] (Limpeza) Remover código órfão do Sistema B de agentes (subpáginas `[agentRole]`, `FileEditor`, etc.).
 - [ ] (Build) Decidir entre `eslint.ignoreDuringBuilds` ou limpar a dívida de lint pré-existente.

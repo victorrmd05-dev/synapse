@@ -8,6 +8,13 @@ skills-lock.json
 
 # Paperclip Agents & Skills (Local Only)
 paperclip_config/
+
+# Design references — repo-ferramenta (ui-ux-pro-max) é só dev-time (uso local +
+# MCP Magic). Pesado (screenshots/cli/python) e o agente runtime não o consome.
+# Já a biblioteca de marcas (awesome-design-md/*.md) É versionada — o motor de
+# injeção dinâmica em /api/design/generate lê os DESIGN.md dela em runtime.
+agentes/designer-webmaster/references/ui-ux-pro-max-skill/
+agentes/designer-webmaster/references/awesome-design-md/.github/
 # dependencies
 node_modules
 .pnp
@@ -49,6 +56,9 @@ next-env.d.ts
 # temp and scratch files
 scratch/
 analyze_*.py
+
+# landing pages geradas pelo Designer (artefatos locais p/ edição via terminal)
+lps/
 
 # environment variables
 .env

@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Monitor, Smartphone, Globe, ExternalLink, CheckCircle2, Download, Rocket, Edit2, Eye, X, Briefcase } from 'lucide-react';
+import { Search, Monitor, Smartphone, Globe, ExternalLink, CheckCircle2, Download, Rocket, Edit2, Eye, X, Briefcase, Play, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function DesignPage() {
   const [lps, setLps] = useState<any[]>([]);
   const [activeLp, setActiveLp] = useState<any>(null);
+  // Ids cujas páginas estão sendo geradas agora (play disparado). Estado local:
+  // o operador roda uma de cada vez, segurando a fila no ponto de criação.
+  const [gerando, setGerando] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchLps();
@@ -40,12 +43,46 @@ export default function DesignPage() {
       .from('workflow_design')
       .select('*')
       .order('data_criacao', { ascending: false });
-    
+
     if (!error && data) {
       setLps(data);
-      if (data.length > 0 && !activeLp) {
-        setActiveLp(data[0]);
+      // Mantém o item ativo sincronizado com os dados frescos (o HTML chega
+      // via Realtime durante a geração), ou seleciona o primeiro.
+      setActiveLp((prev: any) => {
+        if (prev) {
+          const atualizado = data.find((d: any) => d.id === prev.id);
+          if (atualizado) return atualizado;
+        }
+        return data.length > 0 ? data[0] : null;
+      });
+    }
+  }
+
+  // Dispara o motor /api/design/generate para UMA landing page. O HTML gerado
+  // é salvo em workflow_design.codigo_html e a tela atualiza via Realtime.
+  async function gerarPagina(lp: any) {
+    if (!lp || gerando.has(lp.id)) return;
+    setGerando((prev) => new Set(prev).add(lp.id));
+    try {
+      const res = await fetch('/api/design/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ design_id: lp.id }),
+      });
+      if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        alert('Falha ao gerar a página: ' + (erro.detalhe || erro.error || 'erro desconhecido'));
       }
+      // Sucesso: o Realtime traz o codigo_html e o preview renderiza sozinho.
+    } catch (err) {
+      console.error(err);
+      alert('Erro de rede ao gerar a página.');
+    } finally {
+      setGerando((prev) => {
+        const next = new Set(prev);
+        next.delete(lp.id);
+        return next;
+      });
     }
   }
 
@@ -95,6 +132,21 @@ export default function DesignPage() {
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${getDesignStatus(lp).cls}`}>
                     {getDesignStatus(lp).label}
                   </span>
+                  {!lp.codigo_html && (
+                    gerando.has(lp.id) ? (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-primary uppercase tracking-wider">
+                        <Loader2 size={12} className="animate-spin" /> Gerando
+                      </span>
+                    ) : (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); gerarPagina(lp); }}
+                        title="Gerar página com IA"
+                        className="flex items-center gap-1 px-2 py-0.5 rounded bg-primary/20 hover:bg-primary/30 text-primary text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                      >
+                        <Play size={11} /> Play
+                      </button>
+                    )
+                  )}
                 </div>
                 <h3 className="text-white font-bold text-sm mb-1">{lp.title || lp.notas_revisao || lp.tipo_design || 'Landing Page Nova'}</h3>
                 <div className="flex items-center gap-2 text-xs text-secondary">
@@ -134,9 +186,24 @@ export default function DesignPage() {
                   title="Desktop Preview"
                 />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0F0F13]">
-                  <Globe size={48} className="text-surface-elevated mb-4" />
-                  <p className="text-secondary text-sm">Nenhum HTML encontrado para esta LP.</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0F0F13] gap-5">
+                  <Globe size={48} className="text-surface-elevated" />
+                  <div className="text-center">
+                    <p className="text-white font-semibold text-sm mb-1">Página ainda não gerada</p>
+                    <p className="text-secondary text-xs max-w-xs">A IA escolhe a estética de marca ideal para o nicho e gera o HTML de alta conversão.</p>
+                  </div>
+                  {gerando.has(activeLp.id) ? (
+                    <div className="flex items-center gap-2 px-5 py-3 bg-primary/20 text-primary rounded-lg text-sm font-bold">
+                      <Loader2 size={18} className="animate-spin" /> Gerando página…
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => gerarPagina(activeLp)}
+                      className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-bold transition-colors cursor-pointer shadow-[0_0_20px_rgba(99,102,241,0.25)]"
+                    >
+                      <Sparkles size={18} /> Gerar Página com IA
+                    </button>
+                  )}
                 </div>
               )
             ) : (
