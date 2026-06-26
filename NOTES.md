@@ -1,7 +1,7 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-06-25 — mineração de vídeos + seletor de país + dedup de criativo; Agents Config unificada e editável.
+> Última atualização: 2026-06-26 — Copywriting migrado para OpenAI; **Revisor construído e validado** (IA revisora + aprovação/rejeição); correção do badge do Design.
 
 ---
 
@@ -44,10 +44,14 @@ Scripts: `scripts/agents-pull.mjs`, `scripts/agents-push.mjs`, `scripts/_env.mjs
 - **Framework:** Next.js 14 App Router + TypeScript strict (pacote ainda se chama `metascale-app`)
 - **Estilo:** Tailwind CSS — dark glassmorphism
 - **Banco:** Supabase (PostgreSQL + Realtime `postgres_changes`)
-- **IA (agentes):** OpenCode Zen → modelo `deepseek-v4-flash-free` via SDK da `openai`
-  apontando para `https://opencode.ai/zen/v1` (chave `OPENCODE_API_KEY`).
-  ⚠️ **É modelo de raciocínio**: gasta tokens em `reasoning_content` antes do `content`.
-  `max_tokens` baixo → resposta vazia silenciosa. Usar `max_tokens >= ~3000` (mineração já está em 3000).
+- **IA (agentes):** em migração de provider:
+  - **Copywriting + Revisor → OpenAI oficial** (`gpt-4o-mini`) via `src/lib/openai.ts`
+    (client + `chatComRetry` compartilhados). Chave `OPENAI_API_KEY`, modelo configurável
+    por `OPENAI_MODEL`. Usa `response_format: { type: 'json_object' }` → JSON sempre válido.
+  - **Mineração ainda em OpenCode Zen** → `deepseek-v4-flash-free` via SDK `openai`
+    apontando para `https://opencode.ai/zen/v1` (chave `OPENCODE_API_KEY`).
+    ⚠️ **É modelo de raciocínio**: gasta tokens em `reasoning_content` antes do `content`.
+    `max_tokens` baixo → resposta vazia silenciosa. Usar `max_tokens >= ~3000` (mineração está em 3000).
 - **IA (diagnóstico Meta Ads):** Anthropic `claude-3-5-sonnet` em `src/lib/anthropic.ts`
 - **Dois clients Supabase:** `src/lib/supabase.ts` (anon, browser, respeita RLS) vs
   `src/lib/supabase-server.ts` (service_role, server-only, ignora RLS). Nunca trocar.
@@ -165,13 +169,63 @@ policies** → a `anon key` do browser lia 0 linhas (default deny), mesmo com da
 
 ---
 
+## ✍️ Copywriting — migrado para OpenAI oficial (26/06/2026)
+A rota `src/app/api/copywriting/generate/route.ts` rodava no **OpenCode Zen**
+(`deepseek-v4-flash-free`), que dava **500 intermitente** (~1 em 4) em prompts grandes.
+Decisão do Fernando: migrar para a **API oficial da OpenAI**.
+
+- **Lib compartilhada nova** `src/lib/openai.ts`: client único + `chatComRetry` (backoff em
+  429/5xx). Reusada por copywriting e revisor. Chave `OPENAI_API_KEY`, modelo `OPENAI_MODEL`
+  (default `gpt-4o-mini`). `.env.local` ganhou `OPENAI_API_KEY` e `OPENAI_MODEL`.
+- **`response_format: { type: 'json_object' }`** → a OpenAI sempre devolve JSON válido, então
+  o parse de `meta_ads_copy` / `pagina_vendas` ficou confiável (não depende mais de regex torto).
+- **Validado:** chave testada direto na API + geração de copy ponta a ponta pelo painel.
+
+## ✅ Revisor — CONSTRUÍDO E VALIDADO (26/06/2026)
+Segundo agente 100% funcional. Fecha o elo Copywriter → **IA revisora** → decisão humana → Design.
+
+- **Bug raiz corrigido:** a copy gerada nascia com `revisor_ok=false`, mas a página `/revisor`
+  só listava itens com `revisor_ok=true` → **a copy nunca aparecia na fila de revisão**. O fluxo
+  agora é dirigido por um **campo `status`** (estado-máquina), não pelo `revisor_ok` invertido.
+- **Migration `20260626120000_add_revisao_ia_to_workflow_copywriting.sql`:** adiciona em
+  `workflow_copywriting`:
+  - `status`: `gerando` → `aguardando_revisao_ia` → `revisado_ia` → `aprovado` / `rejeitado` (/ `erro`)
+  - `revisao_ia_score` (0–100) e `revisao_ia_parecer` (texto do parecer da IA).
+- **Mãos — rota nova** `src/app/api/revisor/review/route.ts`: usa o agente `revisor` sincronizado
+  + a **mesma chave OpenAI** (`gpt-4o-mini`). Recebe `copy_id`, monta contexto (copy + produto
+  minerado), pede JSON `{ score, aprovacao_sugerida, pontos_fortes[], pontos_fracos[], recomendacao }`,
+  salva parecer e move para `revisado_ia`.
+- **UI `/revisor` reescrita** (`src/app/revisor/page.tsx`):
+  - Fila puxa por `status in ('aguardando_revisao_ia','revisado_ia')` com `data_aprovacao IS NULL`.
+  - **IA revisora dispara sozinha** ao item entrar na fila (badge "IA analisando…"), via `useRef`
+    de ids já disparados (não chama 2x). Resultado chega por Realtime.
+  - Sidebar mostra **score + parecer real da IA**.
+  - **Aprovar** → `revisor_ok=true`, `status=aprovado`, `data_aprovacao=now`, insere em
+    `workflow_design` e marca `campanhas_producao.status_geral='Aprovado'`.
+  - **Rejeitar** → campo de feedback obrigatório; marca a versão como `rejeitado` (mantém histórico)
+    e chama `/api/copywriting/generate` com `notas_revisao` → **Copywriter regera** e a nova versão
+    volta para a IA revisora. Decisão do Fernando: manter a versão rejeitada no histórico.
+- **Validado:** fluxo testado pelo painel (aprovar e rejeitar) — funcionando ponta a ponta.
+
+## 🎨 Design/Webmaster — badge "Rascunho" corrigido (26/06/2026)
+Card na fila do `/design` mostrava **"RASCUNHO"** para copy já aprovada pelo Revisor.
+
+- **Causa raiz:** a tabela `workflow_design` **não tem coluna `status`**; o badge usava
+  `lp.status || 'RASCUNHO'` → caía sempre no fallback.
+- **Correção (sem schema):** helper `getDesignStatus(lp)` em `src/app/design/page.tsx` **deriva o
+  rótulo das colunas reais** (nunca desincroniza): sem `codigo_html` → **Aguardando Design**;
+  com HTML → **Pronta p/ Revisão**; `data_aprovacao` → **Aprovada p/ Tráfego**; `url_recurso` →
+  **No Ar**. (O motor do Designer — gerar HTML + deploy — continua pendente, Prioridade 3.)
+
+---
+
 ## 📊 Status por agente
 | Agente | Cérebro (.md) | Mãos (rota) | Status |
 |---|---|---|---|
 | Minerador | ✅ régua nova | ✅ `/api/mineracao/run` | **Validado ponta a ponta** |
-| Copywriting | ✅ sync | ✅ `/api/copywriting/generate` | Gera copy (sessão anterior); revisar max_tokens (mesmo bug de reasoning) |
-| Revisor | ⚠️ sync | ❌ falta rota | Pendente |
-| Designer-Webmaster | ⚠️ sync | ❌ falta rota + deploy | Pendente |
+| Copywriting | ✅ sync | ✅ `/api/copywriting/generate` (OpenAI `gpt-4o-mini`) | **Validado** |
+| Revisor | ✅ sync | ✅ `/api/revisor/review` (OpenAI `gpt-4o-mini`) | **Validado ponta a ponta** |
+| Designer-Webmaster | ⚠️ sync | ❌ falta motor (gerar HTML) + deploy | UI/fila ok; badge corrigido. Motor pendente |
 | Video-Maker | ⚠️ sync | ❌ falta Higgsfield | Pendente |
 | Gestor-Meta-Ads | ⚠️ sync | ❌ falta rota | Pendente |
 | CEO / CTO | ✅ sync | aprovação/suporte | Camada humana + futura automação |
@@ -182,8 +236,10 @@ policies** → a `anon key` do browser lia 0 linhas (default deny), mesmo com da
 - [ ] Refinar keywords de dropshipping (e avaliar blacklistar marcas médias tipo Gocase se quiser só desconhecidos).
 - [ ] Ligar as keywords ao Obsidian (nexus.ai) via MCP — listas viram fonte editável.
 - [ ] (Opcional) Dropdown de keywords prontas na tela de mineração.
-- [ ] Revisar `max_tokens` da rota de copywriting (risco do mesmo bug de modelo de raciocínio).
-- [ ] Próximo agente da esteira: **Revisor** (`/api/revisor/review`) → aprovar copy e empurrar campanha.
+- [x] ~~Migrar copywriting para provider confiável~~ → **feito: OpenAI `gpt-4o-mini`** (26/06).
+- [x] ~~Próximo agente da esteira: Revisor~~ → **feito e validado** (`/api/revisor/review`, 26/06).
+- [ ] **Próximo agente: Designer-Webmaster** — motor `/api/design/generate` (gera `codigo_html`)
+      + deploy `/api/deploy` (GitHub Pages → Cloudflare). Conectar botão "Aprovar para Tráfego".
 - [ ] Templates por agente na Agents Config (ex: Designer-Webmaster → exemplos de LP; entra junto com a decisão landing page x Shopify por produto).
 - [ ] (Limpeza) Remover código órfão do Sistema B de agentes (subpáginas `[agentRole]`, `FileEditor`, etc.).
 - [ ] (Build) Decidir entre `eslint.ignoreDuringBuilds` ou limpar a dívida de lint pré-existente.

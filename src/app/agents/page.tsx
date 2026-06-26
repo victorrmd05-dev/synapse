@@ -19,6 +19,7 @@ const ARQUIVOS = [
   { field: 'agents_md', label: 'AGENTS.md', desc: 'Papel e fluxo de trabalho' },
   { field: 'tools_md', label: 'TOOLS.md', desc: 'Ferramentas disponíveis' },
   { field: 'skill_md', label: 'SKILL.md', desc: 'Skill especializada' },
+  { field: 'template_md', label: 'TEMPLATE.md', desc: 'Esqueleto da entrega (ex.: estrutura da página de vendas)' },
   { field: 'heartbeat_md', label: 'HEARTBEAT.md', desc: 'Gatilhos autônomos' },
 ] as const;
 

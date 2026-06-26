@@ -9,6 +9,7 @@ export interface AgenteConfigRow {
   heartbeat_md: string | null;
   tools_md: string | null;
   skill_md: string | null;
+  template_md: string | null;
   modelo: string;
   max_tokens: number;
   ativo: boolean;

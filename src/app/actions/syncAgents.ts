@@ -25,10 +25,11 @@ const FIELD_TO_FILE: Record<string, string> = {
   heartbeat_md: 'HEARTBEAT.md',
   tools_md: 'TOOLS.md',
   skill_md: 'SKILL.md',
+  template_md: 'TEMPLATE.md',
 };
 
 const SELECT_COLS =
-  'slug, nome, agents_md, soul_md, heartbeat_md, tools_md, skill_md, modelo, max_tokens, ativo, ultimo_sync_em';
+  'slug, nome, agents_md, soul_md, heartbeat_md, tools_md, skill_md, template_md, modelo, max_tokens, ativo, ultimo_sync_em';
 
 export async function getAgentesConfig(): Promise<AgenteConfigRow[]> {
   const { data, error } = await supabaseServer
@@ -87,6 +88,7 @@ export async function syncAgentsFromFolder(): Promise<SyncResult> {
       const heartbeat_md = await readIfExists(path.join(folder, 'HEARTBEAT.md'));
       const tools_md = await readIfExists(path.join(folder, 'TOOLS.md'));
       const skill_md = await readIfExists(path.join(folder, 'SKILL.md'));
+      const template_md = await readIfExists(path.join(folder, 'TEMPLATE.md'));
 
       if (!agents_md && !skill_md) {
         resultados.push({
@@ -105,6 +107,7 @@ export async function syncAgentsFromFolder(): Promise<SyncResult> {
         heartbeat_md,
         tools_md,
         skill_md,
+        template_md,
         ultimo_sync_em: new Date().toISOString(),
         data_atualizacao: new Date().toISOString(),
       };

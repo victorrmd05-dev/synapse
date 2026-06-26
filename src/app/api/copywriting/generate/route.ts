@@ -1,24 +1,18 @@
 // src/app/api/copywriting/generate/route.ts
 //
-// VERSÃO COM OPENCODE ZEN (DeepSeek V4 Flash Free)
-// Em vez do SDK da Anthropic, usamos o SDK da OpenAI apontando para o
-// endpoint compatível do OpenCode Zen. Mesma lógica de negócio de antes
-// (busca campanha + produto em queries separadas, monta prompt do
-// agente sincronizado do GitHub, salva resultado).
+// VERSÃO COM OPENAI (API oficial)
+// Usa o SDK da OpenAI apontando para a API oficial (api.openai.com). Mesma
+// lógica de negócio de antes (busca campanha + produto em queries separadas,
+// monta prompt do agente sincronizado do GitHub, salva resultado).
 //
-// Variável de ambiente necessária:
-//   OPENCODE_API_KEY=sk-PMv0...59Fs   (a chave "alavancaai_synapse" do seu painel)
+// Variáveis de ambiente necessárias:
+//   OPENAI_API_KEY=sk-...        (chave da sua conta OpenAI)
+//   OPENAI_MODEL=gpt-4o-mini     (opcional; default abaixo)
 
-import OpenAI from 'openai';
 import { supabaseServer as supabase } from '@/lib/supabase-server';
 import { getAgentConfig, buildSystemPrompt } from '@/lib/agents/buildSystemPrompt';
-
-const opencode = new OpenAI({
-  apiKey: process.env.OPENCODE_API_KEY,
-  baseURL: 'https://opencode.ai/zen/v1',
-});
-
-const MODELO = 'deepseek-v4-flash-free';
+import { pesquisaDeMercadoParaCopy } from '@/lib/tavily';
+import { OPENAI_MODEL as MODELO, chatComRetry } from '@/lib/openai';
 
 interface GenerateBody {
   campanha_id: string;
@@ -26,6 +20,8 @@ interface GenerateBody {
 }
 
 export async function POST(request: Request) {
+  // Declarado fora do try para o catch conseguir marcar o card como "erro".
+  let placeholderId: string | null = null;
   try {
     const body = (await request.json()) as GenerateBody;
     const { campanha_id, notas_revisao } = body;
@@ -97,16 +93,51 @@ export async function POST(request: Request) {
 
     const systemPrompt = buildSystemPrompt(config);
 
-    // 3. Montar o prompt do usuário
-    let userPrompt = `Dados do produto minerado:
+    // 2b. Card "Gerando…" imediato: insere já o registro em workflow_copywriting
+    //     para o produto aparecer na Fila de Produção na hora (via Realtime).
+    //     A copy real preenche este mesmo registro no fim (passo 6).
+    const { data: placeholder } = await supabase
+      .from('workflow_copywriting')
+      .insert({
+        campanha_id,
+        tipo_copy: 'Página de Vendas',
+        conteudo_texto: `⏳ ${campanha.nome_projeto}\n\nO Copywriter está pesquisando o mercado (Tavily) e escrevendo a copy… Isso leva ~30-60s. Esta tela atualiza sozinha.`,
+        meta_ads_copy: '',
+        revisor_ok: false,
+        notas_revisao: null,
+        status: 'gerando',
+      })
+      .select('id')
+      .single();
+    placeholderId = placeholder?.id ?? null;
+
+    await supabase
+      .from('campanhas_producao')
+      .update({ status_geral: 'Gerando Copy' })
+      .eq('id', campanha_id);
+
+    // 3. Fase de Pesquisa — busca web real (Tavily) a partir do produto minerado.
+    //    Best-effort: se falhar/sem chave, segue sem o bloco (não quebra).
+    const termoBase = produto.ad_title || produto.page_name || campanha.nome_projeto || '';
+    const pesquisa = await pesquisaDeMercadoParaCopy(termoBase);
+
+    // 4. Montar o prompt do usuário
+    let userPrompt = `Dados do produto minerado (input do agente Minerador):
 - Nome da página/anunciante: ${produto.page_name ?? 'não informado'}
 - Título do anúncio original: ${produto.ad_title ?? 'não informado'}
 - Copy original do anúncio: ${produto.ad_copy ?? 'não informado'}
 - Score de validação: ${produto.score_escala ?? 'não informado'}
-- Nome do projeto: ${campanha.nome_projeto}
+- Nome do projeto: ${campanha.nome_projeto}`;
 
-Gere a copy do anúncio Meta Ads e a copy da página de vendas para este produto,
-seguindo as estruturas e técnicas da sua skill. Retorne em JSON estruturado:
+    if (pesquisa) {
+      userPrompt += `\n\nPesquisa de mercado (dados REAIS coletados na web agora — use o vocabulário,
+as dores e as objeções que aparecem aqui para ancorar a copy; NÃO invente prova):
+${pesquisa}`;
+    }
+
+    userPrompt += `\n\nGere a copy do anúncio Meta Ads e a copy da página de vendas para este produto,
+seguindo as estruturas e técnicas da sua skill e o TEMPLATE (seção a seção).
+Retorne em JSON estruturado:
 { "meta_ads_copy": "...", "pagina_vendas": "..." }`;
 
     if (notas_revisao) {
@@ -115,10 +146,12 @@ seguindo as estruturas e técnicas da sua skill. Retorne em JSON estruturado:
 Leve este feedback em conta na nova versão.`;
     }
 
-    // 4. Chamar o OpenCode Zen (DeepSeek V4 Flash Free)
-    const response = await opencode.chat.completions.create({
+    // 5. Chamar a OpenAI com retry em erros transitórios (429/5xx).
+    //    response_format json_object garante que a resposta seja JSON válido.
+    const response = await chatComRetry({
       model: MODELO,
       max_tokens: config.max_tokens,
+      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -141,19 +174,26 @@ Leve este feedback em conta na nova versão.`;
       // mantém o texto bruto em paginaVendas
     }
 
-    // 5. Salvar em workflow_copywriting
-    const { data: registro, error: insertError } = await supabase
-      .from('workflow_copywriting')
-      .insert({
-        campanha_id,
-        tipo_copy: 'Página de Vendas',
-        conteudo_texto: paginaVendas,
-        meta_ads_copy: metaAdsCopy,
-        revisor_ok: false,
-        notas_revisao: null,
-      })
-      .select()
-      .single();
+    // 6. Preencher a copy real. Atualiza o card "Gerando…" criado no passo 2b
+    //    (ou insere, caso o placeholder tenha falhado por algum motivo).
+    const payloadCopy = {
+      campanha_id,
+      tipo_copy: 'Página de Vendas',
+      conteudo_texto: paginaVendas,
+      meta_ads_copy: metaAdsCopy,
+      revisor_ok: false,
+      notas_revisao: null,
+      // Copy pronta -> entra na fila do Revisor para a IA revisora analisar.
+      status: 'aguardando_revisao_ia',
+      revisao_ia_score: null,
+      revisao_ia_parecer: null,
+    };
+
+    const query = placeholderId
+      ? supabase.from('workflow_copywriting').update(payloadCopy).eq('id', placeholderId)
+      : supabase.from('workflow_copywriting').insert(payloadCopy);
+
+    const { data: registro, error: insertError } = await query.select().single();
 
     if (insertError) {
       return Response.json(
@@ -170,9 +210,16 @@ Leve este feedback em conta na nova versão.`;
     return Response.json({ sucesso: true, registro });
   } catch (err) {
     console.error('[api/copywriting/generate] erro:', err);
-    return Response.json(
-      { error: 'Falha ao gerar copy', detalhe: err instanceof Error ? err.message : 'erro desconhecido' },
-      { status: 500 }
-    );
+    const msg = err instanceof Error ? err.message : 'erro desconhecido';
+
+    // Não deixa o card preso em "Gerando…": marca a falha no próprio registro.
+    if (placeholderId) {
+      await supabase
+        .from('workflow_copywriting')
+        .update({ status: 'erro', conteudo_texto: `❌ Falha ao gerar a copy.\n\nDetalhe: ${msg}\n\nAprove o anúncio novamente para tentar de novo.` })
+        .eq('id', placeholderId);
+    }
+
+    return Response.json({ error: 'Falha ao gerar copy', detalhe: msg }, { status: 500 });
   }
 }

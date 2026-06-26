@@ -4,6 +4,7 @@
 // sincronizado do GitHub (agentes_config), na ordem certa de contexto:
 // SOUL (quem ele é) -> AGENTS (o que faz e como colabora) ->
 // TOOLS (como operar ferramentas) -> SKILL (técnica específica) ->
+// TEMPLATE (esqueleto fixo da entrega, ex.: estrutura da página de vendas) ->
 // HEARTBEAT (gatilhos autônomos, relevante sobretudo pro CEO/CTO).
 //
 // Uso:
@@ -20,6 +21,7 @@ export interface AgentConfig {
   heartbeat_md: string | null;
   tools_md: string | null;
   skill_md: string | null;
+  template_md: string | null;
   modelo: string;
   max_tokens: number;
   ativo: boolean;
@@ -58,6 +60,14 @@ export function buildSystemPrompt(config: AgentConfig): string {
   }
   if (config.skill_md) {
     partes.push('## Skill Especializada\n' + config.skill_md);
+  }
+  if (config.template_md) {
+    partes.push(
+      '## Template a Seguir (estrutura obrigatória da entrega)\n' +
+        'Use este esqueleto, na ordem, como guia da sua produção. Adapte o conteúdo ' +
+        'ao produto, mas não pule seções.\n\n' +
+        config.template_md
+    );
   }
   if (config.heartbeat_md) {
     partes.push('## Gatilhos Autônomos (referência, não aplicável a esta chamada pontual)\n' + config.heartbeat_md);

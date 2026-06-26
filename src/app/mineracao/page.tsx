@@ -34,6 +34,8 @@ export default function MineracaoPage() {
   const [miningMsg, setMiningMsg] = useState<string | null>(null);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [isPurging, setIsPurging] = useState(false);
+  // Feedback do gatilho do Copywriter (geração roda em background após aprovar).
+  const [copyGenMsg, setCopyGenMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProdutos();
@@ -140,22 +142,55 @@ export default function MineracaoPage() {
 
   async function aprovarAnuncio(ad: any) {
     setIsApproving(true);
-    
-    const { error } = await supabase.from('campanhas_producao').insert([{
-      ad_minerado_id: ad.id,
-      nome_projeto: `Campanha - ${ad.title.substring(0, 40)}`,
-      status_geral: 'Produção'
-    }]);
 
-    if (!error) {
-      setProdutos(prev => prev.filter(p => p.id !== ad.id));
-      setSelectedAd(null);
-    } else {
+    // 1. Cria a campanha em produção e captura o id gerado (precisamos dele
+    //    para acionar o Copywriter logo em seguida).
+    const { data: novaCampanha, error } = await supabase
+      .from('campanhas_producao')
+      .insert([{
+        ad_minerado_id: ad.id,
+        nome_projeto: `Campanha - ${ad.title.substring(0, 40)}`,
+        status_geral: 'Produção',
+      }])
+      .select('id')
+      .single();
+
+    if (error || !novaCampanha) {
       console.error(error);
-      alert("Erro ao aprovar anúncio.");
+      alert('Erro ao aprovar anúncio.');
+      setIsApproving(false);
+      return;
     }
-    
+
+    // 2. Aprovado: tira o card da lista e fecha o modal.
+    setProdutos(prev => prev.filter(p => p.id !== ad.id));
+    setSelectedAd(null);
     setIsApproving(false);
+
+    // 3. GATILHO: dispara o agente Copywriter para esta campanha. Roda em
+    //    background (pesquisa Tavily + IA leva ~30-60s); a copy aparece sozinha
+    //    na Fila de Produção (/copywriting) via Realtime. O toast dá o feedback.
+    setCopyGenMsg('✨ Anúncio aprovado! O Copywriter está pesquisando e gerando a copy — ela aparecerá na Fila de Produção em ~30-60s.');
+    fetch('/api/copywriting/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ campanha_id: novaCampanha.id }),
+    })
+      .then(async (r) => {
+        if (r.ok) {
+          setCopyGenMsg('✅ Copy gerada! Abra a página Copywriting para ler e enviar ao Revisor.');
+        } else {
+          const e = await r.json().catch(() => ({}));
+          setCopyGenMsg('❌ Falha ao gerar copy: ' + (e.detalhe || e.error || `HTTP ${r.status}`));
+        }
+      })
+      .catch((err) => {
+        console.error('[copywriting trigger]', err);
+        setCopyGenMsg('❌ Erro de rede ao acionar o Copywriter. Confira se o servidor está rodando.');
+      })
+      .finally(() => {
+        setTimeout(() => setCopyGenMsg(null), 12000);
+      });
   }
 
   async function excluirAnuncio(ad: any) {
@@ -282,6 +317,20 @@ export default function MineracaoPage() {
           </button>
         </div>
       </div>
+
+      {copyGenMsg && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 shadow-2xl backdrop-blur ${
+            copyGenMsg.startsWith('❌') ? 'bg-status-red/10 border-status-red/30' : 'bg-surface border-primary/30'
+          }`}>
+            <Sparkles size={18} className={copyGenMsg.startsWith('❌') ? 'text-status-red shrink-0 mt-0.5' : 'text-primary shrink-0 mt-0.5'} />
+            <p className="text-sm text-text-primary leading-snug">{copyGenMsg}</p>
+            <button onClick={() => setCopyGenMsg(null)} className="text-secondary hover:text-white shrink-0">
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {(miningMsg || isMining) && (
         <div className="mb-6 -mt-3 text-sm">

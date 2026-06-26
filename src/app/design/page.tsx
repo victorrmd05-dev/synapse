@@ -22,6 +22,19 @@ export default function DesignPage() {
     };
   }, []);
 
+  // O estado da LP é derivado das colunas reais de workflow_design (não há
+  // coluna "status"). Assim o rótulo nunca desincroniza do estado de verdade:
+  //   sem HTML            -> Aguardando Design (copy já aprovada pelo Revisor)
+  //   com HTML            -> Pronta p/ Revisão
+  //   data_aprovacao set  -> Aprovada p/ Tráfego
+  //   url_recurso set     -> No Ar (deploy feito)
+  function getDesignStatus(lp: any): { label: string; cls: string } {
+    if (lp.url_recurso) return { label: 'No Ar', cls: 'bg-status-green/20 text-status-green' };
+    if (lp.data_aprovacao) return { label: 'Aprovada p/ Tráfego', cls: 'bg-status-green/20 text-status-green' };
+    if (lp.codigo_html) return { label: 'Pronta p/ Revisão', cls: 'bg-primary/20 text-primary' };
+    return { label: 'Aguardando Design', cls: 'bg-status-yellow/20 text-status-yellow' };
+  }
+
   async function fetchLps() {
     const { data, error } = await supabase
       .from('workflow_design')
@@ -79,10 +92,8 @@ export default function DesignPage() {
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
-                    lp.status === 'Em Desenvolvimento' ? 'bg-[#B45309]/20 text-[#B45309]' : 'bg-primary/20 text-primary'
-                  }`}>
-                    {lp.status || 'RASCUNHO'}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${getDesignStatus(lp).cls}`}>
+                    {getDesignStatus(lp).label}
                   </span>
                 </div>
                 <h3 className="text-white font-bold text-sm mb-1">{lp.title || lp.notas_revisao || lp.tipo_design || 'Landing Page Nova'}</h3>
