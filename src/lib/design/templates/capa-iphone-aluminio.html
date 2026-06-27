@@ -1,0 +1,2086 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArmorGlass — Alumínio Aeronáutico para iPhone 17</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue: #0066cc; 
+  --blue-dark: #2997ff; 
+  --blue-hover: #0071e3;
+  --ink: #1d1d1f; 
+  --ink-60: #6e6e73; 
+  --ink-40: #86868b;
+  --white: #ffffff; 
+  --parchment: #f5f5f7; 
+  --pearl: #fafafc;
+  --dark1: #1c1c1e; 
+  --dark2: #121214; 
+  --dark3: #0a0a0c;
+  --black: #000000; 
+  --hairline: #e2e2e7;
+  --hairline-dark: rgba(255, 255, 255, 0.1);
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --ease: cubic-bezier(.25, .8, .25, 1);
+  --shadow-premium: 0 20px 40px rgba(0, 0, 0, 0.04);
+  --shadow-dark: 0 30px 60px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--white);
+  overflow-x: hidden;
+}
+
+img, video {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ── SCROLL REVEAL ── */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-d1 { transition-delay: .1s; }
+.reveal-d2 { transition-delay: .2s; }
+.reveal-d3 { transition-delay: .3s; }
+.reveal-d4 { transition-delay: .4s; }
+.reveal-d5 { transition-delay: .5s; }
+
+/* ── BUTTONS ── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 12px 28px;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.25s, transform 0.2s var(--ease), box-shadow 0.25s;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 102, 204, 0.3);
+}
+
+.btn-primary:hover {
+  background: var(--blue-hover);
+  box-shadow: 0 6px 20px rgba(0, 102, 204, 0.4);
+}
+
+.btn-primary:active {
+  transform: scale(.96);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 11px 28px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: border-color 0.25s, background 0.25s, transform 0.2s var(--ease);
+  white-space: nowrap;
+}
+
+.btn-ghost:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn-ghost:active {
+  transform: scale(.96);
+}
+
+.btn-primary-lg {
+  font-size: 18px;
+  padding: 14px 36px;
+}
+
+/* ── NAVIGATION BAR ── */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  background: rgba(18, 18, 20, 0.75);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.3s;
+}
+
+.nav-logo {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-logo-badge {
+  width: 26px;
+  height: 26px;
+  background: var(--blue);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.4);
+}
+
+.nav-logo-badge svg {
+  width: 14px;
+  height: 14px;
+  fill: #fff;
+}
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.nav-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  letter-spacing: -0.1px;
+  transition: color 0.2s;
+}
+
+.nav-link:hover {
+  color: #fff;
+}
+
+.nav-btn {
+  background: var(--blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  white-space: nowrap;
+}
+
+.nav-btn:hover {
+  background: var(--blue-hover);
+}
+
+.nav-btn:active {
+  transform: scale(.95);
+}
+
+/* ── HERO SECTION ── */
+.hero {
+  background: linear-gradient(180deg, var(--dark2) 0%, var(--dark1) 100%);
+  padding: 150px 24px 80px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  top: -10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(0, 102, 204, 0.15) 0%, transparent 70%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hero-eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue-dark);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  z-index: 2;
+}
+
+.hero h1 {
+  font-size: clamp(38px, 6vw, 68px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+  color: #fff;
+  max-width: 850px;
+  margin-bottom: 24px;
+  z-index: 2;
+}
+
+.hero-sub {
+  font-size: clamp(17px, 2.5vw, 21px);
+  font-weight: 300;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.65);
+  max-width: 720px;
+  margin-bottom: 40px;
+  z-index: 2;
+}
+
+.hero-btns {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 60px;
+  z-index: 2;
+}
+
+.hero-showcase {
+  width: 100%;
+  max-width: 850px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-dark);
+  z-index: 2;
+  position: relative;
+  transition: transform 0.4s var(--ease);
+}
+
+.hero-showcase:hover {
+  transform: translateY(-5px);
+}
+
+/* ── SECTION BASE ── */
+section {
+  padding: 100px 24px;
+  position: relative;
+}
+
+.inner {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.inner-wide {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 16px;
+}
+
+.section-eyebrow.light {
+  color: var(--blue-dark);
+}
+
+.section-h2 {
+  font-size: clamp(28px, 4.2vw, 46px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.8px;
+  margin-bottom: 24px;
+  color: var(--ink);
+}
+
+.section-h2.white {
+  color: #fff;
+}
+
+.section-lead {
+  font-size: clamp(17px, 2vw, 20px);
+  line-height: 1.6;
+  color: var(--ink-60);
+  max-width: 750px;
+}
+
+.section-lead.white {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.center {
+  text-align: center;
+  align-items: center;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── DOR SECTION ── */
+.dor {
+  background: var(--parchment);
+}
+
+.dor-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 80px;
+  align-items: center;
+}
+
+.dor-text p {
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--ink-60);
+  margin-bottom: 20px;
+}
+
+.dor-text p:last-child {
+  margin-bottom: 0;
+}
+
+.dor-image-wrap {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-premium);
+  background: var(--white);
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  transition: transform 0.4s var(--ease);
+}
+
+.dor-image-wrap:hover {
+  transform: scale(1.02);
+}
+
+/* ── SOLUCAO SECTION ── */
+.solucao {
+  background: linear-gradient(180deg, var(--dark1) 0%, var(--dark2) 100%);
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.solucao-image-wrap {
+  width: 100%;
+  max-width: 1200px;
+  margin: 60px auto 0;
+  border-radius: 24px 24px 0 0;
+  overflow: hidden;
+  box-shadow: var(--shadow-dark);
+}
+
+.solucao-image-wrap img {
+  opacity: 0.95;
+  transition: transform 0.6s var(--ease);
+}
+
+.solucao-image-wrap:hover img {
+  transform: scale(1.03);
+}
+
+/* ── BENEFICIOS SECTION ── */
+.beneficios {
+  background: var(--white);
+}
+
+.ben-banner-wrap {
+  margin-top: 50px;
+  margin-bottom: 60px;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow-premium);
+  position: relative;
+}
+
+.ben-banner-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+.ben-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 20px;
+}
+
+.ben-card {
+  background: var(--white);
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease), border-color 0.3s;
+}
+
+.ben-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(0,0,0,.08);
+  border-color: rgba(0, 102, 204, 0.25);
+}
+
+.ben-icon {
+  width: 50px;
+  height: 50px;
+  background: rgba(0, 102, 204, 0.08);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+
+.ben-card:hover .ben-icon {
+  background: rgba(0, 102, 204, 0.15);
+}
+
+.ben-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: var(--blue);
+  fill: none;
+  stroke-width: 2;
+}
+
+.ben-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: var(--ink);
+}
+
+.ben-card p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-60);
+}
+
+/* ── ANATOMIA SECTION ── */
+.anatomia {
+  background: var(--dark1);
+}
+
+.anat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 80px;
+  align-items: center;
+  margin-top: 60px;
+}
+
+.anat-image-wrap {
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow-dark);
+}
+
+.anat-features {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.anat-feat {
+  display: flex;
+  gap: 22px;
+  align-items: flex-start;
+}
+
+.anat-feat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(0, 102, 204, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.anat-feat-icon svg {
+  width: 24px;
+  height: 24px;
+  stroke: var(--blue-dark);
+  fill: none;
+  stroke-width: 2;
+}
+
+.anat-feat h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+  letter-spacing: -0.3px;
+}
+
+.anat-feat p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── GALERIA SECTION ── */
+.galeria {
+  background: var(--parchment);
+}
+
+.gal-grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin: 60px 0 24px;
+}
+
+.gal-card {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--shadow-premium);
+  background: var(--white);
+  border: 1px solid var(--hairline);
+  transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease);
+}
+
+.gal-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+}
+
+.gal-image-wide {
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow-premium);
+  margin-bottom: 60px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--white);
+}
+
+.gal-image-wide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── OFERTA SECTION ── */
+.oferta {
+  background: var(--dark2);
+}
+
+.oferta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+  margin-top: 60px;
+}
+
+.oferta-image-wrap {
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow-dark);
+  border: 1px solid var(--hairline-dark);
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dark3);
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  transition: transform 0.4s var(--ease);
+}
+
+.oferta-image-wrap:hover {
+  transform: translateY(-5px);
+}
+
+.oferta-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.price-block {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* New Premium VSL Pricing Design */
+.price-details-vsl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 24px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 8px;
+}
+
+.price-old-vsl {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 500;
+  text-decoration: line-through;
+  margin: 0;
+}
+
+.price-installments-vsl {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.price-value-vsl {
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--blue-dark);
+  letter-spacing: -1px;
+}
+
+.price-cash-vsl {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+.price-shipping-vsl {
+  font-size: 13px;
+  color: #30d158;
+  font-weight: 600;
+  margin: 4px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 102, 204, 0.25);
+  color: var(--blue-dark);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 8px 18px;
+  border-radius: 20px;
+  width: fit-content;
+  border: 1px solid rgba(41, 151, 255, 0.2);
+}
+
+.price-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--blue-dark);
+  border-radius: 50%;
+  animation: pulse 1.8s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(41, 151, 255, 0.7);
+  }
+  50% {
+    opacity: .4;
+    transform: scale(0.85);
+    box-shadow: 0 0 0 6px rgba(41, 151, 255, 0);
+  }
+}
+
+.price-old {
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.4);
+  text-decoration: line-through;
+  margin-bottom: -12px;
+}
+
+.price-new {
+  font-size: clamp(54px, 7vw, 76px);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.price-note {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.1px;
+}
+
+.trust-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  border-top: 1px solid var(--hairline-dark);
+  padding-top: 24px;
+}
+
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.trust-item svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--blue-dark);
+  fill: none;
+  stroke-width: 2;
+  flex-shrink: 0;
+}
+
+/* ── FAQ SECTION ── */
+.faq {
+  background: var(--white);
+}
+
+.faq-list {
+  max-width: 760px;
+  margin: 60px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.faq-item:first-child {
+  border-top: 1px solid var(--hairline);
+}
+
+.faq-q {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.2px;
+  transition: color 0.2s;
+}
+
+.faq-q:hover {
+  color: var(--blue);
+}
+
+.faq-chevron {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.3s var(--ease), border-color 0.2s, background 0.2s;
+}
+
+.faq-chevron svg {
+  width: 12px;
+  height: 12px;
+  stroke: var(--ink-40);
+  fill: none;
+  stroke-width: 2.5;
+  transition: stroke 0.2s;
+}
+
+.faq-item.open .faq-chevron {
+  transform: rotate(180deg);
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.faq-item.open .faq-chevron svg {
+  stroke: #fff;
+}
+
+.faq-a {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s var(--ease);
+}
+
+.faq-a-inner {
+  padding: 0 0 24px;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--ink-60);
+}
+
+/* ── CTA FINAL SECTION ── */
+.cta-final {
+  background: linear-gradient(180deg, var(--dark2) 0%, var(--dark3) 100%);
+  padding: 120px 24px;
+  text-align: center;
+}
+
+.cta-box {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.cta-box h2 {
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -1px;
+  line-height: 1.15;
+}
+
+.cta-fine {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.5px;
+}
+
+/* ── FOOTER ── */
+footer {
+  background: var(--parchment);
+  padding: 60px 32px;
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 30px;
+}
+
+.footer-logo {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-links {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.footer-links a {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-60);
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: var(--blue);
+}
+
+.footer-copy {
+  font-size: 13px;
+  color: var(--ink-40);
+  width: 100%;
+  margin-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding-top: 24px;
+}
+
+/* ── RESPONSIVE STYLING ── */
+@media(max-width:900px){
+  .dor-grid {
+    grid-template-columns: 1fr;
+    gap: 50px;
+  }
+  .anat-grid {
+    grid-template-columns: 1fr;
+    gap: 50px;
+  }
+  .oferta-grid {
+    grid-template-columns: 1fr;
+    gap: 50px;
+  }
+  .ben-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .gal-grid3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .nav-right .nav-link {
+    display: none;
+  }
+}
+
+@media(max-width:600px){
+  nav {
+    padding: 0 20px;
+  }
+  .hero {
+    padding: 130px 18px 64px;
+  }
+  section {
+    padding: 80px 18px;
+  }
+  .ben-grid {
+    grid-template-columns: 1fr;
+  }
+  .gal-grid3 {
+    grid-template-columns: 1fr;
+  }
+  .hero-btns {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .btn-primary-lg {
+    width: 100%;
+  }
+}
+
+/* ── NEW PREMIUM SALES HERO SECTION ── */
+.hero-sales {
+  background: linear-gradient(180deg, var(--dark2) 0%, var(--dark1) 100%);
+  padding: 130px 24px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-sales::after {
+  content: '';
+  position: absolute;
+  top: -10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(0, 102, 204, 0.15) 0%, transparent 70%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.hero-title-area {
+  text-align: center;
+  margin-bottom: 48px;
+  position: relative;
+  z-index: 2;
+}
+
+.hero-title-area .hero-eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue-dark);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.hero-title-area h1 {
+  font-size: clamp(34px, 5.5vw, 58px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+  color: #fff;
+  max-width: 850px;
+  margin: 0 auto 16px;
+}
+
+.hero-tagline {
+  font-size: clamp(16px, 2vw, 20px);
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.product-sales-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 60px;
+  align-items: start;
+  position: relative;
+  z-index: 2;
+}
+
+.product-media-column {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.product-gif-container {
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 1 / 1;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+  background: var(--dark3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.4s var(--ease);
+}
+
+.product-gif-container:hover {
+  transform: translateY(-5px);
+}
+
+.product-main-gif {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-config-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  text-align: left;
+}
+
+.product-rating {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.rating-text {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+.sold-badge {
+  background: rgba(48, 209, 88, 0.15);
+  color: #30d158;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(48, 209, 88, 0.25);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.product-name {
+  font-size: clamp(24px, 3.5vw, 36px);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.product-desc {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.6;
+}
+
+.config-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.config-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: -0.1px;
+}
+
+.highlight-text {
+  color: var(--blue-dark);
+  font-weight: 700;
+}
+
+.model-selector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.model-option {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--font-sans);
+}
+
+.model-option:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.model-option.active {
+  border-color: var(--blue-dark);
+  background: rgba(0, 102, 204, 0.15);
+  box-shadow: 0 0 15px rgba(0, 102, 204, 0.15);
+}
+
+.model-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.model-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.color-selector-flex {
+  display: flex;
+  gap: 12px;
+}
+
+.color-option {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  font-family: var(--font-sans);
+}
+
+.color-option:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.color-option.active {
+  border-color: var(--blue-dark);
+  background: rgba(0, 102, 204, 0.15);
+  box-shadow: 0 0 15px rgba(0, 102, 204, 0.15);
+}
+
+.color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.color-black {
+  background: #1c1c1e;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.color-orange {
+  background: #ff6b00; /* Laranja premium */
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.color-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.price-box-premium {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 20px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.price-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.price-old-tag {
+  text-decoration: line-through;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 15px;
+}
+
+.discount-badge {
+  background: rgba(255, 69, 58, 0.15);
+  color: #ff453a;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 69, 58, 0.2);
+}
+
+.price-new-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.price-currency {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 4px;
+}
+
+.price-value {
+  font-size: 46px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: -1.5px;
+}
+
+.price-installments {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.price-shipping-info {
+  font-size: 13px;
+  color: #30d158;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Elegant Benefits List */
+.hero-benefits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 10px 0 20px;
+  list-style: none;
+  padding: 0;
+}
+
+.hero-benefits-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.hero-benefits-icon {
+  flex-shrink: 0;
+  stroke: #30d158;
+}
+
+.purchase-action-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.btn-purchase-now {
+  background: var(--blue);
+  color: #fff;
+  padding: 16px 32px;
+  border-radius: 9999px;
+  font-size: 17px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.25s var(--ease);
+  box-shadow: 0 4px 14px rgba(0, 102, 204, 0.3);
+}
+
+.btn-purchase-now:hover {
+  background: var(--blue-hover);
+  box-shadow: 0 6px 20px rgba(0, 102, 204, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-purchase-now:active {
+  transform: translateY(1px);
+}
+
+.btn-purchase-now svg {
+  transition: transform 0.2s var(--ease);
+}
+
+.btn-purchase-now:hover svg {
+  transform: translateY(4px);
+}
+
+.secure-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.secure-badge svg {
+  color: var(--blue-dark);
+}
+
+.trust-list-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 16px;
+}
+
+.trust-item-mini {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.trust-item-mini svg {
+  width: 16px;
+  height: 16px;
+  stroke: #30d158;
+  fill: none;
+  stroke-width: 2.5;
+  flex-shrink: 0;
+}
+
+@media(max-width:900px){
+  .hero-sales {
+    padding: 110px 20px 60px;
+  }
+  .product-sales-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .product-gif-container {
+    max-width: 450px;
+  }
+}
+</style>
+</head>
+<body>
+ 
+<!-- ══ NAVIGATION BAR ══ -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-badge">
+      <svg viewBox="0 0 16 16">
+        <path d="M8 1l2 4 4 .5-3 3 .7 4.5L8 11l-3.7 2 .7-4.5-3-3L6 5z"/>
+      </svg>
+    </div>
+    ArmorGlass
+  </a>
+  <div class="nav-right">
+    <a href="#beneficios" class="nav-link">Benefícios</a>
+    <a href="#anatomia" class="nav-link">Especificações</a>
+    <a href="#oferta" class="nav-link">Oferta</a>
+    <a href="#faq" class="nav-link">FAQ</a>
+    <button class="nav-btn" onclick="document.getElementById('oferta').scrollIntoView({behavior:'smooth'})">Comprar Agora</button>
+  </div>
+</nav>
+ 
+<!-- ══ HERO SECTION (PÁGINA DE VENDAS) ══ -->
+<section class="hero-sales">
+  <div class="inner-wide">
+    <!-- Título acima -->
+    <div class="hero-title-area reveal">
+      <p class="hero-eyebrow">Pré-Venda Exclusiva &nbsp;·&nbsp; iPhone 17</p>
+      <h1>A Engenharia Aeroespacial na Palma da Sua Mão.</h1>
+      <p class="hero-tagline">Proteção definitiva 360° em liga de alumínio aeronáutico 7075 e vidro de safira.</p>
+    </div>
+
+    <!-- Grid do Produto -->
+    <div class="product-sales-grid">
+      <!-- Coluna da Esquerda: GIF 1080x1080 -->
+      <div class="product-media-column reveal reveal-d1">
+        <div class="product-gif-container">
+          <img src="assets/iphone.gif" alt="Capa Protetora ArmorGlass de Alumínio Aeronáutico Premium para iPhone 17" class="product-main-gif">
+        </div>
+      </div>
+
+      <!-- Coluna da Direita: Configuração & Botão de Compra -->
+      <div class="product-config-column reveal reveal-d2">
+        <!-- Avaliação e Vendas -->
+        <div class="product-rating">
+          <span class="stars">⭐⭐⭐⭐⭐</span>
+          <span class="rating-text">5.0 (127 avaliações)</span>
+          <span class="sold-badge">497 vendidos</span>
+        </div>
+
+        <h2 class="product-name">ArmorGlass™ Premium Metal Case</h2>
+        <p class="product-desc">A união perfeita entre a resistência extrema da liga aeroespacial 7075 e a leveza do design minimalista original da Apple.</p>
+
+        <!-- Lista de Benefícios (Tópicos com Checkmark) -->
+        <ul class="hero-benefits-list">
+          <li class="hero-benefits-item">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="#30d158" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="hero-benefits-icon">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Liga de Alumínio 7075-T6 Aeroespacial</span>
+          </li>
+          <li class="hero-benefits-item">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="#30d158" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="hero-benefits-icon">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Fechamento Magnético Instantâneo</span>
+          </li>
+          <li class="hero-benefits-item">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="#30d158" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="hero-benefits-icon">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Vidro Temperado 9H Frente e Verso</span>
+          </li>
+          <li class="hero-benefits-item">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="#30d158" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="hero-benefits-icon">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Dissipação de Calor Inteligente</span>
+          </li>
+          <li class="hero-benefits-item">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="#30d158" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" class="hero-benefits-icon">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Zero Interferência de Sinal</span>
+          </li>
+        </ul>
+
+        <!-- Botão Principal de Compra (Âncora) -->
+        <div class="purchase-action-area">
+          <button class="btn-purchase-now" onclick="document.getElementById('oferta').scrollIntoView({behavior:'smooth'})">
+            <span>COMPRAR AGORA</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <polyline points="19 12 12 19 5 12"></polyline>
+            </svg>
+          </button>
+          <div class="secure-badge">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;">
+              <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Pagamento 100% Seguro · Garantia de 7 Dias
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- ══ DOR SECTION ══ -->
+<section class="dor">
+  <div class="inner">
+    <div class="dor-grid">
+      <div class="dor-text">
+        <p class="section-eyebrow reveal">O Problema</p>
+        <h2 class="section-h2 reveal reveal-d1">Por que proteger um smartphone premium com plástico descartável?</h2>
+        <div class="reveal reveal-d2">
+          <p>Quem escolhe o topo da tecnologia não aceita capas baratas que amarelam, adicionam volume artificial e escondem a beleza original do aparelho. Seu smartphone é um investimento e uma extensão da sua identidade.</p>
+          <p>Deixá-lo exposto é um risco inviável; cobri-lo com um acessório de silicone comum é apagar o brilho do design de ponta da Apple. Você não precisa de uma simples capinha — precisa de engenharia de materiais que entregue proteção robusta, leveza e sofisticação cirúrgica.</p>
+        </div>
+      </div>
+      <div class="reveal reveal-d3">
+        <div class="dor-image-wrap">
+          <img src="assets/plastico.png" alt="Comparação e uso refinado do iPhone 17 com capa ArmorGlass de alta qualidade" style="aspect-ratio: 1/1; object-fit: cover; width: 100%;">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- ══ SOLUÇÃO SECTION ══ -->
+<section class="solucao">
+  <div class="inner center flex-col">
+    <p class="section-eyebrow light reveal">O Material que Conquistou o Céu</p>
+    <h2 class="section-h2 white reveal reveal-d1" style="max-width:780px">Agora Blindando o Seu iPhone.</h2>
+    <p class="section-lead white reveal reveal-d2">Antes restrita à indústria aeroespacial de alta tecnologia, a liga especial de Alumínio 7075-T6 chega para blindar seu iPhone 17. Ao tocar na ArmorGlass, você sente a temperatura fria do metal nobre, o acabamento impecável e a robustez estrutural absoluta. É a fusão perfeita entre segurança invisível e estética sofisticada.</p>
+  </div>
+  <div class="solucao-image-wrap reveal reveal-d3">
+    <img src="assets/brindando.jpg" alt="Capa protetora ArmorGlass de Alumínio Aeroespacial blindando o iPhone com segurança máxima e alta precisão">
+  </div>
+</section>
+ 
+<!-- ══ BENEFÍCIOS SECTION ══ -->
+<section class="beneficios" id="beneficios">
+  <div class="inner-wide">
+    <div style="text-align:center;" class="inner">
+      <p class="section-eyebrow reveal">Diferenciais</p>
+      <h2 class="section-h2 reveal reveal-d1">Os 5 Pilares da Engenharia Aeroespacial</h2>
+      <p class="section-lead reveal reveal-d2" style="margin:0 auto">A mesma tecnologia que protege naves e aviões, agora no seu bolso.</p>
+    </div>
+    
+    <div class="ben-banner-wrap reveal reveal-d3">
+      <img src="assets/funcoes.png" alt="Infográfico dos 5 pilares da engenharia aeroespacial ArmorGlass" style="width: 100%; border-radius: 20px; display: block;">
+    </div>
+    
+    <div class="ben-grid">
+ 
+      <div class="ben-card reveal">
+        <div class="ben-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <h3>Proteção Definitiva</h3>
+        <p>Forjada com a liga 7075, suporta níveis extremos de impacto e pressão, dissipando a energia da queda antes que chegue ao vidro do aparelho.</p>
+      </div>
+ 
+      <div class="ben-card reveal reveal-d1">
+        <div class="ben-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+            <line x1="16" y1="8" x2="2" y2="22"/>
+            <line x1="17.5" y1="15" x2="9" y2="15"/>
+          </svg>
+        </div>
+        <h3>Leveza Absoluta</h3>
+        <p>Ultra-resistente e incrivelmente leve. Preserva a espessura ultrafina e a pegada original do aparelho, sem adicionar volume no bolso.</p>
+      </div>
+ 
+      <div class="ben-card reveal reveal-d2">
+        <div class="ben-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+          </svg>
+        </div>
+        <h3>Dissipação Térmica</h3>
+        <p>Age como um dissipador térmico integrado, resfriando o hardware de forma contínua durante o uso intenso e jogos pesados.</p>
+      </div>
+ 
+      <div class="ben-card reveal reveal-d3">
+        <div class="ben-icon">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            <path d="M2 12h20"/>
+          </svg>
+        </div>
+        <h3>Estética Premium</h3>
+        <p>Anodização e polimento cirúrgicos resultam em uma superfície lisa, com o característico toque premium dos melhores materiais.</p>
+      </div>
+ 
+      <div class="ben-card reveal reveal-d4">
+        <div class="ben-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 22V12m0 0C12 7 7 5 3 6m9 6c0-5 5-7 9-6"/>
+          </svg>
+        </div>
+        <h3>Durabilidade Eterna</h3>
+        <p>Resistente à corrosão e riscos profundos. Material de qualidade vitalícia — alta engenharia com consciência e longevidade.</p>
+      </div>
+ 
+    </div>
+  </div>
+</section>
+ 
+<!-- ══ ANATOMIA SECTION ══ -->
+<section class="anatomia" id="anatomia">
+  <div class="inner">
+    <div style="text-align:center">
+      <p class="section-eyebrow light reveal">Detalhes Técnicos</p>
+      <h2 class="section-h2 white reveal reveal-d1">Cada Detalhe Projetado com Precisão Cirúrgica</h2>
+    </div>
+    <div class="anat-grid">
+      <div class="reveal reveal-d1">
+        <div class="anat-image-wrap">
+          <img src="assets/security.png" alt="Diagrama de segurança e componentes estruturais integrados da capa ArmorGlass">
+        </div>
+      </div>
+      <div class="anat-features reveal reveal-d2">
+        <div class="anat-feat">
+          <div class="anat-feat-icon">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.5 12a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0z"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Fechamento Magnético Automático</h3>
+            <p>Ímãs de Neodímio de altíssima atração distribuídos pelo perímetro selam o iPhone instantaneamente com um clique metálico sólido e seguro.</p>
+          </div>
+        </div>
+        <div class="anat-feat">
+          <div class="anat-feat-icon">
+            <svg viewBox="0 0 24 24">
+              <rect x="2" y="3" width="20" height="18" rx="3"/>
+              <line x1="2" y1="9" x2="22" y2="9"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Vidro Temperado de Camada Dupla</h3>
+            <p>Proteção 360° integrada na frente e na traseira. Dispensa completamente o uso de películas baratas que descolam, riscam e criam bolhas.</p>
+          </div>
+        </div>
+        <div class="anat-feat">
+          <div class="anat-feat-icon">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Corte CNC Computadorizado</h3>
+            <p>Acesso cirúrgico aos botões táticos, portas e ao avançado módulo de câmeras do iPhone 17 — projetado sem milímetro de erro.</p>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="document.getElementById('oferta').scrollIntoView({behavior:'smooth'})" style="margin-top: 10px;">Comprar Agora</button>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- ══ GALERIA SECTION ══ -->
+<section class="galeria">
+  <div class="inner-wide">
+    <div style="text-align:center" class="inner">
+      <p class="section-eyebrow reveal">Galeria</p>
+      <h2 class="section-h2 reveal reveal-d1">Veja Cada Ângulo</h2>
+      <p class="section-lead reveal reveal-d2" style="margin:0 auto">Alumínio aeronáutico. Acabamento impecável. Proteção total.</p>
+    </div>
+    
+    <div class="gal-grid3">
+      <div class="gal-card reveal">
+        <img src="assets/fixo.jpg" alt="Vista frontal do ArmorGlass com ajuste perfeito no iPhone 17">
+      </div>
+      <div class="gal-card reveal reveal-d1">
+        <img src="assets/brindando.jpg" alt="Vista traseira mostrando o vidro temperado integrado transparente">
+      </div>
+      <div class="gal-card reveal reveal-d2">
+        <img src="assets/mockuptwo.png" alt="Detalhe do produto com foco nos ímãs magnéticos perimetrais">
+      </div>
+    </div>
+    
+    <div class="gal-image-wide reveal">
+      <img src="assets/homem.png" id="lifestyle-carousel-img" alt="Demonstração de uso do ArmorGlass Premium" style="transition: opacity 0.5s ease-in-out; opacity: 1;">
+    </div>
+    
+    <div style="text-align:center" class="reveal">
+      <button class="btn-primary btn-primary-lg" onclick="document.getElementById('oferta').scrollIntoView({behavior:'smooth'})">Comprar Agora</button>
+    </div>
+  </div>
+</section>
+ 
+<!-- ══ OFERTA SECTION ══ -->
+<section class="oferta" id="oferta">
+  <div class="inner">
+    <div style="text-align:center">
+      <div class="price-badge reveal" style="margin:0 auto 24px">Lote de Pré-Venda · Unidades Limitadas</div>
+      <h2 class="section-h2 white reveal reveal-d1">Antecipe-se ao Lançamento Global</h2>
+      <p class="section-lead white reveal reveal-d2" style="margin:0 auto">Usinar peças em liga aeroespacial de alumínio 7075 exige maquinários de CNC de altíssima precisão, o que restringe a velocidade de produção física. Garanta seu preço especial de pré-venda agora.</p>
+    </div>
+    <div class="oferta-grid">
+      <div class="reveal reveal-d1" style="width: 100%;">
+        <div class="oferta-image-wrap">
+          <img src="assets/preto.jpg" id="color-preview-img" alt="Cor Selecionada da Capa de Alumínio" class="oferta-img" style="opacity: 1; transition: opacity 0.3s ease;">
+        </div>
+      </div>
+      <div class="price-block reveal reveal-d2">
+        <!-- Seletor de Modelo -->
+        <div class="config-group">
+          <label class="config-label" style="color: rgba(255, 255, 255, 0.85);">1. Escolha o seu modelo de iPhone:</label>
+          <div class="model-selector-grid">
+            <button class="model-option active" onclick="selectModel(this, 'iPhone 17 Pro')">
+              <span class="model-title">iPhone 17 Pro</span>
+              <span class="model-sub">Ajuste perfeito</span>
+            </button>
+            <button class="model-option" onclick="selectModel(this, 'iPhone 17 Pro Max')">
+              <span class="model-title">iPhone 17 Pro Max</span>
+              <span class="model-sub">Tela de 6.9"</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Seletor de Cores -->
+        <div class="config-group" style="margin-top: 12px;">
+          <label class="config-label" style="color: rgba(255, 255, 255, 0.85);">2. Selecione a Cor do Alumínio: <span id="selected-color-name" class="highlight-text">Preto</span></label>
+          <div class="color-selector-flex">
+            <button class="color-option active" onclick="selectColor(this, 'Preto')">
+              <span class="color-swatch color-black"></span>
+              <span class="color-name">Preto Titanium</span>
+            </button>
+            <button class="color-option" onclick="selectColor(this, 'Laranja')">
+              <span class="color-swatch color-orange"></span>
+              <span class="color-name">Laranja Sport</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Novo Bloco de Precificação VSL -->
+        <div class="price-details-vsl">
+          <p class="price-old-vsl">De: R$ 199,90 por apenas</p>
+          <p class="price-installments-vsl">6x de <span class="price-value-vsl">R$ 19,98</span></p>
+          <p class="price-cash-vsl">ou R$ 119,90 à vista no cartão</p>
+          <p class="price-shipping-vsl">⚡ (Frete Grátis com rastreio ativado para a sua região apenas até hoje)</p>
+        </div>
+
+        <button class="btn-primary btn-primary-lg" style="width:100%;margin-top:8px" onclick="triggerCheckout()">Comprar Agora</button>
+
+        <!-- Estilos das Bandeiras de Cartão e Garantias -->
+        <style>
+          .landing-payment-footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px 10px 4px;
+            background-color: transparent;
+          }
+          .landing-payment-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            max-width: 100%;
+          }
+          .payment-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 24px;
+            background-color: #ffffff;
+            border: 1px solid #e1e3e4;
+            border-radius: 4px;
+            padding: 2px 4px;
+            box-sizing: border-box;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+          }
+          .payment-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+          }
+          .payment-badge svg {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+          }
+          /* Centralização das Garantias para Mobile */
+          .trust-row {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            align-items: center !important;
+            gap: 12px !important;
+            margin-top: 12px;
+          }
+          .trust-item {
+            justify-content: center !important;
+            flex: 0 0 auto !important;
+          }
+        </style>
+
+        <!-- Bandeiras de Cartão (acima) -->
+        <div class="landing-payment-footer">
+          <div class="landing-payment-container">
+            <div class="payment-badge" title="Visa"><svg viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" width="38" height="24"><path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"/><path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"/><path d="M28.3 10.1H28c-.4 1-.7 1.5-1 3h1.9c-.3-1.5-.3-2.2-.6-3zm2.9 5.9h-1.7c-.1 0-.1 0-.2-.1l-.2-.9-.1-.2h-2.4c-.1 0-.2 0-.2.2l-.3.9c0 .1-.1.1-.1.1h-2.1l.2-.5L27 8.7c0-.5.3-.7.8-.7h1.5c.1 0 .2 0 .2.2l1.4 6.5c.1.4.2.7.2 1.1zm-13.4-.3l.4-1.8c.1 0 .2.1.2.1.7.3 1.4.5 2.1.4.2 0 .5-.1.7-.2.5-.2.5-.7.1-1.1-.2-.2-.5-.3-.8-.5-.4-.2-.8-.4-1.1-.7-1.2-1-.8-2.4-.1-3.1.6-.4.9-.8 1.7-.8 1.2 0 2.5 0 3.1.2h.1c-.1.6-.2 1.1-.4 1.7-.5-.2-1-.4-1.5-.4-.3 0-.6 0-.9.1-.2 0-.3.1-.4.2-.2.2-.2.5 0 .7l.5.4c.4.2.8.4 1.1.6.5.3 1 .8 1.1 1.4.2.9-.1 1.7-.9 2.3-.5.4-.7.6-1.4.6-1.4 0-2.5.1-3.4-.2-.1.2-.1.2-.2.1zm-3.5.3c.1-.7.1-.7.2-1 .5-2.2 1-4.5 1.4-6.7.1-.2.1-.3.3-.3H18c-.2 1.2-.4 2.1-.7 3.2-.3 1.5-.6 3-1 4.5 0 .2-.1.2-.3.2M5 8.2c0-.1.2-.2.3-.2h3.4c.5 0 .9.3 1 .8l.9 4.4c0 .1 0 .1.1.2 0-.1.1-.1.1-.1l2.1-5.1c-.1-.1 0-.2.1-.2h2.1c0 .1 0 .1-.1.2l-3.1 7.3c-.1.2-.1.3-.2.4-.1.1-.3 0-.5 0H9.7c-.1 0-.2 0-.2-.2L7.9 9.5c-.2-.2-.5-.5-.9-.6-.6-.3-1.7-.5-1.9-.5L5 8.2z" fill="#142688"/></svg></div>
+            <div class="payment-badge" title="Mastercard"><svg viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" width="38" height="24"><path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"/><path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"/><circle fill="#EB001B" cx="15" cy="12" r="7"/><circle fill="#F79E1B" cx="23" cy="12" r="7"/><path fill="#FF5F00" d="M22 12c0-2.4-1.2-4.5-3-5.7-1.8 1.3-3 3.4-3 5.7s1.2 4.5 3 5.7c1.8-1.2 3-3.3 3-5.7z"/></svg></div>
+            <div class="payment-badge" title="Elo"><svg viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" width="38" height="24"><path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"/><path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"/><path fill="#00A4E0" d="M13.3 8.8c-.7.3-1.2.8-1.5 1.5-.3.7-.4 1.4-.2 2.2.2.8.6 1.4 1.2 1.8.6.4 1.3.6 2 .5.7-.1 1.3-.4 1.7-1l1.5 1c-.7.9-1.6 1.5-2.8 1.7-1.1.2-2.2 0-3.1-.6-1-.6-1.6-1.5-1.9-2.7-.3-1.2-.2-2.3.3-3.3.5-1 1.3-1.8 2.3-2.2l.5 1.1z"/><path fill="#EF4123" d="M25.5 8.2l-.5 1.1c-.7-.3-1.5-.4-2.2-.1-.7.3-1.2.8-1.5 1.5-.3.7-.4 1.5-.1 2.2.3.7.8 1.3 1.5 1.5.7.3 1.5.3 2.2 0l.5 1.1c-1 .5-2.1.5-3.2.2-1-.4-1.8-1.1-2.3-2.1-.5-1-.6-2.1-.3-3.1.3-1.1 1-1.9 1.9-2.5 1-.5 2-.6 3-.4.4.1.7.3 1 .6z"/><path fill="#FFCB05" d="M17.5 7.5l1.5.8-1.2 2.2 2.4-.2 1.4.9-3.2.3-.9 1.7-1.5-.8.9-1.7-1-2.8 1.6-.4z"/></svg></div>
+            <div class="payment-badge" title="Hipercard"><svg viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" width="38" height="24"><path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"/><path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"/><path fill="#822124" d="M11.5 7h2v10h-2zM16 7h2v4h3V7h2v10h-2v-4h-3v4h-2zM8 12.2c0-2 1.2-3.7 3-4.4V7h-.3C8 7 6 9.2 6 12s2 5 4.7 5h.3v-.8c-1.8-.7-3-2.4-3-4z"/><circle fill="#E5B231" cx="26" cy="12" r="4"/></svg></div>
+            <div class="payment-badge" title="American Express"><svg viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" width="38" height="24"><path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"/><path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"/><path fill="#006FCF" d="M8.971 10.268l.774 1.876H8.203l.768-1.876zm16.075.078h-2.977v.827h2.929v1.239h-2.923v.922h2.977v.739l2.077-2.245-2.077-1.737v.255h-.006zm-14.063-2.34h3.995l.887 1.935.822-1.935h3.989v5.594l-3.107.012-.839-1.886-.845 1.886-4.287-.012-.508-1.183H9.488l-.497 1.183H6.547l3.036-5.594h1.4zm7.89.474l-.003 4.622 1.887-2.327 1.876 2.327v-4.622h1.265v5.08h-1.61l-1.53-1.878-1.539 1.878H17.6V8.48h1.273zm-7.869.577L9.79 11.827h2.395L10.997 9.05l.007.007z"/></svg></div>
+            <div class="payment-badge" title="Diners Club"><svg viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" width="38" height="24"><path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"/><path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"/><path d="M12 12v3.7c0 .3-.2.3-.5.2-1.9-.8-3-3.3-2.3-5.4.4-1.1 1.2-2 2.3-2.4.4-.2.5-.1.5.2V12zm2 0V8.3c0-.3 0-.3.3-.2 2.1.8 3.2 3.3 2.4 5.4-.4 1.1-1.2 2-2.3 2.4-.3.1-.4.1-.4-.2V12zm7-7H17c-3.8 0-7 3.2-7 7s3.2 7 7 7h4c3.8 0 7-3.2 7-7s-3.2-7-7-7z" fill="#0079BE"/></svg></div>
+            <div class="payment-badge" title="Boleto Bancário"><svg viewBox="0 0 38 24" xmlns="http://www.w3.org/2000/svg" width="38" height="24"><path opacity=".07" d="M35 0H3C1.3 0 0 1.3 0 3v18c0 1.7 1.4 3 3 3h32c1.7 0 3-1.3 3-3V3c0-1.7-1.4-3-3-3z"/><path fill="#fff" d="M35 1c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V3c0-1.1.9-2 2-2h32"/><g fill="#1A1A1A"><rect x="5" y="6" width="1.5" height="12"/><rect x="8" y="6" width="1" height="12"/><rect x="10.5" y="6" width="2" height="12"/><rect x="14" y="6" width="1" height="12"/><rect x="16.5" y="6" width="1.5" height="12"/><rect x="19.5" y="6" width="1" height="12"/><rect x="22" y="6" width="2" height="12"/><rect x="25.5" y="6" width="1" height="12"/><rect x="28" y="6" width="1.5" height="12"/><rect x="31" y="6" width="2" height="12"/></g></svg></div>
+            <div class="payment-badge" title="Pix" style="padding: 3px 2px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%"><path d="M346.3 271.8l-60.1-60.1c-4.6-4.6-12.1-4.6-16.8 0l-60.1 60.1c-4.6 4.6-4.6 12.1 0 16.8l60.1 60.1c4.6 4.6 12.1 4.6 16.8 0l60.1-60.1c4.7-4.7 4.7-12.2 0-16.8z" fill="#32BCAD"/><path d="M404.2 345.8l-46.1-46.1c-3.1-3.1-3.1-8.2 0-11.3l46.1-46.1c3.1-3.1 3.1-8.2 0-11.3l-36.6-36.6c-7.6-7.6-17.8-11.9-28.5-11.9h-25.9l-41.8 41.8c-13.8 13.8-36.2 13.8-50 0l-41.8-41.8h-25.9c-10.7 0-20.9 4.3-28.5 11.9l-36.6 36.6c-3.1 3.1-3.1 8.2 0 11.3l46.1 46.1c3.1 3.1 3.1 8.2 0 11.3l-46.1 46.1c-3.1 3.1-3.1 8.2 0 11.3l36.6 36.6c7.6 7.6 17.8 11.9 28.5 11.9h25.9l41.8-41.8c13.8-13.8 36.2-13.8 50 0l41.8 41.8h25.9c10.7 0 20.9-4.3 28.5-11.9l36.6-36.6c3.2-3.1 3.2-8.1 0-11.3z" fill="#32BCAD"/></svg></div>
+          </div>
+        </div>
+
+        <!-- Garantias (abaixo) -->
+        <div class="trust-row">
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Compra 100% Segura
+          </div>
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24">
+              <polyline points="9 11 12 14 22 4"/>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            Garantia de 7 Dias
+          </div>
+          <div class="trust-item">
+            <svg viewBox="0 0 24 24">
+              <rect x="1" y="3" width="15" height="13" rx="2"/>
+              <path d="M16 8h4l3 5v3h-7V8z"/>
+              <circle cx="5.5" cy="18.5" r="2.5"/>
+              <circle cx="18.5" cy="18.5" r="2.5"/>
+            </svg>
+            Frete Grátis
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- ══ FAQ SECTION ══ -->
+<section class="faq" id="faq">
+  <div class="inner" style="text-align:center">
+    <p class="section-eyebrow reveal">Dúvidas Frequentes</p>
+    <h2 class="section-h2 reveal reveal-d1">Perguntas Frequentes</h2>
+  </div>
+  <div class="faq-list">
+    <div class="faq-item">
+      <button class="faq-q">O alumínio aeronáutico interfere no sinal de Wi-Fi, 4G/5G ou GPS?<div class="faq-chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div></button>
+      <div class="faq-a"><div class="faq-a-inner">Não. A ArmorGlass foi desenvolvida com pequenas pontes de polímero isolante estrategicamente posicionadas alinhadas com as antenas originais da Apple. Isso garante 100% de sinal de dados móveis 5G, Wi-Fi e GPS.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q">Preciso instalar película de vidro antes de usar a capa?<div class="faq-chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div></button>
+      <div class="faq-a"><div class="faq-a-inner">Não é necessário. A case ArmorGlass já conta com vidro temperado duplo integrado com nível 9H de dureza cristalina tanto na parte frontal quanto traseira. Ela envelopa o celular em 360 graus, fornecendo proteção total contra riscos e estilhaços.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q">O touch screen perde sensibilidade com o vidro frontal da capa?<div class="faq-chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div></button>
+      <div class="faq-a"><div class="faq-a-inner">De forma alguma. Nosso vidro frontal integrado utiliza tecnologia ultra-conductive que mantém a sensibilidade tátil nativa do visor em 100%, sem engasgos, permitindo resposta ideal e funcionamento do Face ID de forma natural.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q">O fecho magnético pode abrir se o celular cair?<div class="faq-chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div></button>
+      <div class="faq-a"><div class="faq-a-inner">Não. A capa emprega potentes micro-ímãs de Neodímio N52 integrados de alta fixação que formam uma trava perimetral. E o design de encaixe interno cria uma trava mecânica automática que impede a capa de se abrir em quedas severas.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q">O produto já está disponível ou é pré-venda para o iPhone 17?<div class="faq-chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div></button>
+      <div class="faq-a"><div class="faq-a-inner">Essa é uma campanha exclusiva e limitada de Pré-Venda. Com base nos dados oficiais e moldes finais de usinagem fornecidos, estamos fabricando o lote inaugural com desconto significativo para que você o receba exatamente a tempo de proteger seu celular assim que ele for lançado.</div></div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-q">Como funciona a garantia se eu não gostar?<div class="faq-chevron"><svg viewBox="0 0 12 12"><polyline points="2,4 6,8 10,4"/></svg></div></button>
+      <div class="faq-a"><div class="faq-a-inner">Garantimos a sua satisfação absoluta. Oferecemos 7 dias de garantia incondicional após o recebimento. Se por qualquer motivo você decidir que o ArmorGlass não atende às suas expectativas premium, nós devolveremos 100% do seu pagamento sem burocracias.</div></div>
+    </div>
+  </div>
+</section>
+ 
+<!-- ══ CTA FINAL SECTION ══ -->
+<section class="cta-final">
+  <div class="cta-box">
+    <h2 class="reveal">Sua Proteção Começa Agora.</h2>
+    <button class="btn-primary btn-primary-lg reveal reveal-d1" onclick="document.getElementById('oferta').scrollIntoView({behavior:'smooth'})">Reservar Meu Preço Especial</button>
+    <p class="cta-fine reveal reveal-d2">Frete Grátis &nbsp;·&nbsp; 6x sem juros &nbsp;·&nbsp; Garantia incondicional de 7 dias</p>
+  </div>
+</section>
+ 
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="footer-logo">
+    <div class="nav-logo-badge" style="width: 22px; height: 22px; border-radius: 6px; margin-right: 2px;">
+      <svg viewBox="0 0 16 16" style="width: 12px; height: 12px;"><path d="M8 1l2 4 4 .5-3 3 .7 4.5L8 11l-3.7 2 .7-4.5-3-3L6 5z"/></svg>
+    </div>
+    ArmorGlass
+  </div>
+  <div class="footer-links">
+    <a href="#">Política de Privacidade</a>
+    <a href="#">Termos de Uso</a>
+    <a href="#">Suporte e Contato</a>
+  </div>
+  <p class="footer-copy">© 2026 ArmorGlass. Todos os direitos reservados. Produto premium em regime de pré-venda exclusiva.</p>
+</footer>
+ 
+<script>
+// ── INTERACTIVE PRODUCT SELECTORS (CORES E MODELOS) ──
+let activeColor = 'Preto';
+let activeModel = 'iPhone 17 Pro';
+
+function selectColor(element, colorName) {
+  // Update color name text in the DOM
+  document.getElementById('selected-color-name').innerText = colorName;
+  activeColor = colorName;
+  
+  // Highlight the active option
+  const options = element.parentElement.querySelectorAll('.color-option');
+  options.forEach(opt => opt.classList.remove('active'));
+  element.classList.add('active');
+
+  // Dynamic color image switching logic with a premium smooth fade transition
+  const previewImg = document.getElementById('color-preview-img');
+  if (previewImg) {
+    previewImg.style.opacity = '0';
+    setTimeout(() => {
+      if (colorName === 'Preto') {
+        previewImg.src = 'assets/preto.jpg';
+        previewImg.alt = 'ArmorGlass Preto Titanium Case';
+      } else if (colorName === 'Laranja') {
+        previewImg.src = 'assets/laranja.jpg';
+        previewImg.alt = 'ArmorGlass Laranja Sport Case';
+      }
+      previewImg.style.opacity = '1';
+    }, 150); // Matches ease transition speed nicely
+  }
+}
+
+function selectModel(element, modelName) {
+  activeModel = modelName;
+  
+  // Highlight the active option
+  const options = element.parentElement.querySelectorAll('.model-option');
+  options.forEach(opt => opt.classList.remove('active'));
+  element.classList.add('active');
+}
+
+function triggerCheckout() {
+  alert('Redirecionando para o checkout seguro do ArmorGlass (' + activeModel + ' - Cor: ' + activeColor + ')...');
+}
+
+// ── SCROLL REVEAL ──
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { 
+    if(e.isIntersecting){ 
+      e.target.classList.add('visible'); 
+      observer.unobserve(e.target); 
+    } 
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+ 
+// ── NAV SCROLL BACKGROUND CHANGE ──
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('navbar');
+  if (window.scrollY > 50) {
+    nav.style.background = 'rgba(10, 10, 12, 0.94)';
+    nav.style.height = '48px';
+  } else {
+    nav.style.background = 'rgba(18, 18, 20, 0.75)';
+    nav.style.height = '54px';
+  }
+});
+ 
+// ── FAQ ACCORDION TOGGLING ──
+document.querySelectorAll('.faq-q').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const item = btn.parentElement;
+    const answer = item.querySelector('.faq-a');
+    const isOpen = item.classList.contains('open');
+    
+    // Close all open ones first
+    document.querySelectorAll('.faq-item').forEach(i => {
+      i.classList.remove('open');
+      i.querySelector('.faq-a').style.maxHeight = '0';
+    });
+    
+    // If it was closed, open it now
+    if(!isOpen){
+      item.classList.add('open');
+      answer.style.maxHeight = answer.scrollHeight + 'px';
+    }
+  });
+});
+
+// ── LIFESTYLE CAROUSEL AUTOMÁTICO (EFEITO GIF) ──
+(function() {
+  const carouselImages = ['assets/homem.png', 'assets/mulher.png'];
+  let carouselIndex = 0;
+
+  setInterval(() => {
+    const imgEl = document.getElementById('lifestyle-carousel-img');
+    if (imgEl) {
+      // Fade out
+      imgEl.style.opacity = '0';
+      setTimeout(() => {
+        // Swap image source
+        carouselIndex = (carouselIndex + 1) % carouselImages.length;
+        imgEl.src = carouselImages[carouselIndex];
+        
+        // Dynamic alt text updates for accessibility/SEO
+        imgEl.alt = carouselImages[carouselIndex].includes('homem') 
+          ? 'Demonstração masculina de uso do ArmorGlass Premium' 
+          : 'Demonstração feminina de uso do ArmorGlass Premium';
+        
+        // Fade in
+        imgEl.style.opacity = '1';
+      }, 500); // Wait 500ms (duration of the fade-out) to swap src
+    }
+  }, 2000); // Repeat every 2000ms
+})();
+</script>
+</body>
+</html>
