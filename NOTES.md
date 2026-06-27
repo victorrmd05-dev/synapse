@@ -1,7 +1,7 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-06-26 — **Deploy de LPs no Cloudflare Pages (Wrangler) VALIDADO** e botão "Aprovar e Publicar" ligado em `/design` (`/api/deploy` + `src/lib/cloudflare.ts`). Antes: novo agente Tracking (FOP: Pixel + CAPI), motor do Designer, correção de corrida no Revisor.
+> Última atualização: 2026-06-27 — **Token Meta (System User) VALIDADO** (leitura + escrita reais na conta de anúncios; base pro Gestor-Meta-Ads). Antes: deploy de LPs no Cloudflare Pages (Wrangler), novo agente Tracking (FOP: Pixel + CAPI), motor do Designer, correção de corrida no Revisor.
 
 ---
 
@@ -334,6 +334,52 @@ Fechado o gap crítico do Designer: a LP gerada agora **vai pro ar de verdade** 
   **Falta o teste pela própria UI** com um `design_id` real (clicar "Aprovar e Publicar" no painel).
 - **Nota:** o CLAUDE.md sugeria GitHub Pages como fallback confiável — não foi preciso, o Cloudflare
   funcionou de primeira com o token atual. Fallback fica como ideia futura se a Cloudflare oscilar.
+
+---
+
+## 🔑 Meta Ads — credencial System User VALIDADA (27/06/2026)
+Base de credencial pro futuro agente **Gestor-Meta-Ads** (puxar dados reais, otimizar, escalar).
+
+- **Decisão de arquitetura:** o app NÃO usa Login OAuth do Facebook (que exige callback URL com
+  HTTPS — o que estava travando o Fernando por causa de SSL em `http://localhost`). Pra backend/
+  automação o caminho certo é **token de Usuário do Sistema (System User)**, gerado direto no
+  Business Settings: **não expira, sem callback, sem tela de consentimento**. Eliminou o problema
+  do SSL por completo. (OAuth/redirect só seria necessário pra logar usuários externos — não é o caso.)
+- **`.env.local` (`FACEBOOK CONFIGURATION`):** `META_APP_ID`, `META_APP_SECRET`, `META_ACCESS_TOKEN`
+  (System User), `META_AD_ACCOUNT_ID`. **Dois ajustes feitos:** (1) `META_AD_ACCOUNT_ID` estava
+  `act=...` → corrigido pra **`act_...`** (com `=` toda chamada Graph falharia com URL malformada);
+  (2) removida a linha morta `NEXT_PUBLIC_META_REDIRECT_URI` (não há mais OAuth).
+- **Validação real (script Python ad-hoc lendo o token do `.env.local`, sem hardcode):**
+  - `debug_token`: **`is_valid: true`**, **tipo `SYSTEM_USER`**, **`expires_at: 0` (NUNCA)**.
+  - Escopos: `ads_management, ads_read, business_management, pages_read_engagement,
+    pages_manage_ads, public_profile` → cobre gestão de campanha **e** ações de Página (CAPI/criativo).
+  - Conta `act_814261946562792`: ATIVA, moeda **BRL**. **Leitura OK** — 5 campanhas (todas `PAUSED`,
+    posts de Instagram impulsionados). Insights 30d "sem dados" (esperado: tudo pausado).
+  - **Escrita OK (teste reversível):** renomeou uma campanha → `success:true` → reverteu pro nome
+    original → `success:true`. Prova que `ads_management` escreve de fato. Nada ficou alterado.
+- **Pendente:** o agente **Gestor-Meta-Ads ainda não tem rota** (`/api/...`) nem lib de gestão.
+  `src/lib/meta-api.ts` tem helpers (fetchCampaigns/createCampaign/AdSet/Creative/Ad) mas
+  `fetchMetaMetrics()` ainda devolve **mock** — trocar por insights reais quando construir o agente.
+
+---
+
+## 🩹 Tracking — agente faltava na `agentes_config` (27/06/2026)
+Ao dar **play** numa página em `/tracking`, erro: *"Agente 'tracking' não encontrado ou inativo.
+Rode a sincronização em /agents…"*.
+
+- **Causa raiz:** o agente Tracking foi **construído** (Sessão 7, pasta `agentes/tracking/` completa:
+  `AGENTS.md`, `SKILL.md`, `TOOLS.md`, `_agente.json` com `slug:"tracking"`, `ativo:true`), mas a
+  tabela `agentes_config` (o que a IA consome) só tinha os **8 agentes antigos** — o único sync
+  registrado rodou **26/06 01:41**, *antes* do Tracking existir. A rota `/api/tracking/generate`
+  chama `getAgentConfig('tracking')` e não achava o registro. **Nada quebrado no código** —
+  só faltou rodar a sincronização da pasta.
+- **Correção:** `/agents` → **"Sincronizar da pasta agentes/"** (`syncAgentsFromFolder()` lê todas
+  as subpastas de `agentes/` dinamicamente e faz upsert) → **9 agentes sincronizados**, Tracking
+  entra ativo. Play parou de dar erro.
+- **Validação:** **visual OK** (agente aparece, play não erra mais). **Teste real do FOP ainda
+  pendente** — depende da página estar **publicada** (LP no ar disparando eventos → ver dedup no
+  Events Manager + EMQ). Combinado com o Fernando pra depois.
+- **Aprendizado:** ao criar um agente novo, **rodar o sync** (ou ele não existe pra IA, só no disco).
 
 ---
 
