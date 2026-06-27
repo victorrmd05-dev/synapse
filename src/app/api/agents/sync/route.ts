@@ -62,6 +62,11 @@ const AGENT_MAP: Record<
     agentPath: 'agents/video-maker',
     skillPath: 'skills/video-maker-skill',
   },
+  tracking: {
+    nome: 'Tracking',
+    agentPath: 'agents/tracking',
+    skillPath: 'skills/tracking-skill',
+  },
   'gestor-meta-ads': {
     nome: 'Gestor-Meta-Ads',
     agentPath: 'agents/gestor-meta-ads',

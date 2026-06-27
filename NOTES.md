@@ -1,7 +1,7 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-06-26 — **Motor do Designer construído** (gera HTML via gpt-4o/Claude, com injeção de marca de luxo + Firecrawl + imagens reais); botão "play" na fila de Design; correção de corrida no Revisor.
+> Última atualização: 2026-06-26 — **Deploy de LPs no Cloudflare Pages (Wrangler) VALIDADO** e botão "Aprovar e Publicar" ligado em `/design` (`/api/deploy` + `src/lib/cloudflare.ts`). Antes: novo agente Tracking (FOP: Pixel + CAPI), motor do Designer, correção de corrida no Revisor.
 
 ---
 
@@ -262,13 +262,89 @@ Bug encontrado ao ligar o motor do Designer: uma copy **aprovada** estava com `s
 
 ---
 
+## 📡 Tracking — NOVO AGENTE (FOP: Pixel + CAPI) — CONSTRUÍDO (26/06/2026)
+9º agente da esteira, logo **depois do Designer**: instala a camada de rastreamento
+**FOP (Funil de Otimização de Pixel)** nas landing pages e espelha os eventos pro Meta.
+Base: a skill "fop-tracking" (Lúcio Artes) em `fop-tracking/` — copiada e adaptada.
+
+**Pipeline:** `workflow_design.codigo_html` → [Tracking instala FOP] → `workflow_tracking`
+→ a LP no ar dispara eventos → `/api/track/capi` espelha pro Meta (deduplicado) → `tracking_eventos`.
+
+**Decisão de arquitetura (híbrida):** a IA decide só a INTELIGÊNCIA (qual template de funil
+A–E, `value`, `content_name`) e devolve **JSON**; um **builder determinístico**
+(`src/lib/tracking/fop.ts`) injeta o snippet Pixel+CAPI **byte-exato**. Motivo: dedup por
+`event_id` e normalização de PII (SHA256) têm que ser idênticos client↔server — não podem
+ser "alucinados" pela LLM, senão o hash não casa e o EMQ despenca.
+
+**O que foi construído:**
+- **Cérebro:** `agentes/tracking/` (`AGENTS.md`, `SKILL.md` port do FOP, `TOOLS.md`, `_agente.json`)
+  + as 3 referências técnicas em `reference/`. Vira o 9º registro em `agentes_config` ao sincronizar.
+- **Banco** (migration `20260626140000`, ✅ aplicada via MCP):
+  - `tracking_config` — Pixels + **token da Conversions API** (SEGREDO: RLS sem policy pública;
+    só o servidor lê via service_role; a UI recebe a lista sem o token via server action).
+  - `workflow_tracking` — ordem de serviço (tipo_funil, hierarquia_json, codigo_html_final, status).
+  - `tracking_eventos` — auditoria de cada evento CAPI (PII já hasheada). Ambas com realtime.
+- **Motor:**
+  - `src/lib/tracking/fop.ts` — normalização espelho client↔server, templates A–E, builder do snippet.
+    ⚠️ **Armadilha resolvida:** escape de regex no JS gerado. Regex *literal* (`/\D/`, `/[̀-ͯ]/`)
+    precisa de `\\` no fonte TS; regex via *string* `.match('\\\\s*')` precisa de `\\\\`. O `tsc` NÃO
+    pega isso (é runtime no HTML). Validei transpilando e dando `new Function()` no snippet (JS válido).
+  - `/api/track/capi` — relay server-side (hash SHA256, Graph v21.0, mesmo `event_id`, CORS+OPTIONS,
+    log best-effort; sempre devolve 200 pra não derrubar a LP).
+  - `/api/tracking/generate` — diagnóstico do funil (OpenAI `gpt-4o-mini` via `TRACKING_MODEL`) →
+    injeção FOP → salva em `workflow_tracking` + disco `lps/*-tracked.html`.
+  - `src/app/actions/tracking.ts` — CRUD de pixels (token nunca vai ao browser).
+- **UI:** `/tracking` (fila com **botão play por página**, painel Pixels & Tokens, escada de eventos,
+  log CAPI ao vivo, checklist EMQ) + aba **Tracking** no Sidebar (ícone Radar) + registrado em `/agents`.
+
+**Pixels/token:** ficam no banco (`tracking_config`), cadastrados pela própria UI — não no `.env`.
+**`.env.local`:** só `NEXT_PUBLIC_APP_URL`/`TRACKING_CAPI_ENDPOINT` (URL pública do relay pra LP no ar
+alcançar), `TRACKING_MODEL` e `IPINFO_API_TOKEN` (todos opcionais).
+
+**Validação:** compila com sucesso (tipos/SSR OK); ESLint limpo nos arquivos novos; snippet gerado
+testado como JS válido. **Falta o teste ponta a ponta do Fernando** (sincronizar agente → cadastrar
+pixel+token → play → ver eventos no Events Manager).
+
+**Caveat de produção:** o snippet chama o relay por URL absoluta. Em dev usa a origem da request;
+publicado, setar `NEXT_PUBLIC_APP_URL`. Pra produção robusta, considerar migrar o relay pra Supabase
+Edge Function (o código da referência já é Deno/edge).
+
+---
+
+## 🚀 Designer — DEPLOY no Cloudflare Pages VALIDADO (26/06/2026)
+Fechado o gap crítico do Designer: a LP gerada agora **vai pro ar de verdade** num clique.
+
+- **Validação manual primeiro:** provei o fluxo Wrangler ponta a ponta com o token atual antes
+  de codar. `npx wrangler whoami` (token OK, conta `victor.rmd.05`), `pages project create` +
+  `pages deploy` de uma LP real (`lps/campanha-sale-ends-today-…html`) → no ar em
+  `https://alavanca-lp-test.pages.dev` (HTTP 200, bytes batendo). Projeto de teste deixado no ar.
+- **Helper novo** `src/lib/cloudflare.ts`: `deployHtmlToPages({slug, html})` — escreve o HTML como
+  `index.html` num dir temp, roda `wrangler pages project create` (idempotente, tolera "já existe")
+  + `pages deploy`, devolve `https://<slug>.pages.dev`. **Segurança:** HTML vai por ARQUIVO, nunca
+  por argumento; só o slug (sanitizado `[a-z0-9-]`) entra na linha de comando. `slugify()` exportado.
+- **Mãos — rota nova** `src/app/api/deploy/route.ts` (`POST {design_id}`): exige `codigo_html`,
+  deriva o slug de `campanhas_producao.nome_projeto` + sufixo do id, publica via Wrangler e salva
+  `url_recurso` + `data_aprovacao` → status na UI vira **"No Ar"** automático. `maxDuration=120`.
+- **Botão ligado** (`src/app/design/page.tsx`): "Aprovar para Tráfego" (decorativo, sem onClick)
+  virou **"Aprovar e Publicar"** com `publicarPagina()` real, spinner "Publicando…", desabilitado
+  sem HTML. Já publicado → vira link verde **"No Ar — Abrir Página"** (`url_recurso`).
+- **Dependência:** `wrangler@4` adicionado como **devDependency** (rota não depende de `npx` baixar
+  em runtime). Requer `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` (já no `.env.local`).
+- **Validação:** mecanismo Wrangler validado de verdade; `tsc --noEmit` limpo nos arquivos novos.
+  **Falta o teste pela própria UI** com um `design_id` real (clicar "Aprovar e Publicar" no painel).
+- **Nota:** o CLAUDE.md sugeria GitHub Pages como fallback confiável — não foi preciso, o Cloudflare
+  funcionou de primeira com o token atual. Fallback fica como ideia futura se a Cloudflare oscilar.
+
+---
+
 ## 📊 Status por agente
 | Agente | Cérebro (.md) | Mãos (rota) | Status |
 |---|---|---|---|
 | Minerador | ✅ régua nova | ✅ `/api/mineracao/run` | **Validado ponta a ponta** |
 | Copywriting | ✅ sync | ✅ `/api/copywriting/generate` (OpenAI `gpt-4o-mini`) | **Validado** |
 | Revisor | ✅ sync | ✅ `/api/revisor/review` (OpenAI `gpt-4o-mini`) | **Validado ponta a ponta** |
-| Designer-Webmaster | ✅ marca+Firecrawl+imagens | ✅ `/api/design/generate` (gpt-4o; Claude p/ saldo) | **Motor OK** (qualidade a refinar); falta deploy |
+| Designer-Webmaster | ✅ marca+Firecrawl+imagens | ✅ `/api/design/generate` + ✅ `/api/deploy` (Cloudflare Pages/Wrangler) | **Motor + deploy OK** (qualidade visual a refinar) |
+| **Tracking** (FOP) | ✅ `agentes/tracking/` | ✅ `/api/tracking/generate` + `/api/track/capi` | **Motor construído** — falta teste ponta a ponta do Fernando |
 | Video-Maker | ⚠️ sync | ❌ falta Higgsfield | Pendente |
 | Gestor-Meta-Ads | ⚠️ sync | ❌ falta rota | Pendente |
 | CEO / CTO | ✅ sync | aprovação/suporte | Camada humana + futura automação |
@@ -283,8 +359,13 @@ Bug encontrado ao ligar o motor do Designer: uma copy **aprovada** estava com `s
 - [x] ~~Próximo agente da esteira: Revisor~~ → **feito e validado** (`/api/revisor/review`, 26/06).
 - [x] ~~Designer-Webmaster: motor `/api/design/generate`~~ → **feito** (gpt-4o/Claude + marca +
       Firecrawl + imagens reais + botão play). **Qualidade a refinar** (Claude com crédito / prompt).
-- [ ] **Designer: deploy** `/api/deploy` (GitHub Pages → Cloudflare) + conectar "Aprovar para Tráfego";
-      salvar URL pública em `workflow_design.url_recurso`.
+- [x] ~~Novo agente **Tracking** (FOP: Pixel + CAPI)~~ → **construído** (26/06): `/api/tracking/generate`
+      + relay `/api/track/capi` + página `/tracking` + tabelas. **Falta teste ponta a ponta do Fernando.**
+- [ ] **Tracking: validar ponta a ponta** (sincronizar agente → cadastrar pixel+token → play → ver
+      eventos deduplicados no Events Manager) e medir EMQ. Avaliar migrar relay p/ Supabase Edge Function.
+- [x] ~~**Designer: deploy** `/api/deploy` + conectar "Aprovar para Tráfego"~~ → **feito e validado**
+      (26/06): Cloudflare Pages via Wrangler (`src/lib/cloudflare.ts`), botão **"Aprovar e Publicar"**,
+      salva `url_recurso`. Falta só clicar pela UI com um `design_id` real.
 - [ ] **Designer: subir a qualidade visual** — pôr crédito na Anthropic e `DESIGN_PROVIDER=anthropic`,
       e/ou refinar o prompt do motor (usar o `ui-ux-pro-max` + Magic MCP como apoio de dev).
 - [ ] Templates por agente na Agents Config (ex: Designer-Webmaster → exemplos de LP; entra junto com a decisão landing page x Shopify por produto).

@@ -10,6 +10,8 @@ export default function DesignPage() {
   // Ids cujas páginas estão sendo geradas agora (play disparado). Estado local:
   // o operador roda uma de cada vez, segurando a fila no ponto de criação.
   const [gerando, setGerando] = useState<Set<string>>(new Set());
+  // Id da página sendo publicada no Cloudflare agora (deploy em andamento).
+  const [publicando, setPublicando] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLps();
@@ -83,6 +85,36 @@ export default function DesignPage() {
         next.delete(lp.id);
         return next;
       });
+    }
+  }
+
+  // Aprova e publica a LP no Cloudflare Pages via /api/deploy. Ao concluir,
+  // url_recurso é salvo e o Realtime atualiza o status para "No Ar".
+  async function publicarPagina(lp: any) {
+    if (!lp || publicando) return;
+    if (!lp.codigo_html) {
+      alert('Esta página ainda não tem HTML gerado. Gere o design antes de publicar.');
+      return;
+    }
+    setPublicando(lp.id);
+    try {
+      const res = await fetch('/api/deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ design_id: lp.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.sucesso) {
+        alert('Falha ao publicar: ' + (data.detalhe || data.error || 'erro desconhecido'));
+        return;
+      }
+      // Sucesso: o Realtime traz url_recurso e o status vira "No Ar".
+      if (data.url) window.open(data.url, '_blank');
+    } catch (err) {
+      console.error(err);
+      alert('Erro de rede ao publicar a página.');
+    } finally {
+      setPublicando(null);
     }
   }
 
@@ -301,9 +333,28 @@ export default function DesignPage() {
           </div>
 
           <div className="p-5 border-t border-surface-elevated bg-[#0a0a0f] space-y-3">
-            <button className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-colors">
-              <Rocket size={16} /> Aprovar para Tráfego
-            </button>
+            {activeLp?.url_recurso ? (
+              <a
+                href={activeLp.url_recurso}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-status-green/20 hover:bg-status-green/30 text-status-green border border-status-green/30 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-colors"
+              >
+                <Globe size={16} /> No Ar — Abrir Página
+              </a>
+            ) : (
+              <button
+                onClick={() => publicarPagina(activeLp)}
+                disabled={!activeLp?.codigo_html || publicando === activeLp?.id}
+                className="w-full bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {publicando === activeLp?.id ? (
+                  <><Loader2 size={16} className="animate-spin" /> Publicando…</>
+                ) : (
+                  <><Rocket size={16} /> Aprovar e Publicar</>
+                )}
+              </button>
+            )}
             <div className="flex gap-3">
               <button className="flex-1 border border-surface-elevated hover:bg-surface text-white py-2.5 rounded-lg flex items-center justify-center gap-2 text-xs font-medium transition-colors">
                 <Edit2 size={14} /> Editar

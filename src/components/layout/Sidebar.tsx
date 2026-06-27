@@ -14,12 +14,12 @@ import {
   Settings, 
   HelpCircle,
   Layers,
-  Plus,
   ChevronDown,
   ChevronRight,
   Megaphone,
   Calculator,
-  Bot
+  Bot,
+  Radar
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -105,6 +105,15 @@ export function Sidebar() {
         >
           <Video size={18} />
           Video Maker
+        </Link>
+        <Link
+          href="/tracking"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            pathname === '/tracking' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-secondary hover:text-white hover:bg-surface'
+          }`}
+        >
+          <Radar size={18} />
+          Tracking
         </Link>
 
         {/* Gestor Meta Ads (Submenu) */}

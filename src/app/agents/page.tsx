@@ -32,7 +32,7 @@ const OBRIGATORIOS: Field[] = ['agents_md', 'skill_md'];
 // Ordem fixa de exibição dos agentes (hierarquia/fluxo do pipeline), não alfabética.
 const ORDEM_AGENTES = [
   'alavanca-ceo', 'cto', 'minerador', 'copywriting',
-  'revisor', 'designer-webmaster', 'video-maker', 'gestor-meta-ads',
+  'revisor', 'designer-webmaster', 'video-maker', 'tracking', 'gestor-meta-ads',
 ];
 function ordenarAgentes(lista: AgenteConfigRow[]): AgenteConfigRow[] {
   const idx = (slug: string) => {
@@ -50,6 +50,7 @@ const PAGINA_DO_AGENTE: Record<string, { href: string; label: string }> = {
   revisor: { href: '/revisor', label: 'Revisor' },
   'designer-webmaster': { href: '/design', label: 'Design/Webmaster' },
   'video-maker': { href: '/video-maker', label: 'Video Maker' },
+  tracking: { href: '/tracking', label: 'Tracking' },
   'gestor-meta-ads': { href: '/meta-ads/dashboard', label: 'Gestor Meta Ads' },
 };
 

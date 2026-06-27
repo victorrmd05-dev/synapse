@@ -1,0 +1,7 @@
+{
+  "slug": "tracking",
+  "nome": "Tracking",
+  "modelo": "gpt-4o-mini",
+  "max_tokens": 4000,
+  "ativo": true
+}
