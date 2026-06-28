@@ -173,7 +173,10 @@ t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}
   fbq('init', ${jsStr(p.pixelId)}, {
     em:L.em||'', ph:L.ph||'', fn:L.fn||'', ln:L.ln||'', external_id:vid
   });
-  fbq('track','PageView');
+  // PageView com event_id compartilhado: o BODY espelha o MESMO id pro CAPI → dedup.
+  var pvid=(window.crypto&&crypto.randomUUID?crypto.randomUUID():'pv'+Date.now()+Math.random().toString(36).slice(2));
+  window.__FOP_PV=pvid;
+  fbq('track','PageView',{},{eventID:pvid});
 })();
 </script>
 <!-- /FOP Tracking · HEAD -->`;
@@ -233,6 +236,21 @@ export function buildBodySnippet(p: SnippetParams): string {
       })}).catch(function(){});
   }
   window.FOP.send=sendEvent;
+
+  // PageView: o navegador já disparou no HEAD (com event_id em window.__FOP_PV).
+  // Aqui só espelhamos pro servidor (CAPI) com o MESMO id → o Meta deduplica.
+  (function(){
+    var pv=window.__FOP_PV; if(!pv||sent['PageView'])return; sent['PageView']=true;
+    var L=FOP.loadLead();
+    fetch(CAPI,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
+      body:JSON.stringify({
+        pixel_id:PIXEL_ID, event_name:'PageView', event_id:pv, page_url:location.href,
+        external_id:FOP.visitorId(),
+        user_data:{em:normEmail(L.em),ph:normPhone(L.ph),fn:normName(L.fn),ln:normName(L.ln)},
+        fbp:getCookie('_fbp'), fbc:getCookie('_fbc'),
+        custom_data:{}                                 // PageView não carrega dados de produto
+      })}).catch(function(){});
+  })();
 ${scrollViewContent || scrollWishlist ? `
   // hierarquia por scroll + tempo
   var hit={25:false,50:false};

@@ -411,8 +411,11 @@ com mesmo `event_id`). `tracking_eventos`: **todos `sucesso=true`, zero falha**.
 URL da Edge no HTML) → /design **Republicar** (sobe a versão com FOP) → testar.
 
 **Gaps menores conhecidos (não bloqueiam):**
-- **PageView** dispara só no navegador (fica no `<head>`, fora do `sendEvent`/relay) → não dedupa.
-  Fechar depois: gerar `event_id` compartilhado e espelhar PageView pro servidor.
+- ~~PageView só no navegador → não dedupa~~ → **RESOLVIDO (28/06)**: HEAD gera `event_id`
+  (`window.__FOP_PV`) e dispara o browser com ele; BODY espelha o MESMO id pro CAPI → **PageView
+  deduplica** (confirmado no Events Manager). Removido o `custom_data` de produto do PageView
+  (semanticamente errado; provável causa do selo "Evento personalizado" da Meta — a confirmar num
+  reinstalar+republicar). Eventos automáticos do Pixel (`SubscribedButtonClick`) desligados no painel.
 - Builder FOP **não injeta gatilho de Lord/Lead** no funil B (template tem Lead, mas o body só
   instrumenta scroll/form/checkout/whatsapp). Avaliar.
 - **Botão Remover tracking** adicionado em /tracking (`excluirTracking()`), faltava antes.
@@ -448,8 +451,10 @@ URL da Edge no HTML) → /design **Republicar** (sobe a versão com FOP) → tes
 - [x] ~~**Tracking: validar ponta a ponta**~~ → **feito e validado (28/06)**: dedup real no Events
       Manager, relay migrado p/ **Supabase Edge Function** (`track-capi`), deploy publica versão com
       FOP, botões Republicar/Remover. Ver seção "Tracking (FOP) — VALIDADO" acima.
-- [ ] **Tracking: fechar PageView server-side** (hoje só dispara no navegador → não dedupa) e medir EMQ
-      por evento no Events Manager (meta ≥ 6.0). Avaliar gatilho de Lead no funil B.
+- [x] ~~**Tracking: fechar PageView server-side**~~ → **feito e validado (28/06)**: PageView dedupa
+      (HEAD+BODY com `event_id` compartilhado); eventos automáticos do Pixel desligados.
+- [ ] **Tracking: medir EMQ** por evento no Events Manager (meta ≥ 6.0) e avaliar gatilho de Lead no funil B.
+      (Cosmético: confirmar que o PageView perde o selo "Evento personalizado" após reinstalar/republicar.)
 - [x] ~~**Designer: deploy** `/api/deploy` + conectar "Aprovar para Tráfego"~~ → **feito e validado**
       (26/06): Cloudflare Pages via Wrangler (`src/lib/cloudflare.ts`), botão **"Aprovar e Publicar"**,
       salva `url_recurso`. Falta só clicar pela UI com um `design_id` real.

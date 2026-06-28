@@ -62,3 +62,7 @@ lps/
 
 # environment variables
 .env
+
+# prints do Gerenciador de Eventos (Meta) — só inspeção local (podem ter dados da conta)
+prints_gerenciador/*
+!prints_gerenciador/LEIA-ME.md
