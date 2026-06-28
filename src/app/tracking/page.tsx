@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import {
   getTrackingPixels, salvarTrackingPixel, setPixelAtivo, excluirTrackingPixel,
+  excluirTracking,
   type TrackingPixelSafe,
 } from '../actions/tracking';
 
@@ -124,6 +125,17 @@ export default function TrackingPage() {
     }
   }
 
+  async function removerTracking(tk: TrackingRow, nome: string) {
+    if (!confirm(`Remover o tracking FOP de "${nome}"? A página volta a ficar sem rastreamento e pode ser reinstalada.`)) return;
+    setErro(null);
+    try {
+      await excluirTracking(tk.id);
+      await fetchTudo();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao remover tracking');
+    }
+  }
+
   const temPixel = pixels.some((p) => p.ativo && p.tem_token);
 
   return (
@@ -205,15 +217,26 @@ export default function TrackingPage() {
                           </div>
                         </div>
                       </button>
-                      <button
-                        onClick={() => instalar(d)}
-                        disabled={isGerando}
-                        title={tk?.status === 'instalado' ? 'Reinstalar tracking' : 'Instalar tracking FOP'}
-                        className="flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 shrink-0"
-                      >
-                        {isGerando ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                        {isGerando ? 'Instalando…' : tk?.status === 'instalado' ? 'Reinstalar' : 'Instalar FOP'}
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => instalar(d)}
+                          disabled={isGerando}
+                          title={tk?.status === 'instalado' ? 'Reinstalar tracking' : 'Instalar tracking FOP'}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {isGerando ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                          {isGerando ? 'Instalando…' : tk?.status === 'instalado' ? 'Reinstalar' : 'Instalar FOP'}
+                        </button>
+                        {tk?.status === 'instalado' && !isGerando && (
+                          <button
+                            onClick={() => removerTracking(tk, (d.campanha_id && campanhas[d.campanha_id]) || 'esta página')}
+                            title="Remover tracking FOP desta página"
+                            className="flex items-center justify-center w-8 h-8 text-secondary hover:text-status-red hover:bg-status-red/10 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {aberto && (

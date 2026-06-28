@@ -334,14 +334,30 @@ export default function DesignPage() {
 
           <div className="p-5 border-t border-surface-elevated bg-[#0a0a0f] space-y-3">
             {activeLp?.url_recurso ? (
-              <a
-                href={activeLp.url_recurso}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full bg-status-green/20 hover:bg-status-green/30 text-status-green border border-status-green/30 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-colors"
-              >
-                <Globe size={16} /> No Ar — Abrir Página
-              </a>
+              <>
+                <a
+                  href={activeLp.url_recurso}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-status-green/20 hover:bg-status-green/30 text-status-green border border-status-green/30 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-colors"
+                >
+                  <Globe size={16} /> No Ar — Abrir Página
+                </a>
+                {/* Republicar: refaz o deploy no Cloudflare (recria o projeto se foi
+                    apagado) e leva a versão atual — incl. o FOP se o Tracking já foi
+                    instalado. Útil após mexer no design ou no tracking. */}
+                <button
+                  onClick={() => publicarPagina(activeLp)}
+                  disabled={!activeLp?.codigo_html || publicando === activeLp?.id}
+                  className="w-full bg-surface hover:bg-surface-elevated text-secondary hover:text-white border border-surface-elevated py-2.5 rounded-lg flex items-center justify-center gap-2 text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {publicando === activeLp?.id ? (
+                    <><Loader2 size={14} className="animate-spin" /> Republicando…</>
+                  ) : (
+                    <><Rocket size={14} /> Republicar</>
+                  )}
+                </button>
+              </>
             ) : (
               <button
                 onClick={() => publicarPagina(activeLp)}

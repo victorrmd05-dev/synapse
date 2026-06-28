@@ -51,6 +51,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // Se o Tracking (FOP) já foi instalado nesta página, publica a versão
+    // INSTRUMENTADA (codigo_html_final) — senão a LP no ar sairia sem Pixel/CAPI
+    // e o teste de eventos no Gerenciador da Meta falharia. Sem tracking, cai no
+    // HTML puro do Designer.
+    const { data: tracking } = await supabase
+      .from('workflow_tracking')
+      .select('codigo_html_final, status')
+      .eq('design_id', design_id)
+      .maybeSingle();
+
+    const htmlParaPublicar =
+      tracking?.status === 'instalado' && tracking.codigo_html_final
+        ? tracking.codigo_html_final
+        : design.codigo_html;
+
     // 2. Nome da campanha -> slug do projeto Pages
     let nomeProjeto = design_id;
     if (design.campanha_id) {
@@ -67,7 +82,7 @@ export async function POST(request: Request) {
     // 3. Deploy via Wrangler
     let resultado;
     try {
-      resultado = await deployHtmlToPages({ slug: slugBase, html: design.codigo_html });
+      resultado = await deployHtmlToPages({ slug: slugBase, html: htmlParaPublicar });
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'erro desconhecido';
       console.error('[api/deploy] falha no Wrangler:', msg);

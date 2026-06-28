@@ -1,7 +1,7 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-06-27 — **Token Meta (System User) VALIDADO** (leitura + escrita reais na conta de anúncios; base pro Gestor-Meta-Ads). Antes: deploy de LPs no Cloudflare Pages (Wrangler), novo agente Tracking (FOP: Pixel + CAPI), motor do Designer, correção de corrida no Revisor.
+> Última atualização: 2026-06-28 — **Tracking (FOP) VALIDADO ponta a ponta** (LP no ar disparando Pixel + CAPI, eventos deduplicados no Events Manager). Relay migrado para **Supabase Edge Function** (`track-capi`), deploy passou a publicar a versão com FOP, botão **Republicar** em /design e **Remover tracking** em /tracking. Antes: Token Meta (System User) validado, deploy de LPs no Cloudflare Pages, motor do Designer, correção de corrida no Revisor.
 
 ---
 
@@ -383,6 +383,44 @@ Rode a sincronização em /agents…"*.
 
 ---
 
+## 📡 Tracking (FOP) — VALIDADO PONTA A PONTA + relay migrado p/ Edge Function (28/06/2026)
+Teste real do Fernando: LP publicada no Cloudflare disparando eventos, **dedup confirmada no
+Events Manager** (ViewContent, AddToWishlist, InitiateCheckout vindo 2× — Navegador + Servidor —
+com mesmo `event_id`). `tracking_eventos`: **todos `sucesso=true`, zero falha**.
+
+**Por que não funcionava antes (cadeia de bugs, todos resolvidos):**
+1. **Relay apontava pra `localhost`.** `resolveCapiEndpoint` caía no fallback `new URL(request.url).origin`
+   (= localhost:3000) porque `TRACKING_CAPI_ENDPOINT` estava comentado no `.env.local`. A LP no
+   Cloudflare (https) não alcança o localhost do PC + mixed content → o `fetch` do CAPI morria no
+   `.catch()` silencioso. **Raiz real:** o Synapse só roda local, não há URL pública pro relay Next.
+   → **Solução: relay portado pra Supabase Edge Function** `supabase/functions/track-capi/` (Deno,
+   `verify_jwt:false` — endpoint público), espelha byte-exato a normalização/SHA256 do `fop.ts`.
+   URL: `https://apdjykklderoyiosmytw.supabase.co/functions/v1/track-capi`. Setado em
+   `TRACKING_CAPI_ENDPOINT`. **Desacopla o tracking do app estar online.**
+2. **Deploy publicava o HTML SEM FOP.** `/api/deploy` usava `workflow_design.codigo_html` (sem
+   tracking). → Corrigido pra preferir `workflow_tracking.codigo_html_final` quando `status='instalado'`.
+3. **Sem botão de Republicar.** Depois de publicada (`url_recurso` setada), a UI só mostrava link
+   "No Ar" — não dava pra subir de novo após reinstalar o FOP. → Botão **Republicar** em /design
+   (deploy é idempotente: recria o projeto Cloudflare se foi apagado).
+4. **Pixel ID com e-mail.** O pixel da LP estava cadastrado com `victor.rmd.05@gmail.com` no campo
+   Pixel ID → ID inválido → extensão "nenhum pixel detectado". Corrigido na UI p/ ID numérico.
+5. **CORS com barra final.** `dominio_permitido` cadastrado com `/` no fim não casava com a `Origin`
+   (sem barra) → Edge Function bloquearia o CAPI. → `corsHeaders` agora normaliza barra/caixa.
+
+**Fluxo correto (ordem importa):** reiniciar dev (carrega env) → /tracking **Reinstalar** (reassa a
+URL da Edge no HTML) → /design **Republicar** (sobe a versão com FOP) → testar.
+
+**Gaps menores conhecidos (não bloqueiam):**
+- **PageView** dispara só no navegador (fica no `<head>`, fora do `sendEvent`/relay) → não dedupa.
+  Fechar depois: gerar `event_id` compartilhado e espelhar PageView pro servidor.
+- Builder FOP **não injeta gatilho de Lord/Lead** no funil B (template tem Lead, mas o body só
+  instrumenta scroll/form/checkout/whatsapp). Avaliar.
+- **Botão Remover tracking** adicionado em /tracking (`excluirTracking()`), faltava antes.
+
+**Validado:** `npx tsc --noEmit` limpo; Edge Function v2 ACTIVE; eventos reais no banco + Meta.
+
+---
+
 ## 📊 Status por agente
 | Agente | Cérebro (.md) | Mãos (rota) | Status |
 |---|---|---|---|
@@ -390,7 +428,7 @@ Rode a sincronização em /agents…"*.
 | Copywriting | ✅ sync | ✅ `/api/copywriting/generate` (OpenAI `gpt-4o-mini`) | **Validado** |
 | Revisor | ✅ sync | ✅ `/api/revisor/review` (OpenAI `gpt-4o-mini`) | **Validado ponta a ponta** |
 | Designer-Webmaster | ✅ marca+Firecrawl+imagens | ✅ `/api/design/generate` + ✅ `/api/deploy` (Cloudflare Pages/Wrangler) | **Motor + deploy OK** (qualidade visual a refinar) |
-| **Tracking** (FOP) | ✅ `agentes/tracking/` | ✅ `/api/tracking/generate` + `/api/track/capi` | **Motor construído** — falta teste ponta a ponta do Fernando |
+| **Tracking** (FOP) | ✅ `agentes/tracking/` | ✅ `/api/tracking/generate` + Edge Function `track-capi` | **Validado ponta a ponta** (dedup real no Events Manager; PageView server pendente) |
 | Video-Maker | ⚠️ sync | ❌ falta Higgsfield | Pendente |
 | Gestor-Meta-Ads | ⚠️ sync | ❌ falta rota | Pendente |
 | CEO / CTO | ✅ sync | aprovação/suporte | Camada humana + futura automação |
@@ -407,8 +445,11 @@ Rode a sincronização em /agents…"*.
       Firecrawl + imagens reais + botão play). **Qualidade a refinar** (Claude com crédito / prompt).
 - [x] ~~Novo agente **Tracking** (FOP: Pixel + CAPI)~~ → **construído** (26/06): `/api/tracking/generate`
       + relay `/api/track/capi` + página `/tracking` + tabelas. **Falta teste ponta a ponta do Fernando.**
-- [ ] **Tracking: validar ponta a ponta** (sincronizar agente → cadastrar pixel+token → play → ver
-      eventos deduplicados no Events Manager) e medir EMQ. Avaliar migrar relay p/ Supabase Edge Function.
+- [x] ~~**Tracking: validar ponta a ponta**~~ → **feito e validado (28/06)**: dedup real no Events
+      Manager, relay migrado p/ **Supabase Edge Function** (`track-capi`), deploy publica versão com
+      FOP, botões Republicar/Remover. Ver seção "Tracking (FOP) — VALIDADO" acima.
+- [ ] **Tracking: fechar PageView server-side** (hoje só dispara no navegador → não dedupa) e medir EMQ
+      por evento no Events Manager (meta ≥ 6.0). Avaliar gatilho de Lead no funil B.
 - [x] ~~**Designer: deploy** `/api/deploy` + conectar "Aprovar para Tráfego"~~ → **feito e validado**
       (26/06): Cloudflare Pages via Wrangler (`src/lib/cloudflare.ts`), botão **"Aprovar e Publicar"**,
       salva `url_recurso`. Falta só clicar pela UI com um `design_id` real.

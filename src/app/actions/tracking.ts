@@ -100,3 +100,12 @@ export async function excluirTrackingPixel(id: string) {
   if (error) throw new Error('Falha ao excluir pixel: ' + error.message);
   return { ok: true };
 }
+
+// Remove a instalação de tracking (ordem de serviço) de uma página. Apaga só o
+// registro em workflow_tracking — não mexe no design nem na LP já publicada;
+// a página volta a aparecer como "Sem tracking" e pode ser reinstalada.
+export async function excluirTracking(id: string) {
+  const { error } = await supabaseServer.from('workflow_tracking').delete().eq('id', id);
+  if (error) throw new Error('Falha ao remover tracking: ' + error.message);
+  return { ok: true };
+}
