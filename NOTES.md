@@ -525,6 +525,24 @@ visivelmente superior à do gpt-4o-mini — preferir Claude quando houver crédi
 
 ---
 
+## 🖼️ Mineração — miniatura do card reflete o anúncio REAL (carrossel) (29/06/2026)
+O card de `/mineracao` mostrava sempre um **smartwatch** (placeholder Unsplash hardcoded) nos
+anúncios de imagem. **Causa raiz:** a maioria dos anúncios é **carrossel** → a imagem vive em
+`snapshot.cards[]` (cada card tem `original_image_url`/`resized_image_url`/`video_preview_image_url`),
+mas o código só lia `snapshot.images`/`videos` → `image_url` vazio → caía no placeholder.
+- **Helper novo `src/lib/minerador-media.ts`** (`pickThumbnail`/`pickVideos`/`pickImages`): olha
+  images, videos **E cards**. Puro (sem dep de servidor) → usado na rota `mineracao/run` (salva a
+  imagem certa) e no componente client `/mineracao` (corrige os já minerados lendo do `raw_json`).
+- **Smartwatch removido**: sem imagem (ou URL FB expirada) → placeholder neutro **"sem imagem"**
+  com ícone `ImageOff` + `onError` no `<img>` do card e do modal. Vídeo segue com a thumbnail.
+- **Validado:** `tsc` limpo; URL real de card testada → HTTP 200 (carrega). Anúncios existentes
+  passam a mostrar a imagem real sem re-minerar.
+- ⚠️ **FB CDN expira**: URLs de imagem do Facebook têm validade. Recém-minerados mostram a imagem
+  real; muito antigos podem cair no "sem imagem". Fix definitivo (futuro): baixar a imagem e
+  guardar no Supabase Storage na mineração → card nunca quebra.
+
+---
+
 ## 📊 Status por agente
 | Agente | Cérebro (.md) | Mãos (rota) | Status |
 |---|---|---|---|

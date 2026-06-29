@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, RefreshCw, Star, X, Database, CheckCircle2, Globe, BookOpen, Video as VideoIcon, PlayCircle, Trash2, Sparkles, Loader2, Heart } from 'lucide-react';
+import { Search, RefreshCw, Star, X, Database, CheckCircle2, Globe, BookOpen, Video as VideoIcon, PlayCircle, Trash2, Sparkles, Loader2, Heart, ImageOff } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { pickThumbnail, pickVideos } from '../../lib/minerador-media';
 
 // Países para mineração. A jogada clássica de dropshipping/low-ticket é garimpar
 // ofertas já VALIDADAS na gringa (EUA, Europa) e trazer pro Brasil. O código ISO-2
@@ -59,7 +60,7 @@ export default function MineracaoPage() {
       
     if (!error && data) {
       const mappedData = data.map(ad => {
-        let hdImage = ad.image_url;
+        let hdImage: string | null = ad.image_url || null;
         let videos: string[] = ad.video_urls || [];
 
         try {
@@ -67,18 +68,9 @@ export default function MineracaoPage() {
             const raw = typeof ad.raw_json === 'string' ? JSON.parse(ad.raw_json) : ad.raw_json;
             const snap = raw.snapshot;
             if (snap) {
-              if (snap.images && snap.images.length > 0) {
-                hdImage = snap.images[0].original_image_url || snap.images[0].resized_image_url || hdImage;
-              } else if (snap.videos && snap.videos.length > 0) {
-                hdImage = snap.videos[0].video_preview_image_url || hdImage;
-              }
-              // Fallback: se a coluna video_urls estiver vazia, extrai o vídeo do raw_json
-              if (videos.length === 0) {
-                const allVideos = [...(snap.videos || []), ...(snap.extra_videos || [])];
-                videos = allVideos
-                  .map((v: any) => v?.video_hd_url || v?.video_sd_url)
-                  .filter((u: any) => typeof u === 'string' && u.length > 0);
-              }
+              // Reextrai do snapshot (cobre carrossel, onde a imagem vive em cards[]).
+              hdImage = pickThumbnail(snap) || hdImage;
+              if (videos.length === 0) videos = pickVideos(snap);
             }
           }
         } catch (e) {
@@ -92,7 +84,7 @@ export default function MineracaoPage() {
           categoria_ia: ad.categoria_ia || null,
           notas_ia: ad.notas_ia || null,
           favorito: ad.favorito || false,
-          image_url: hdImage || 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?q=80&w=600',
+          image_url: hdImage || null,
           page_name: ad.page_name || 'Desconhecido',
           page_profile_pic_url: ad.page_profile_pic_url || '',
           ad_copy: ad.ad_copy || '',
@@ -383,7 +375,19 @@ export default function MineracaoPage() {
             className="bg-surface border border-surface-elevated rounded-xl overflow-hidden flex flex-col hover:border-primary/50 cursor-pointer transition-colors group shadow-lg"
           >
             <div className="relative h-64 w-full bg-[#0a0a0f] overflow-hidden">
-              <img src={item.image_url} alt={item.title} className="w-full h-full object-cover opacity-90 mix-blend-lighten group-hover:scale-105 transition-transform duration-500" />
+              {/* Placeholder neutro atrás: aparece se não houver imagem ou se a URL do FB expirar */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-secondary/40">
+                <ImageOff size={30} />
+                <span className="text-[10px] uppercase tracking-wider">sem imagem</span>
+              </div>
+              {item.image_url && (
+                <img
+                  src={item.image_url}
+                  alt={item.title}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }}
+                  className="relative w-full h-full object-cover opacity-90 mix-blend-lighten group-hover:scale-105 transition-transform duration-500"
+                />
+              )}
               {item.video_url && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <PlayCircle size={48} className="text-white/80 drop-shadow-lg" />
@@ -498,14 +502,24 @@ export default function MineracaoPage() {
               {/* Media */}
               <div className="w-full bg-black relative">
                 {selectedAd.video_url ? (
-                  <video 
-                    src={selectedAd.video_url} 
-                    poster={selectedAd.image_url}
-                    controls 
+                  <video
+                    src={selectedAd.video_url}
+                    poster={selectedAd.image_url || undefined}
+                    controls
+                    className="w-full max-h-[500px] object-contain"
+                  />
+                ) : selectedAd.image_url ? (
+                  <img
+                    src={selectedAd.image_url}
+                    alt="Ad Media"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                     className="w-full max-h-[500px] object-contain"
                   />
                 ) : (
-                  <img src={selectedAd.image_url} alt="Ad Media" className="w-full max-h-[500px] object-contain" />
+                  <div className="w-full h-64 flex flex-col items-center justify-center gap-2 text-secondary/40">
+                    <ImageOff size={32} />
+                    <span className="text-xs uppercase tracking-wider">sem imagem disponível</span>
+                  </div>
                 )}
               </div>
 

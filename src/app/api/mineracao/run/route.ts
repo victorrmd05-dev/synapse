@@ -19,6 +19,7 @@ import { supabaseServer as supabase } from '@/lib/supabase-server';
 import { getAgentConfig, buildSystemPrompt } from '@/lib/agents/buildSystemPrompt';
 import { gerarJSONComAgente, parseJSONFlexivel } from '@/lib/agents/generateWithProvider';
 import { naListaNegra } from '@/lib/minerador-blacklist';
+import { pickThumbnail, pickVideos, pickImages } from '@/lib/minerador-media';
 
 // A avaliação roda no provider do agente (agentes_config.modelo). Hoje: Claude.
 // gerarJSONComAgente cai p/ OpenAI automaticamente se o Claude falhar.
@@ -200,27 +201,14 @@ export async function POST(request: Request) {
       // ScrapeCreators devolve os vídeos em snapshot.videos (+ extra_videos nos
       // carrosséis) com video_hd_url/video_sd_url + um frame de preview. Antes só
       // salvávamos imagem — por isso vídeos nunca apareciam no painel.
-      const videosArr: any[] = [
-        ...(Array.isArray(snap.videos) ? snap.videos : []),
-        ...(Array.isArray(snap.extra_videos) ? snap.extra_videos : []),
-      ];
-      const temVideo = videosArr.length > 0;
-      const videoUrls: string[] = videosArr
-        .map((v) => v?.video_hd_url || v?.video_sd_url)
-        .filter((u): u is string => typeof u === 'string' && u.length > 0);
-      const videoPreview: string | null = videosArr[0]?.video_preview_image_url ?? null;
-
-      const imagesArr: any[] = [
-        ...(Array.isArray(snap.images) ? snap.images : []),
-        ...(Array.isArray(snap.extra_images) ? snap.extra_images : []),
-      ];
-      // Imagem principal: imagem real do anúncio ou, se for vídeo, o frame de preview.
-      const imageUrl: string | null =
-        imagesArr[0]?.original_image_url ?? imagesArr[0]?.resized_image_url ?? videoPreview ?? null;
-      const extraImageUrls: string[] = imagesArr
-        .slice(1)
-        .map((i) => i?.original_image_url || i?.resized_image_url)
-        .filter((u): u is string => typeof u === 'string' && u.length > 0);
+      // Mídia: olha images, videos E cards (carrossel — onde a maioria dos anúncios
+      // guarda a imagem real). Ver src/lib/minerador-media.ts.
+      const videoUrls: string[] = pickVideos(snap);
+      const temVideo = videoUrls.length > 0;
+      const todasImagens: string[] = pickImages(snap);
+      // Imagem principal = melhor miniatura (imagem estática ou frame de preview de vídeo).
+      const imageUrl: string | null = pickThumbnail(snap);
+      const extraImageUrls: string[] = todasImagens.filter((u) => u !== imageUrl);
 
       // 2a. Avaliação pela IA (com fallback heurístico)
       let aval: Avaliacao | null = null;
@@ -300,7 +288,8 @@ Responda SOMENTE com o JSON no formato definido na sua SKILL.`;
         display_format: snap.display_format ?? null,
         link_url: linkUrl,
         image_url: imageUrl,
-        image_resized_url: imagesArr[0]?.resized_image_url ?? null,
+        // 2ª imagem (galeria) — útil pro Designer; null quando só há a principal.
+        image_resized_url: extraImageUrls[0] ?? null,
         video_urls: videoUrls.length > 0 ? videoUrls : null,
         extra_image_urls: extraImageUrls.length > 0 ? extraImageUrls : null,
         cards_json: Array.isArray(snap.cards) && snap.cards.length > 0 ? snap.cards : null,
