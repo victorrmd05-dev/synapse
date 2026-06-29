@@ -1,6 +1,12 @@
 import React from 'react';
 
-export const ClaudeAdsHealth = ({ score = 85 }: { score?: number }) => {
+interface ClaudeAdsHealthProps {
+  score?: number;
+  onAudit?: () => void;
+  isAuditing?: boolean;
+}
+
+export const ClaudeAdsHealth = ({ score = 85, onAudit, isAuditing }: ClaudeAdsHealthProps) => {
   const getScoreColor = (s: number) => {
     if (s >= 90) return 'text-[#10B981]'; // Green A
     if (s >= 75) return 'text-[#10B981]'; // Green B
@@ -64,9 +70,13 @@ export const ClaudeAdsHealth = ({ score = 85 }: { score?: number }) => {
 
       {/* Action Buttons */}
       <div className="flex flex-col gap-2 mt-auto">
-        <button className="w-full py-2.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
-          <span>Rodar Auditoria Completa</span>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+        <button
+          onClick={onAudit}
+          disabled={isAuditing}
+          className="w-full py-2.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          <span>{isAuditing ? 'Analisando campanhas…' : 'Rodar Auditoria Completa'}</span>
+          <svg className={`w-4 h-4 ${isAuditing ? 'animate-pulse' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
         </button>
         <button className="w-full py-2.5 bg-[#2A2A38] hover:bg-[#3A3A48] text-[#F1F1F3] text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2 border border-[#3A3A48]">
           <span>Exportar Relatório PDF</span>

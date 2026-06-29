@@ -69,8 +69,8 @@ export function CampaignCard({ campaign, diagnostic, ticketMedio = 100 }: Campai
           <span className="text-[#6366F1]">✦ IA:</span>
           {diagnostic ? diagnostic.gargalo : 'Analisando...'}
         </div>
-        <Link 
-          href={`/campanhas/${campaign.id}`}
+        <Link
+          href={`/meta-ads/campanhas?campaign=${campaign.id}`}
           className="text-[12px] bg-[#2A2A38] hover:bg-[#343446] text-[#F1F1F3] px-3 py-1.5 rounded transition-colors whitespace-nowrap"
         >
           Ver Detalhes

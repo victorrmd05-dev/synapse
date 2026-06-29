@@ -38,13 +38,16 @@ export function AIAnalyst({ diagnostic }: AIAnalystProps) {
         Diagnóstico IA — Analista de Performance
       </h3>
       
+      {diagnostic.gargalo && (
+        <div className="mb-3 flex items-center gap-2">
+          <span className="text-[9px] uppercase tracking-wider text-[#8B8BA0] font-bold">Gargalo principal:</span>
+          <span className="text-[11px] text-[#F1F1F3] font-medium">{diagnostic.gargalo}</span>
+        </div>
+      )}
+
       <div className="mb-6">
-        <p className="text-[#8B8BA0] text-[11px] leading-relaxed">
-          {/* using hardcoded text to match the image exactly for the demo */}
-          A campanha apresenta <strong className="text-[#F1F1F3] font-medium">ROAS excelente (3.4x)</strong> e funil bem calibrado. 
-          O Connect Rate (84%) está marginalmente acima do mínimo de 80% — há oportunidade de otimizar a velocidade da 
-          LP para empurrar para 90%+, o que pode aumentar as vendas em até <strong className="text-[#F1F1F3] font-medium">7% sem aumentar orçamento</strong>. 
-          Recomendo escalar com cautela: +20% no orçamento, monitorando CPA por 48h.
+        <p className="text-[#8B8BA0] text-[11px] leading-relaxed whitespace-pre-line">
+          {diagnostic.diagnostico}
         </p>
       </div>
 

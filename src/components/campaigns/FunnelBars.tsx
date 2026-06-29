@@ -66,14 +66,39 @@ export function FunnelBars({ metrics }: FunnelBarsProps) {
         <ProgressBar label="Conversão Global" value={metrics.conversao_global * 100} target={1} />
       </div>
 
-      <div className="mt-4 p-4 rounded-md border text-center bg-[#062112] border-[#0c3b1f]">
-        <h4 className="text-[12px] font-bold text-[#22C55E]">
-          Campanha ESCALÁVEL — Todos os critérios atingidos
-        </h4>
-        <p className="text-[11px] text-[#4ade80] opacity-80 mt-1">
-          Connect Rate marginalmente acima do mínimo — monitorar
-        </p>
-      </div>
+      {(() => {
+        const status = metrics.escala_status;
+        const cfg =
+          status === 'escalavel'
+            ? {
+                box: 'bg-[#062112] border-[#0c3b1f]',
+                title: 'text-[#22C55E]',
+                sub: 'text-[#4ade80]',
+                titulo: 'Campanha ESCALÁVEL — critérios de escala atingidos',
+                texto: 'Escalar com cautela e monitorar CPA/frequência.',
+              }
+            : status === 'nao_escalar'
+            ? {
+                box: 'bg-[#2a0d0d] border-[#4d1414]',
+                title: 'text-[#EF4444]',
+                sub: 'text-[#f87171]',
+                titulo: 'Campanha NÃO ESCALÁVEL — gargalo no funil',
+                texto: 'Resolver o gargalo apontado antes de aumentar verba.',
+              }
+            : {
+                box: 'bg-[#2a230a] border-[#4d3f14]',
+                title: 'text-[#EAB308]',
+                sub: 'text-[#facc15]',
+                titulo: 'Campanha em OTIMIZAÇÃO — ainda não escalar',
+                texto: 'Otimizar as etapas abaixo da meta antes de escalar.',
+              };
+        return (
+          <div className={`mt-4 p-4 rounded-md border text-center ${cfg.box}`}>
+            <h4 className={`text-[12px] font-bold ${cfg.title}`}>{cfg.titulo}</h4>
+            <p className={`text-[11px] ${cfg.sub} opacity-80 mt-1`}>{cfg.texto}</p>
+          </div>
+        );
+      })()}
     </div>
   );
 }

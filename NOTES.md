@@ -1,7 +1,7 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-06-28 — **Tracking (FOP) VALIDADO ponta a ponta** (LP no ar disparando Pixel + CAPI, eventos deduplicados no Events Manager). Relay migrado para **Supabase Edge Function** (`track-capi`), deploy passou a publicar a versão com FOP, botão **Republicar** em /design e **Remover tracking** em /tracking. Antes: Token Meta (System User) validado, deploy de LPs no Cloudflare Pages, motor do Designer, correção de corrida no Revisor.
+> Última atualização: 2026-06-29 — **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
 
 ---
 
@@ -424,6 +424,106 @@ URL da Edge no HTML) → /design **Republicar** (sobe a versão com FOP) → tes
 
 ---
 
+## 📊 Gestor-Meta-Ads — DASHBOARD LIGADO A DADOS REAIS (29/06/2026)
+Fechando o ciclo da parte de tráfego pago: o dashboard era 100% mock e as rotas
+`/api/meta/sync` e `/api/meta/accounts` eram stubs vazios. Agora a **leitura** é real.
+
+**Conta:** Cavalheiros (`META_AD_ACCOUNT_ID=act_814261946562792`, BRL). 2 campanhas ativas
+(`[CP-02][Tráfego][loja]` → loja Shopify; `[CP-01][Curtidas funpage]` → awareness) + 5 pausadas.
+
+**O que foi feito:**
+- **Tabelas novas** (migration `create_meta_ads_tables`): `meta_campaigns` (cache de atributos,
+  `meta_campaign_id` UNIQUE) e `meta_campaign_metrics` (snapshot por `data`, upsert em
+  `meta_campaign_id+data` p/ histórico). RLS on + policy pública (convenção do projeto).
+- **`src/lib/meta-api.ts`**: novo `fetchMetaInsights()` real chamando `/insights` (level=campaign,
+  `date_preset=maximum`) com `actions`/`action_values`/`purchase_roas`. Helper `extractAction()`
+  testa vários `action_type` (`omni_purchase`/`purchase`/`offsite_conversion.fb_pixel_purchase`),
+  pois a Meta nomeia o mesmo evento de formas diferentes conforme o tracking. `fetchMetaMetrics`
+  mock (números chumbados) foi removido.
+- **`/api/meta/sync`** (era stub): puxa campanhas + insights em paralelo, calcula derivadas
+  (`connect_rate=lp/cliques`, `conversao_lp`, `conversao_checkout`, `conversao_global`, `cpa`,
+  `escala_status`) e faz upsert nas 2 tabelas. Usa `supabaseServer` (service_role). Retorna relatório.
+- **Dashboard** (`/meta-ads/dashboard`): trocado mock → leitura real do Supabase com Realtime,
+  botão **Sync Data** chama `/api/meta/sync`, estado inicial "sincronizar agora", "Distribuição de
+  Verba" agora é gasto real por objetivo, `ClaudeAdsHealth` recebe score data-driven (CTR+connect).
+  **Banner honesto**: quando `compras=0`, avisa "funil de compra aguardando 1ª venda".
+
+**Heurística `escala_status`** (provisória, refinar no agente depois): `escalavel` se roas≥2 e
+compras>0; `nao_escalar` se gasto>0 e sem LP views; senão `otimizar`.
+
+**Validado (29/06):** `/insights` testado com o token do app (não só MCP) → 7 campanhas, a de
+tráfego com 17 LP views, connect_rate 65,4% (17/26). Sync real disparado no dev server →
+`7/7 campanhas`, dados conferidos no Supabase. `compras`/`roas`=0 nas 7 (esperado: nenhuma é
+campanha de compra ainda). `npx tsc --noEmit` limpo (único erro é em `scratch/`, pré-existente).
+
+**AI Diagnostic real (29/06):** rota `/api/meta/diagnose` (POST, opcional `meta_campaign_id`)
+usa o **cérebro do agente Gestor-Meta-Ads** (`getAgentConfig`+`buildSystemPrompt`) + um
+**CONTRATO DE SAÍDA JSON** anexado (o brain responde em markdown por padrão; aqui sobrescreve
+p/ JSON `{gargalo, diagnostico, prioridade, recomendacoes[]}`). Roda nas campanhas ativas, grava
+em `meta_ai_diagnostics` (upsert por dia). **Provider-aware com fallback**: modelo `claude*` →
+Anthropic, e se falhar (ex.: sem crédito) cai p/ OpenAI `gpt-4o-mini` (JSON mode) sozinho — sem
+mudar config; volta pro Claude quando houver crédito. Dashboard lê via Realtime, passa ao
+`CampaignCard`, e o botão **"Rodar Auditoria Completa"** do `ClaudeAdsHealth` dispara a rota.
+**Validado (29/06):** 2/2 campanhas diagnosticadas (uma no Claude, uma no fallback OpenAI),
+gargalos coerentes (tráfego→Connect Rate; awareness→CTR 0,03%). Nota: a qualidade do Claude é
+visivelmente superior à do gpt-4o-mini — preferir Claude quando houver crédito.
+
+**Página Campanhas real + provider Claude (29/06, parte 2):**
+- **Design/Webmaster → Claude**: `DESIGN_PROVIDER=anthropic` no `.env.local` (Fernando pôs crédito
+  + chave nova). Reiniciar dev server p/ valer. Gestor-Meta-Ads **já estava** no Claude (a rota
+  diagnose usa `config.modelo=claude-sonnet-4-6`; só cai p/ OpenAI se Claude falhar).
+- **`/meta-ads/campanhas` reconstruída** (era mock "Verão 2024"): agora lê Supabase com Realtime,
+  tem **seletor de campanha** (dropdown; aceita `?campaign=<id>` na URL — essencial p/ escala com
+  várias campanhas ativas), métricas reais (`MetaMetricsGrid`), `FunnelBars` 80×10×10 e `AIAnalyst`
+  agora **dinâmicos** (eram hardcoded), e botão **"Pedir diagnóstico desta campanha"** →
+  `POST /api/meta/diagnose {meta_campaign_id}`.
+- **"Ver Detalhes"** do card do Dashboard agora aponta p/ `/meta-ads/campanhas?campaign=<id>`
+  (antes ia p/ `/campanhas/[id]`, rota inexistente).
+- **Validado (29/06):** página GET 200, diagnose por campanha 1/1, `tsc` limpo.
+
+**Pendente desta frente:**
+- ✅ **Execução autônoma — METADE 1 (gerar plano + aprovar) FEITA E VALIDADA (29/06)**.
+  Decisões do Fernando: **v1 estreita** (duplicar + ajustar, sem criativo novo) + **sempre PAUSED**.
+  - Helper compartilhado `src/lib/agents/generateWithProvider.ts` (`gerarJSONComAgente` provider-aware
+    com fallback + `parseJSONFlexivel`); rota diagnose refatorada p/ usar (sem regressão).
+  - Tabela `meta_optimization_plans` (status: pendente|aprovado|rejeitado|executado|erro).
+  - `POST /api/meta/optimize/plan {meta_campaign_id}` → agente gera PLANO estruturado (nova_campanha:
+    nome/objetivo/budget + ajustes de budget/objetivo/segmentação/posicionamento + racional 80×10×10
+    + riscos). Persistido 'pendente'. **Qualidade Claude excelente** (ex.: detectou Connect Rate 65%,
+    propôs remover Audience Network + trocar evento de otimização p/ Landing Page Views, manteve
+    OUTCOME_TRAFFIC por não haver checkout ainda).
+  - `POST /api/meta/optimize/approve {plan_id, decisao}` → trava do orquestrador (pendente→aprovado/
+    rejeitado). NÃO escreve no Meta.
+  - UI: componente `OptimizationPlan` na página Campanhas (gerar → revisar ajustes/racional/riscos →
+    Aprovar/Rejeitar), com Realtime. Validado: plan 1/1, approve pendente→aprovado, página GET 200.
+- ✅ **Execução autônoma — METADE 2 (escrever no Meta) FEITA E VALIDADA NA CONTA REAL (29/06)**.
+  `POST /api/meta/optimize/execute {plan_id}` (só roda com plano 'aprovado'): lê a estrutura da
+  campanha-fonte no Graph e **recria tudo em PAUSED**. Helpers novos em `meta-api.ts`:
+  `getCampaignAdSets`/`getAdSetAds` (lê config completa) + `createCampaignV2`/`createAdSetV2`/
+  `createAdV2`/`deleteEntity` (+ `graphGet`/`graphPost` com erro rico). Reaproveita o `creative_id`
+  da fonte (duplicata real, sem re-upload). UI: botão **"Executar — criar campanha otimizada (PAUSED)"**
+  no componente `OptimizationPlan` (com confirm), mostra resultado + link pro Gerenciador. Status do
+  plano → 'executado'.
+  - **v1 (decisão de segurança):** mantém o **objetivo da fonte** (mudar objetivo exige reconfigurar
+    optimization_goal/promoted_object junto — manual por ora); aplica budget + optimization_goal +
+    posicionamento (bloco `execucao` do plano: `remover_audience_network`, `somente_mobile`,
+    `optimization_goal`). Piso de budget R$6/dia. Se 0 conjuntos forem criados, **apaga a campanha
+    vazia** e não marca executado.
+  - **Bugs resolvidos no teste real:** (1) campanha exigia `is_adset_budget_sharing_enabled=false`
+    (ABO); (2) conjunto exigia `bid_strategy=LOWEST_COST_WITHOUT_CAP` (senão pede bid_amount,
+    subcode 2490487). Limpei a campanha-vazia da 1ª tentativa via Graph DELETE.
+  - **Validado:** criou `[CP-02]...— OTIM v1` (id `120245932633660108`) PAUSED, 1 conjunto (R$6/dia)
+    + 1 anúncio reaproveitando o criativo. Confirmado independente via MCP (status PAUSED). `tsc` limpo,
+    página GET 200.
+  - **Nota:** o plano usado no teste foi gerado ANTES do bloco `execucao` → saiu duplicata fiel só com
+    budget. Planos novos já incluem `execucao` (ex.: remover Audience Network + LP-views) e aplicam.
+- Página `/meta-ads/campanhas/[id]` (dinâmica) ficou órfã/mock — o card agora usa `?campaign=`.
+  Avaliar remover ou redirecionar. `TrendChart` ainda é ilustrativo (só temos 1 snapshot/dia).
+- Subir a campanha de compra pra "acender" o funil inteiro. ⚠️ `META_ACCESS_TOKEN` (e agora a
+  chave nova da Anthropic) apareceram no chat — rotacionar.
+
+---
+
 ## 📊 Status por agente
 | Agente | Cérebro (.md) | Mãos (rota) | Status |
 |---|---|---|---|
@@ -433,7 +533,7 @@ URL da Edge no HTML) → /design **Republicar** (sobe a versão com FOP) → tes
 | Designer-Webmaster | ✅ marca+Firecrawl+imagens | ✅ `/api/design/generate` + ✅ `/api/deploy` (Cloudflare Pages/Wrangler) | **Motor + deploy OK** (qualidade visual a refinar) |
 | **Tracking** (FOP) | ✅ `agentes/tracking/` | ✅ `/api/tracking/generate` + Edge Function `track-capi` | **Validado ponta a ponta** (dedup real no Events Manager; PageView server pendente) |
 | Video-Maker | ⚠️ sync | ❌ falta Higgsfield | Pendente |
-| Gestor-Meta-Ads | ⚠️ sync | ❌ falta rota | Pendente |
+| Gestor-Meta-Ads | ✅ sync | ✅ `/api/meta/sync` + `/api/meta/diagnose` (leitura + diagnóstico IA) | **Dashboard real + AI Diagnostic** (falta detalhe `[id]`; subir campanha de compra) |
 | CEO / CTO | ✅ sync | aprovação/suporte | Camada humana + futura automação |
 
 ---
@@ -463,6 +563,17 @@ URL da Edge no HTML) → /design **Republicar** (sobe a versão com FOP) → tes
 - [ ] Templates por agente na Agents Config (ex: Designer-Webmaster → exemplos de LP; entra junto com a decisão landing page x Shopify por produto).
 - [ ] (Limpeza) Remover código órfão do Sistema B de agentes (subpáginas `[agentRole]`, `FileEditor`, etc.).
 - [ ] (Build) Decidir entre `eslint.ignoreDuringBuilds` ou limpar a dívida de lint pré-existente.
+- [x] ~~**Gestor-Meta-Ads: dashboard com dados reais**~~ → **feito e validado (29/06)**: tabelas
+      `meta_campaigns`/`meta_campaign_metrics`, `/api/meta/sync` real, dashboard com Realtime + Sync.
+      Ver seção "Gestor-Meta-Ads — DASHBOARD LIGADO A DADOS REAIS" acima.
+- [x] ~~**Gestor-Meta-Ads: AI Diagnostic real** por campanha~~ → **feito e validado (29/06)**:
+      `/api/meta/diagnose` com cérebro do agente + contrato JSON + fallback OpenAI, tabela
+      `meta_ai_diagnostics`, botão "Rodar Auditoria". Ver seção do Gestor acima.
+- [ ] **Gestor-Meta-Ads: ligar página de detalhe** `/meta-ads/campanhas/[id]` (mock: TrendChart,
+      AIAnalyst) ao Supabase — mostrar o diagnóstico completo (recomendações) e histórico/trend real.
+- [ ] **Validação do ciclo de compra:** subir a campanha de compras (loja Shopify) e conferir que o
+      funil inteiro acende (checkout → venda → ROAS via `omni_purchase`/`purchase_roas`).
+- [ ] **Segurança:** rotacionar `META_ACCESS_TOKEN` (apareceu no chat durante o build de 29/06).
 - [ ] Desenhar RLS real quando houver autenticação.
 
 ---

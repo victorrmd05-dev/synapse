@@ -1,134 +1,349 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, Bell, User } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { ArrowLeft, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/Badge';
 import { MetaMetricsGrid } from '@/components/campaigns/MetaMetricsGrid';
 import { FunnelBars } from '@/components/campaigns/FunnelBars';
 import { AIAnalyst } from '@/components/campaigns/AIAnalyst';
 import { TrendChart } from '@/components/campaigns/TrendChart';
+import { OptimizationPlan, OptimizationPlanRow } from '@/components/campaigns/OptimizationPlan';
+import { Campaign, CampaignMetrics, EscalaStatus, AIDiagnostic } from '@/types';
 
-const mockCampaign = {
-  id: '1',
-  meta_campaign_id: '23849102394',
-  nome: 'Verão 2024 — Broad',
-  objetivo: 'Conversão',
-  conjunto: 'Broad 18-45',
-  metrics: {
-    id: 'm1',
-    campaign_id: '1',
-    data: new Date().toISOString(),
-    impressoes: 248500,
-    alcance: 187200,
-    frequencia: 1.33,
-    cliques_link: 6958,
-    ctr: 2.80,
-    cpc: 1.85,
-    cpm: 18.10,
-    valor_gasto: 4500.00,
-    landing_page_views: 5845,
-    checkouts_iniciados: 701,
-    compras: 360,
-    valor_conversao: 15300.00,
-    roas: 3.4,
-    cpa: 12.50,
-    connect_rate: 0.84, 
-    conversao_lp: 0.12, 
-    conversao_checkout: 0.14, 
-    conversao_global: 0.014, 
-    escala_status: 'escalavel' as const,
-    criado_em: new Date().toISOString()
+function mapRowToCampaign(camp: any, metric: any | undefined): Campaign {
+  const metrics: CampaignMetrics | undefined = metric
+    ? {
+        id: metric.id,
+        campaign_id: camp.meta_campaign_id,
+        data: metric.data,
+        impressoes: Number(metric.impressoes) || 0,
+        alcance: Number(metric.alcance) || 0,
+        frequencia: Number(metric.frequencia) || 0,
+        cliques_link: Number(metric.cliques_link) || 0,
+        ctr: Number(metric.ctr) || 0,
+        cpc: Number(metric.cpc) || 0,
+        cpm: Number(metric.cpm) || 0,
+        valor_gasto: Number(metric.valor_gasto) || 0,
+        landing_page_views: Number(metric.landing_page_views) || 0,
+        checkouts_iniciados: Number(metric.checkouts_iniciados) || 0,
+        compras: Number(metric.compras) || 0,
+        valor_conversao: Number(metric.valor_conversao) || 0,
+        roas: Number(metric.roas) || 0,
+        cpa: Number(metric.cpa) || 0,
+        connect_rate: Number(metric.connect_rate) || 0,
+        conversao_lp: Number(metric.conversao_lp) || 0,
+        conversao_checkout: Number(metric.conversao_checkout) || 0,
+        conversao_global: Number(metric.conversao_global) || 0,
+        escala_status: (metric.escala_status as EscalaStatus) || 'otimizar',
+        criado_em: metric.criado_em,
+      }
+    : undefined;
+
+  return {
+    id: camp.meta_campaign_id,
+    ad_account_id: camp.ad_account_id,
+    meta_campaign_id: camp.meta_campaign_id,
+    nome: camp.nome,
+    status: camp.status,
+    objetivo: camp.objetivo,
+    ativo: camp.ativo,
+    criado_em: camp.criado_em,
+    metrics,
+  };
+}
+
+function CampanhasInner() {
+  const searchParams = useSearchParams();
+  const queryCampaign = searchParams.get('campaign');
+
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [diagnostics, setDiagnostics] = useState<Record<string, AIDiagnostic>>({});
+  const [plans, setPlans] = useState<Record<string, OptimizationPlanRow>>({});
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [isDeciding, setIsDeciding] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const fetchDados = useCallback(async () => {
+    const { data: camps } = await supabase
+      .from('meta_campaigns')
+      .select('*')
+      .order('ativo', { ascending: false });
+    const { data: metrics } = await supabase
+      .from('meta_campaign_metrics')
+      .select('*')
+      .order('data', { ascending: false });
+    const { data: diags } = await supabase
+      .from('meta_ai_diagnostics')
+      .select('*')
+      .order('data', { ascending: false });
+    const { data: planRows } = await supabase
+      .from('meta_optimization_plans')
+      .select('*')
+      .order('criado_em', { ascending: false });
+
+    if (!camps) {
+      setLoading(false);
+      return;
+    }
+
+    // Plano mais recente por campanha
+    const planByCampaign: Record<string, OptimizationPlanRow> = {};
+    for (const p of planRows || []) {
+      if (!planByCampaign[p.meta_campaign_id]) planByCampaign[p.meta_campaign_id] = p as OptimizationPlanRow;
+    }
+    setPlans(planByCampaign);
+
+    const latestMetric = new Map<string, any>();
+    for (const m of metrics || []) {
+      if (!latestMetric.has(m.meta_campaign_id)) latestMetric.set(m.meta_campaign_id, m);
+    }
+
+    const diagByCampaign: Record<string, AIDiagnostic> = {};
+    for (const d of diags || []) {
+      if (!diagByCampaign[d.meta_campaign_id]) {
+        diagByCampaign[d.meta_campaign_id] = {
+          id: d.id,
+          campaign_id: d.meta_campaign_id,
+          metrics_id: '',
+          data: d.data,
+          gargalo: d.gargalo || 'nenhum',
+          diagnostico: d.diagnostico || '',
+          recomendacoes: Array.isArray(d.recomendacoes) ? d.recomendacoes : [],
+          prioridade: d.prioridade || 'media',
+          criado_em: d.criado_em,
+        };
+      }
+    }
+
+    const mapped = camps
+      .map((c) => mapRowToCampaign(c, latestMetric.get(c.meta_campaign_id)))
+      .filter((c) => c.metrics)
+      .sort((a, b) => (b.metrics!.valor_gasto || 0) - (a.metrics!.valor_gasto || 0));
+
+    setCampaigns(mapped);
+    setDiagnostics(diagByCampaign);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchDados();
+    const channel = supabase
+      .channel('campanhas_page_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meta_campaign_metrics' }, fetchDados)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meta_ai_diagnostics' }, fetchDados)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meta_optimization_plans' }, fetchDados)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchDados]);
+
+  // Define a campanha selecionada: query param > primeira da lista
+  useEffect(() => {
+    if (campaigns.length === 0) return;
+    setSelectedId((prev) => {
+      if (prev && campaigns.some((c) => c.id === prev)) return prev;
+      if (queryCampaign && campaigns.some((c) => c.id === queryCampaign)) return queryCampaign;
+      return campaigns[0].id;
+    });
+  }, [campaigns, queryCampaign]);
+
+  const selected = campaigns.find((c) => c.id === selectedId) || null;
+  const selectedDiagnostic = selectedId ? diagnostics[selectedId] ?? null : null;
+  const selectedPlan = selectedId ? plans[selectedId] ?? null : null;
+
+  const handleGeneratePlan = async () => {
+    if (!selectedId) return;
+    setIsGeneratingPlan(true);
+    setErro(null);
+    try {
+      const res = await fetch('/api/meta/optimize/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meta_campaign_id: selectedId }),
+      });
+      const json = await res.json();
+      if (!json.success) setErro(json.error || 'Falha ao gerar plano');
+      await fetchDados();
+    } catch (e: any) {
+      setErro(e?.message || 'Falha ao gerar plano');
+    } finally {
+      setIsGeneratingPlan(false);
+    }
+  };
+
+  const handleExecute = async () => {
+    if (!selectedPlan) return;
+    if (!window.confirm('Criar a campanha otimizada em PAUSED na sua conta Meta? Nada vai gastar até você dar o play no Gerenciador.')) return;
+    setIsExecuting(true);
+    setErro(null);
+    try {
+      const res = await fetch('/api/meta/optimize/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_id: selectedPlan.id }),
+      });
+      const json = await res.json();
+      if (!json.success) setErro(json.error || 'Falha na execução');
+      await fetchDados();
+    } catch (e: any) {
+      setErro(e?.message || 'Falha na execução');
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  const handleDecide = async (decisao: 'aprovar' | 'rejeitar') => {
+    if (!selectedPlan) return;
+    setIsDeciding(true);
+    setErro(null);
+    try {
+      const res = await fetch('/api/meta/optimize/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan_id: selectedPlan.id, decisao }),
+      });
+      const json = await res.json();
+      if (!json.success) setErro(json.error || 'Falha ao registrar decisão');
+      await fetchDados();
+    } catch (e: any) {
+      setErro(e?.message || 'Falha ao registrar decisão');
+    } finally {
+      setIsDeciding(false);
+    }
+  };
+
+  const handleDiagnose = async () => {
+    if (!selectedId) return;
+    setIsDiagnosing(true);
+    setErro(null);
+    try {
+      const res = await fetch('/api/meta/diagnose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ meta_campaign_id: selectedId }),
+      });
+      const json = await res.json();
+      if (!json.success) setErro(json.error || 'Falha no diagnóstico');
+      await fetchDados();
+    } catch (e: any) {
+      setErro(e?.message || 'Falha ao pedir diagnóstico');
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center text-[#8B8BA0] text-sm mt-10">Carregando campanhas…</div>;
   }
-};
 
-const mockDiagnostic = {
-  id: 'd1',
-  campaign_id: '1',
-  metrics_id: 'm1',
-  data: new Date().toISOString(),
-  gargalo: 'nenhum',
-  diagnostico: 'A campanha apresenta ROAS excelente (3.4x) e funil bem calibrado. O Connect Rate (84%) está marginalmente acima do mínimo de 80% — há oportunidade de otimizar a velocidade da LP para empurrar para 90%+, o que pode aumentar as vendas em até 7% sem aumentar orçamento. Recomendo escalar com cautela: +20% no orçamento, monitorando CPA por 48h.',
-  recomendacoes: [
-    { texto: 'Otimizar compressão de imagens e lazy loading da landing page — impacto direto no Connect Rate', prioridade: 'alta' as const },
-    { texto: 'Duplicar conjunto vencedor e aumentar orçamento +20% no original', prioridade: 'alta' as const },
-    { texto: 'Revisar Conversions API (CAPI) — garantir cobertura ≥80% dos eventos', prioridade: 'media' as const },
-    { texto: 'Testar novo criativo estático com mesmo ângulo de copy do vencedor', prioridade: 'baixa' as const }
-  ],
-  prioridade: 'alta',
-  criado_em: new Date().toISOString()
-};
+  if (campaigns.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto text-center bg-[#111116] border border-[#2A2A38] rounded-xl p-12 mt-10">
+        <h3 className="text-[#F1F1F3] text-lg font-bold mb-2">Nenhuma campanha sincronizada</h3>
+        <p className="text-[#8B8BA0] text-sm">
+          Vá ao <Link href="/meta-ads/dashboard" className="text-[#6366F1]">Dashboard</Link> e clique em
+          <span className="text-[#6366F1]"> Sync Data</span> para puxar suas campanhas.
+        </p>
+      </div>
+    );
+  }
 
-export default function CampaignsPage() {
-  const campaign = mockCampaign;
-  const m = campaign.metrics;
+  const m = selected?.metrics;
 
   return (
-    <div className="flex flex-col min-h-screen pb-10">
-      {/* Custom TopBar for Campaign Details to match image */}
-      <header className="flex items-center justify-between pb-4 border-b border-[#2A2A38] mb-6">
-        <div className="flex items-center gap-4">
-          <h2 className="text-[15px] font-medium text-[#F1F1F3]">Campaign Detail</h2>
-          <span className="text-[#2A2A38]">|</span>
-          <p className="text-[13px] text-[#8B8BA0]">Act. #1203948021</p>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <button className="w-8 h-8 rounded-full border border-[#2A2A38] flex items-center justify-center text-[#8B8BA0] hover:text-[#F1F1F3] hover:bg-[#1A1A24]">
-            <User size={14} />
-          </button>
-          <button className="w-8 h-8 rounded-full border border-[#2A2A38] flex items-center justify-center text-[#8B8BA0] hover:text-[#F1F1F3] hover:bg-[#1A1A24]">
-            <Bell size={14} />
-          </button>
-          <button className="flex items-center gap-2 bg-[#6366F1] hover:bg-[#4f52e2] text-white px-4 py-1.5 rounded-md text-[13px] font-medium transition-colors">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
-            Sync Data
-          </button>
-        </div>
-      </header>
-
-      <div className="space-y-6">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-[12px] text-[#8B8BA0] hover:text-[#F1F1F3] transition-colors mb-2">
-          <ChevronLeft size={14} />
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <Link href="/meta-ads/dashboard" className="inline-flex items-center gap-2 text-sm text-[#8B8BA0] hover:text-[#F1F1F3] transition-colors">
+          <ArrowLeft size={16} />
           Voltar ao Dashboard
         </Link>
 
-        <div className="flex justify-between items-start">
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <h1 className="text-[22px] font-bold text-[#F1F1F3]">{campaign.nome}</h1>
-              <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider rounded-full bg-green-500/10 text-green-500 border border-green-500/20 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                ESCALÁVEL
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2 text-[11px] text-[#8B8BA0]">
-              <span className="px-2.5 py-1 rounded-full bg-[#1A1A24] border border-[#2A2A38]">ID: {campaign.meta_campaign_id}</span>
-              <span className="px-2.5 py-1 rounded-full bg-[#1A1A24] border border-[#2A2A38]">Meta Ads Network</span>
-              <span className="px-2.5 py-1 rounded-full bg-[#1A1A24] border border-[#2A2A38]">Objetivo: {campaign.objetivo}</span>
-              <span className="px-2.5 py-1 rounded-full bg-[#1A1A24] border border-[#2A2A38]">Conjunto: {campaign.conjunto}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button className="bg-transparent border border-[#2A2A38] text-[#F1F1F3] px-4 py-1.5 rounded-md text-[13px] font-medium hover:bg-[#1A1A24] transition-colors">
-              Editar
-            </button>
-            <button className="bg-[#6366F1] hover:bg-[#4f52e2] text-white px-4 py-1.5 rounded-md text-[13px] font-medium transition-colors">
-              Forçar Escala
-            </button>
-          </div>
+        {/* Seletor de campanha — essencial para escala (várias campanhas ativas) */}
+        <div className="relative">
+          <select
+            value={selectedId ?? ''}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="appearance-none bg-[#1A1A24] border border-[#2A2A38] text-[#F1F1F3] text-sm rounded-lg pl-4 pr-10 py-2.5 focus:outline-none focus:border-[#6366F1] cursor-pointer min-w-[280px]"
+          >
+            {campaigns.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.ativo ? '🟢 ' : '⚪ '}{c.nome}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B8BA0] pointer-events-none" />
         </div>
-
-        <MetaMetricsGrid metrics={m} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1.8fr_1fr] gap-6">
-          <FunnelBars metrics={m} />
-          <AIAnalyst diagnostic={mockDiagnostic} />
-        </div>
-
-        <TrendChart />
       </div>
+
+      {erro && (
+        <div className="px-4 py-3 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/30 text-[#EF4444] text-sm">
+          {erro}
+        </div>
+      )}
+
+      {selected && m && (
+        <>
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl font-semibold text-[#F1F1F3]">{selected.nome}</h1>
+                <Badge status={m.escala_status} />
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm text-[#8B8BA0]">
+                <span>ID: {selected.meta_campaign_id}</span>
+                <span>•</span>
+                <span>{selected.objetivo}</span>
+                <span>•</span>
+                <span>{selected.ativo ? 'Ativa' : 'Pausada'}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleDiagnose}
+              disabled={isDiagnosing}
+              className="flex items-center gap-2 bg-[#6366F1] hover:bg-[#4f52e2] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-[#6366F1]/20 disabled:opacity-50"
+            >
+              {isDiagnosing ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} />}
+              {isDiagnosing ? 'Analisando…' : 'Pedir diagnóstico desta campanha'}
+            </button>
+          </div>
+
+          <MetaMetricsGrid metrics={m} />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FunnelBars metrics={m} />
+            <AIAnalyst diagnostic={selectedDiagnostic} />
+          </div>
+
+          <OptimizationPlan
+            plan={selectedPlan}
+            isGenerating={isGeneratingPlan}
+            isDeciding={isDeciding}
+            isExecuting={isExecuting}
+            onGenerate={handleGeneratePlan}
+            onDecide={handleDecide}
+            onExecute={handleExecute}
+          />
+
+          <TrendChart />
+        </>
+      )}
     </div>
+  );
+}
+
+export default function CampanhasPage() {
+  return (
+    <Suspense fallback={<div className="text-center text-[#8B8BA0] text-sm mt-10">Carregando…</div>}>
+      <CampanhasInner />
+    </Suspense>
   );
 }
