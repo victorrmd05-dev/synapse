@@ -582,4 +582,13 @@ visivelmente superior à do gpt-4o-mini — preferir Claude quando houver crédi
 ## 🔁 Processo (regra fixa)
 Ao **validar** cada tarefa: (1) atualizar este `NOTES.md`; (2) atualizar a nota do projeto no
 segundo cérebro `02_Projetos/Alavanca_Synapse.md` (Obsidian/nexus.ai via MCP), mantendo canvas
-e skills em dia para o cérebro ser auto-evolutivo.
+e skills em dia para o cérebro ser auto-evolutivo; (3) **rodar o Graphify** para reconstruir o
+grafo do segundo cérebro.
+
+**Graphify (rotina diária do segundo cérebro):**
+- Cofre alvo: **SEMPRE `C:\Users\cerqu\Documents\Obsidian\Nexus.AI`** — nunca outro vault.
+- Python **global** `C:\Python313\python.exe` (o venv do projeto NÃO tem o módulo graphify).
+- Comando, na raiz do cofre: `python -m graphify update . --force`
+  (saída em `graphify-out/`: `graph.json`, `graph.html`, `GRAPH_REPORT.md`).
+- Rodar **todo dia** e sempre que a nota do projeto for atualizada. Para automatizar de verdade
+  (sem depender de sessão), usar uma Tarefa Agendada do Windows com esse mesmo comando.
