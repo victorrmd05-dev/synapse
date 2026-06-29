@@ -48,10 +48,11 @@ Scripts: `scripts/agents-pull.mjs`, `scripts/agents-push.mjs`, `scripts/_env.mjs
   - **Copywriting + Revisor → OpenAI oficial** (`gpt-4o-mini`) via `src/lib/openai.ts`
     (client + `chatComRetry` compartilhados). Chave `OPENAI_API_KEY`, modelo configurável
     por `OPENAI_MODEL`. Usa `response_format: { type: 'json_object' }` → JSON sempre válido.
-  - **Mineração ainda em OpenCode Zen** → `deepseek-v4-flash-free` via SDK `openai`
-    apontando para `https://opencode.ai/zen/v1` (chave `OPENCODE_API_KEY`).
-    ⚠️ **É modelo de raciocínio**: gasta tokens em `reasoning_content` antes do `content`.
-    `max_tokens` baixo → resposta vazia silenciosa. Usar `max_tokens >= ~3000` (mineração está em 3000).
+  - **Mineração → Anthropic Claude** (`claude-sonnet-4-6`) desde 29/06. A rota
+    `mineracao/run` agora usa `gerarJSONComAgente(config, …)` (provider-aware), então o modelo
+    vem de `agentes_config.modelo` — trocar é só UPDATE na tabela / `_agente.json`, sem mexer no
+    código. Fallback automático p/ OpenAI se o Claude falhar. Saiu do OpenCode Zen
+    (`deepseek-v4-flash-free`), que era modelo de raciocínio e dava resposta vazia silenciosa.
 - **IA (diagnóstico Meta Ads):** Anthropic `claude-3-5-sonnet` em `src/lib/anthropic.ts`
 - **Dois clients Supabase:** `src/lib/supabase.ts` (anon, browser, respeita RLS) vs
   `src/lib/supabase-server.ts` (service_role, server-only, ignora RLS). Nunca trocar.

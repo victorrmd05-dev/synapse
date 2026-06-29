@@ -13,18 +13,17 @@
 //   { "query": "50% off", "country": "BR", "limit": 10,
 //     "apenas_validados": false, "min_score": 70 }
 //
-// Env: SCRAPE_CREATORS_API_KEY, OPENCODE_API_KEY
+// Env: SCRAPE_CREATORS_API_KEY, ANTHROPIC_API_KEY (+ OPENAI_API_KEY p/ fallback)
 
-import OpenAI from 'openai';
 import { supabaseServer as supabase } from '@/lib/supabase-server';
 import { getAgentConfig, buildSystemPrompt } from '@/lib/agents/buildSystemPrompt';
+import { gerarJSONComAgente, parseJSONFlexivel } from '@/lib/agents/generateWithProvider';
 import { naListaNegra } from '@/lib/minerador-blacklist';
 
-const opencode = new OpenAI({
-  apiKey: process.env.OPENCODE_API_KEY,
-  baseURL: 'https://opencode.ai/zen/v1',
-});
-const MODELO = 'deepseek-v4-flash-free';
+// A avaliação roda no provider do agente (agentes_config.modelo). Hoje: Claude.
+// gerarJSONComAgente cai p/ OpenAI automaticamente se o Claude falhar.
+export const maxDuration = 300;
+
 const SCRAPE_URL = 'https://api.scrapecreators.com/v1/facebook/adLibrary/search/ads';
 
 interface Body {
@@ -225,7 +224,7 @@ export async function POST(request: Request) {
 
       // 2a. Avaliação pela IA (com fallback heurístico)
       let aval: Avaliacao | null = null;
-      if (systemPrompt) {
+      if (systemPrompt && config) {
         try {
           const userPrompt = `Avalie este anúncio coletado da Biblioteca de Anúncios do Meta:
 - page_name: ${ad.page_name ?? '—'}
@@ -237,21 +236,10 @@ export async function POST(request: Request) {
 - ad_copy: ${String(adCopy).slice(0, 1200)}
 
 Responda SOMENTE com o JSON no formato definido na sua SKILL.`;
-          // OBS: deepseek-v4-flash é modelo de RACIOCÍNIO — ele "pensa" no campo
-          // reasoning_content antes de escrever a resposta em content. Com pouco
-          // max_tokens ele gasta tudo pensando e devolve content vazio. Por isso
-          // a folga generosa (~3000): raciocínio + o JSON final cabem.
-          const r = await opencode.chat.completions.create({
-            model: MODELO,
-            max_tokens: 3000,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-          });
-          const txt = r.choices[0]?.message?.content ?? '';
-          const m = txt.match(/\{[\s\S]*\}/);
-          if (m) aval = JSON.parse(m[0]) as Avaliacao;
+          // Roda no modelo do agente (config.modelo). Claude devolve o JSON em texto;
+          // parseJSONFlexivel extrai mesmo com cercas/markdown.
+          const { raw } = await gerarJSONComAgente(config, systemPrompt, userPrompt);
+          aval = parseJSONFlexivel<Avaliacao>(raw);
         } catch {
           // cai no heurístico abaixo
         }
