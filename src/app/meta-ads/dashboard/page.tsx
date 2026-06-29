@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { TopBar } from '@/components/layout/TopBar';
 import { FilterPills } from '@/components/dashboard/FilterPills';
@@ -64,6 +65,7 @@ function bucketObjetivo(objetivo: string = ''): 'Conversão' | 'Tráfego' | 'Out
 
 export default function DashboardPage() {
   const [activeFilter, setActiveFilter] = useState('Todas');
+  const [scope, setScope] = useState<string>('all'); // 'all' = agregado, ou um meta_campaign_id
   const [isSyncing, setIsSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -195,7 +197,14 @@ export default function DashboardPage() {
     return true;
   });
 
-  const aggregateMetrics = filteredCampaigns.reduce(
+  // Escopo do funil/resumo: agregado (todas as ativas) ou uma campanha específica.
+  // Se a campanha escolhida sair do ar (sync seguinte), cai de volta no agregado.
+  const validScope =
+    scope !== 'all' && !activeCampaigns.some((c) => c.id === scope) ? 'all' : scope;
+  const scopeCampaigns =
+    validScope === 'all' ? activeCampaigns : activeCampaigns.filter((c) => c.id === validScope);
+
+  const aggregateMetrics = scopeCampaigns.reduce(
     (acc, curr) => {
       const m = curr.metrics;
       if (!m) return acc;
@@ -237,8 +246,8 @@ export default function DashboardPage() {
     cpa: aggregateMetrics.vendas > 0 ? aggregateMetrics.investimento / aggregateMetrics.vendas : 0,
   };
 
-  // Distribuição de verba real por objetivo
-  const distribuicao = filteredCampaigns.reduce(
+  // Distribuição de verba real por objetivo (no escopo selecionado)
+  const distribuicao = scopeCampaigns.reduce(
     (acc, c) => {
       const bucket = bucketObjetivo(c.objetivo);
       acc[bucket] += c.metrics?.valor_gasto || 0;
@@ -309,6 +318,29 @@ export default function DashboardPage() {
 
       {activeCampaigns.length > 0 && (
         <>
+          {/* Seletor de escopo do funil: agregado de todas as ativas, ou uma específica */}
+          <div className="mt-6 flex items-center gap-3 flex-wrap">
+            <span className="text-[#8B8BA0] text-sm">Visão do funil:</span>
+            <div className="relative">
+              <select
+                value={validScope}
+                onChange={(e) => setScope(e.target.value)}
+                className="appearance-none bg-[#1A1A24] border border-[#2A2A38] text-[#F1F1F3] text-sm rounded-lg pl-4 pr-10 py-2 focus:outline-none focus:border-[#6366F1] cursor-pointer min-w-[280px]"
+              >
+                <option value="all">Todas as ativas (agregado · {activeCampaigns.length})</option>
+                {activeCampaigns.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B8BA0] pointer-events-none" />
+            </div>
+            {validScope !== 'all' && (
+              <span className="text-[11px] text-[#6366F1] bg-[#6366F1]/10 border border-[#6366F1]/20 px-2 py-1 rounded">
+                mostrando 1 campanha
+              </span>
+            )}
+          </div>
+
           {/* Banner honesto: funil de compra aguardando 1ª venda */}
           {semVendas && (
             <div className="mt-6 px-4 py-3 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-[#F59E0B] text-sm flex items-start gap-2">
