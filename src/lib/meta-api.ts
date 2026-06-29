@@ -9,7 +9,7 @@ export async function fetchMetaCampaigns() {
   }
 
   try {
-    const response = await fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,status,objective&access_token=${META_ACCESS_TOKEN}`);
+    const response = await fetch(`https://graph.facebook.com/v19.0/${AD_ACCOUNT_ID}/campaigns?fields=id,name,status,effective_status,objective&access_token=${META_ACCESS_TOKEN}`);
     const data = await response.json();
     
     if (data.error) {

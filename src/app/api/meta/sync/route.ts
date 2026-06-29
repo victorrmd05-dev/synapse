@@ -55,8 +55,11 @@ export async function POST() {
             ad_account_id: AD_ACCOUNT_ID,
             nome: c.name,
             status: c.status,
+            effective_status: c.effective_status,
             objetivo: c.objective,
-            ativo: c.status === 'ACTIVE',
+            // "ativo" = realmente rodando no Gerenciador. effective_status é mais
+            // fiel que status (pega campanha ACTIVE mas pausada no conjunto/sem entrega).
+            ativo: (c.effective_status || c.status) === 'ACTIVE',
             atualizado_em: new Date().toISOString(),
           },
           { onConflict: 'meta_campaign_id' }

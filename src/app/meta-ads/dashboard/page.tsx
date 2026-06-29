@@ -184,7 +184,10 @@ export default function DashboardPage() {
     }
   };
 
-  const filteredCampaigns = campaigns.filter((c) => {
+  // Dashboard mostra só o que está rodando no Gerenciador (campanhas ativas).
+  const activeCampaigns = campaigns.filter((c) => c.ativo);
+
+  const filteredCampaigns = activeCampaigns.filter((c) => {
     if (activeFilter === 'Todas') return true;
     if (activeFilter === 'Escaláveis') return c.metrics?.escala_status === 'escalavel';
     if (activeFilter === 'Otimizar') return c.metrics?.escala_status === 'otimizar';
@@ -292,7 +295,19 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {campaigns.length > 0 && (
+      {/* Há dados sincronizados, mas nenhuma campanha ativa no Gerenciador */}
+      {!loading && campaigns.length > 0 && activeCampaigns.length === 0 && (
+        <div className="mt-10 text-center bg-[#1A1A24] border border-[#2A2A38] rounded-xl p-12">
+          <h3 className="text-[#F1F1F3] text-lg font-bold mb-2">Nenhuma campanha ativa no momento</h3>
+          <p className="text-[#8B8BA0] text-sm">
+            Há {campaigns.length} campanha(s) sincronizada(s), mas todas estão pausadas no Gerenciador.
+            O dashboard mostra apenas o que está rodando. Ative uma campanha no Meta e clique em
+            <span className="text-[#6366F1] font-medium"> Sync Data</span>.
+          </p>
+        </div>
+      )}
+
+      {activeCampaigns.length > 0 && (
         <>
           {/* Banner honesto: funil de compra aguardando 1ª venda */}
           {semVendas && (
@@ -370,8 +385,8 @@ export default function DashboardPage() {
           {/* Listagem de Campanhas */}
           <div className="flex items-center justify-between mb-6 pt-6 border-t border-[#2A2A38]">
             <div>
-              <h2 className="text-2xl font-bold text-[#F1F1F3]">Campanhas Individuais</h2>
-              <p className="text-[#8B8BA0] text-sm">Detalhamento por conjunto de anúncio e criativos</p>
+              <h2 className="text-2xl font-bold text-[#F1F1F3]">Campanhas Ativas</h2>
+              <p className="text-[#8B8BA0] text-sm">Apenas campanhas rodando no Gerenciador ({activeCampaigns.length})</p>
             </div>
             <FilterPills
               filters={['Todas', 'Escaláveis', 'Otimizar', 'Não Escalar']}

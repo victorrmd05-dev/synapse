@@ -124,7 +124,7 @@ function CampanhasInner() {
 
     const mapped = camps
       .map((c) => mapRowToCampaign(c, latestMetric.get(c.meta_campaign_id)))
-      .filter((c) => c.metrics)
+      .filter((c) => c.metrics && c.ativo) // só campanhas ativas no Gerenciador
       .sort((a, b) => (b.metrics!.valor_gasto || 0) - (a.metrics!.valor_gasto || 0));
 
     setCampaigns(mapped);
@@ -247,10 +247,11 @@ function CampanhasInner() {
   if (campaigns.length === 0) {
     return (
       <div className="max-w-7xl mx-auto text-center bg-[#111116] border border-[#2A2A38] rounded-xl p-12 mt-10">
-        <h3 className="text-[#F1F1F3] text-lg font-bold mb-2">Nenhuma campanha sincronizada</h3>
+        <h3 className="text-[#F1F1F3] text-lg font-bold mb-2">Nenhuma campanha ativa</h3>
         <p className="text-[#8B8BA0] text-sm">
-          Vá ao <Link href="/meta-ads/dashboard" className="text-[#6366F1]">Dashboard</Link> e clique em
-          <span className="text-[#6366F1]"> Sync Data</span> para puxar suas campanhas.
+          Esta página mostra apenas campanhas ativas no Gerenciador. Ative uma campanha no Meta, vá ao{' '}
+          <Link href="/meta-ads/dashboard" className="text-[#6366F1]">Dashboard</Link> e clique em
+          <span className="text-[#6366F1]"> Sync Data</span>.
         </p>
       </div>
     );
