@@ -5,10 +5,11 @@ import { supabase } from '../../lib/supabase';
 import {
   Radar, Play, Loader2, Plus, Save, Trash2, Star, Activity,
   CheckCircle2, XCircle, Zap, Settings2, ExternalLink, ChevronDown, ChevronRight,
+  Eraser, Filter,
 } from 'lucide-react';
 import {
   getTrackingPixels, salvarTrackingPixel, setPixelAtivo, excluirTrackingPixel,
-  excluirTracking,
+  excluirTracking, limparEventosTracking,
   type TrackingPixelSafe,
 } from '../actions/tracking';
 
@@ -57,6 +58,8 @@ export default function TrackingPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [painelPixels, setPainelPixels] = useState(false);
   const [expandido, setExpandido] = useState<string | null>(null);
+  const [soConversoes, setSoConversoes] = useState(false);
+  const [limpandoEventos, setLimpandoEventos] = useState(false);
 
   useEffect(() => {
     fetchTudo();
@@ -135,6 +138,28 @@ export default function TrackingPage() {
       setErro(e instanceof Error ? e.message : 'Erro ao remover tracking');
     }
   }
+
+  async function limparLogEventos() {
+    if (!confirm(
+      'Limpar o log de eventos recentes?\n\n' +
+      'Isto apaga só o NOSSO registro local (observabilidade). O Meta já recebeu ' +
+      'esses eventos — nada é desfeito lá. Útil para um slate limpo antes de testar.'
+    )) return;
+    setErro(null);
+    setLimpandoEventos(true);
+    try {
+      await limparEventosTracking();
+      await fetchEventos();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao limpar eventos');
+    } finally {
+      setLimpandoEventos(false);
+    }
+  }
+
+  // PageView é o "ruído" — toda carga de página gera um. "Só conversões" esconde
+  // PageView pra destacar os eventos de funil (Lead, InitiateCheckout, Purchase…).
+  const eventosVisiveis = soConversoes ? eventos.filter((e) => e.event_name !== 'PageView') : eventos;
 
   const temPixel = pixels.some((p) => p.ativo && p.tem_token);
 
@@ -277,12 +302,35 @@ export default function TrackingPage() {
               <div className="flex items-center gap-2 mb-3">
                 <Activity size={16} className="text-primary" />
                 <h3 className="text-white font-bold text-sm">Eventos recentes (CAPI)</h3>
+                {eventos.length > 0 && (
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      onClick={() => setSoConversoes((v) => !v)}
+                      title={soConversoes ? 'Mostrando só conversões — clique p/ ver tudo' : 'Esconder PageView (só conversões)'}
+                      className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${
+                        soConversoes ? 'bg-primary/15 text-primary' : 'text-secondary hover:text-white hover:bg-surface-elevated'
+                      }`}
+                    >
+                      <Filter size={13} />
+                    </button>
+                    <button
+                      onClick={limparLogEventos}
+                      disabled={limpandoEventos}
+                      title="Limpar log local (não afeta o Meta)"
+                      className="flex items-center justify-center w-7 h-7 text-secondary hover:text-status-red hover:bg-status-red/10 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {limpandoEventos ? <Loader2 size={13} className="animate-spin" /> : <Eraser size={13} />}
+                    </button>
+                  </div>
+                )}
               </div>
               {eventos.length === 0 ? (
                 <p className="text-xs text-secondary py-4 text-center">Nenhum evento ainda. Eles aparecem quando a página no ar dispara.</p>
+              ) : eventosVisiveis.length === 0 ? (
+                <p className="text-xs text-secondary py-4 text-center">Nenhuma conversão ainda — só PageView por enquanto.</p>
               ) : (
                 <div className="space-y-1.5 max-h-[320px] overflow-y-auto custom-scrollbar">
-                  {eventos.map((e) => (
+                  {eventosVisiveis.map((e) => (
                     <div key={e.id} className="flex items-center gap-2 text-xs">
                       {e.sucesso ? <CheckCircle2 size={12} className="text-status-green shrink-0" /> : <XCircle size={12} className="text-status-red shrink-0" />}
                       <span className="text-white font-medium">{e.event_name}</span>

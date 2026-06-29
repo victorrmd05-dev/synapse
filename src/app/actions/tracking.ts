@@ -109,3 +109,16 @@ export async function excluirTracking(id: string) {
   if (error) throw new Error('Falha ao remover tracking: ' + error.message);
   return { ok: true };
 }
+
+// Zera o LOG local de eventos CAPI (tabela tracking_eventos). É só observabilidade
+// nossa: o Meta JÁ recebeu esses eventos — apagar aqui NÃO desfaz nada lá, só limpa
+// a tela pra QA (slate limpo antes de um teste) e segura o crescimento da tabela.
+// Retorna quantos registros foram removidos.
+export async function limparEventosTracking(): Promise<{ ok: true; removidos: number }> {
+  const { error, count } = await supabaseServer
+    .from('tracking_eventos')
+    .delete({ count: 'exact' })
+    .not('id', 'is', null); // delete exige filtro; pega tudo
+  if (error) throw new Error('Falha ao limpar eventos: ' + error.message);
+  return { ok: true, removidos: count ?? 0 };
+}
