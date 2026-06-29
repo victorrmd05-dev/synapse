@@ -1,7 +1,7 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-06-29 — **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
+> Última atualização: 2026-06-29 — **Tracking: "Limpar log" + filtro "só conversões"** no painel CAPI (log local, não afeta o Meta). Antes: **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
 
 ---
 
@@ -540,6 +540,24 @@ mas o código só lia `snapshot.images`/`videos` → `image_url` vazio → caía
 - ⚠️ **FB CDN expira**: URLs de imagem do Facebook têm validade. Recém-minerados mostram a imagem
   real; muito antigos podem cair no "sem imagem". Fix definitivo (futuro): baixar a imagem e
   guardar no Supabase Storage na mineração → card nunca quebra.
+
+---
+
+## 🧹 Tracking — "Limpar log" + filtro "só conversões" no painel CAPI (29/06/2026)
+O painel **"Eventos recentes (CAPI)"** (`/tracking`) lê os últimos 20 de `tracking_eventos` — um
+**log local de observabilidade** (prova que o disparo server-side roda). Estava 100% **PageView**
+(toda carga de página gera um) sem forma de limpar nem filtrar. Adicionados 2 controles no header
+do painel (só aparecem quando há eventos):
+- **🧹 Limpar log** (ícone `Eraser`): nova server action `limparEventosTracking()` em
+  `src/app/actions/tracking.ts` (`supabaseServer`/service_role) dá `DELETE` em `tracking_eventos`.
+  `confirm()` deixa **explícito que é só o log NOSSO** — o Meta já recebeu os eventos, nada é
+  desfeito lá. Serve pra slate limpo antes de um teste e pra segurar o crescimento da tabela.
+- **🔎 Só conversões** (ícone `Filter`): esconde `PageView` (ruído) e destaca eventos de funil
+  (Lead, InitiateCheckout, Purchase…). Filtro **client-side** (instantâneo, não toca o banco);
+  empty-state dedicado quando só há PageView.
+- **Validado:** `tsc` limpo (só erro pré-existente em `scratch/`). Commit `2881ece`.
+- Futuro opcional (sem botão): retenção automática (manter só N dias/registros) p/ a tabela não
+  crescer pra sempre.
 
 ---
 
