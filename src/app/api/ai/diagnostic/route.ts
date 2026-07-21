@@ -7,7 +7,11 @@ export async function POST(req: Request) {
   try {
     const diagnostic = await callDiagnostic(campaignName, metrics);
     return NextResponse.json({ success: true, diagnostic });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Falha na IA' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Falha no diagnóstico IA:', error);
+    return NextResponse.json(
+      { success: false, error: error?.message || 'Falha na IA' },
+      { status: 500 }
+    );
   }
 }

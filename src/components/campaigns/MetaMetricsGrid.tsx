@@ -6,9 +6,11 @@ import { CampaignMetrics } from '@/types';
 interface MetaMetricsGridProps {
   metrics: CampaignMetrics;
   ticketMedio?: number;
+  /** Rótulo da janela de data ativa (ex.: "Últimos 7 dias"). */
+  rangeLabel?: string;
 }
 
-export function MetaMetricsGrid({ metrics, ticketMedio = 150 }: MetaMetricsGridProps) {
+export function MetaMetricsGrid({ metrics, ticketMedio = 150, rangeLabel = 'Últimos 30 dias' }: MetaMetricsGridProps) {
   const m = metrics;
   
   const ctrColor = getPerformanceColor(m.ctr, 2.5); 
@@ -22,7 +24,7 @@ export function MetaMetricsGrid({ metrics, ticketMedio = 150 }: MetaMetricsGridP
   return (
     <div className="mt-8 mb-6">
       <h3 className="text-[10px] text-[#8B8BA0] font-medium tracking-widest uppercase mb-4">
-        Métricas Meta Ads — Hoje
+        Métricas Meta Ads — {rangeLabel}
       </h3>
       
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">

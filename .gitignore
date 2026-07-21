@@ -43,6 +43,10 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# análises de IA salvas (dados reais de cliente) — exceto o README
+analises-ia/*
+!analises-ia/README.md
+
 # vercel
 .vercel
 

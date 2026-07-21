@@ -63,6 +63,41 @@ export interface Recommendation {
   prioridade: 'alta' | 'media' | 'baixa';
 }
 
+// --- Análise Profunda (quebras da Meta) -----------------------------------
+
+export type BreakdownStatus = 'escalar' | 'otimizar' | 'pausar';
+
+export interface BreakdownRow {
+  label: string;
+  id?: string; // id do conjunto (só em byAdset) — usado para ações via API
+  spend: number;
+  impressoes: number;
+  compras: number;
+  faturamento: number;
+  roas: number;
+  cpa: number;
+  lp_views: number;
+  checkouts: number;
+  status: BreakdownStatus;
+}
+
+export interface CampaignAnalysis {
+  byAdset: BreakdownRow[];
+  byPlacement: BreakdownRow[];
+  byAge: BreakdownRow[];
+}
+
+export interface DeepLeak {
+  tipo: string;
+  descricao: string;
+}
+
+export interface DeepDiagnostic {
+  resumo: string;
+  vazamentos: DeepLeak[];
+  acoes: Array<{ texto: string; prioridade: 'alta' | 'media' | 'baixa'; impacto?: string }>;
+}
+
 export interface AIDiagnostic {
   id: string;
   campaign_id: string;

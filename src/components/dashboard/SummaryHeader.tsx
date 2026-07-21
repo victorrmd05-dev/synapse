@@ -44,16 +44,16 @@ interface SummaryHeaderProps {
 export function SummaryHeader({ metrics }: SummaryHeaderProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <SummaryCard 
-        label="Investimento" 
-        value={`R$ ${metrics.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
+      <SummaryCard
+        label="Investimento"
+        value={`R$ ${metrics.investimento.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
         change={12.5}
         isPositive={false} // Aumento de gasto costuma ser marcado como negativo ou neutro dependendo do contexto, mas aqui vou seguir a lógica de ROI
         icon={<DollarSign size={20} />}
       />
-      <SummaryCard 
-        label="CPA Médio" 
-        value={`R$ ${metrics.cpa.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
+      <SummaryCard
+        label="CPA Médio"
+        value={`R$ ${metrics.cpa.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
         change={8.2}
         isPositive={true} // Queda no CPA é positivo
         icon={<Target size={20} />}

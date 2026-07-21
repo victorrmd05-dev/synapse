@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Check, X, RefreshCw, ShieldCheck, AlertTriangle, Rocket, ExternalLink } from 'lucide-react';
+import { Sparkles, Check, X, RefreshCw, ShieldCheck, AlertTriangle, Rocket, ExternalLink, Target } from 'lucide-react';
 
 export interface OptimizationPlanRow {
   id: string;
@@ -49,8 +49,9 @@ export function OptimizationPlan({ plan, isGenerating, isDeciding, isExecuting, 
 
       {!plan && (
         <p className="text-[#8B8BA0] text-[12px] py-6 text-center">
-          Nenhum plano ainda. O agente pode propor uma campanha otimizada (duplicar a vencedora e
-          ajustar orçamento/objetivo/segmentação) com base no diagnóstico e no princípio 80×10×10.
+          Nenhum plano ainda. O agente duplica a campanha e <strong>realoca a verba</strong> com base na
+          Análise Profunda — concentra nos posicionamentos e públicos vencedores e <strong>não reduplica os
+          conjuntos que não vendem</strong>. Rode a Análise Profunda antes para o plano ficar mais preciso.
         </p>
       )}
 
@@ -86,6 +87,62 @@ export function OptimizationPlan({ plan, isGenerating, isDeciding, isExecuting, 
               </div>
             </div>
           )}
+
+          {plan.plano?.execucao && (() => {
+            const ex = plan.plano.execucao;
+            const seg = ex.segmentacao;
+            const pos = ex.posicionamentos;
+            const cortes: any[] = Array.isArray(ex.conjuntos_pausar) ? ex.conjuntos_pausar : [];
+            const temAlavanca =
+              (seg && (seg.idade_min || seg.idade_max || (seg.generos && seg.generos.length))) ||
+              (pos && ((pos.facebook_positions || []).length || (pos.instagram_positions || []).length)) ||
+              cortes.length > 0;
+            if (!temAlavanca) return null;
+            const generosTxt = (g: string[]) =>
+              g?.map((x) => (x === 'male' ? 'homens' : x === 'female' ? 'mulheres' : x)).join(' + ');
+            return (
+              <div className="bg-[#0D0D14] border border-[#6366F1]/30 rounded-lg p-4 space-y-3">
+                <p className="text-[10px] uppercase tracking-wider text-[#6366F1] font-bold flex items-center gap-1">
+                  <Target size={12} /> Realocação de mídia (da Análise Profunda)
+                </p>
+
+                {pos && ((pos.facebook_positions || []).length || (pos.instagram_positions || []).length) ? (
+                  <div className="text-[11px]">
+                    <span className="text-[#8B8BA0]">Posicionamentos: </span>
+                    <span className="text-[#F1F1F3]">
+                      {[...(pos.facebook_positions || []), ...(pos.instagram_positions || [])].join(', ')}
+                    </span>
+                    {pos.motivo && <p className="text-[#8B8BA0] text-[10px] mt-0.5">{pos.motivo}</p>}
+                  </div>
+                ) : null}
+
+                {seg && (seg.idade_min || seg.idade_max || (seg.generos && seg.generos.length)) ? (
+                  <div className="text-[11px]">
+                    <span className="text-[#8B8BA0]">Público: </span>
+                    <span className="text-[#F1F1F3]">
+                      {seg.idade_min || '?'}–{seg.idade_max || '?'}
+                      {seg.generos && seg.generos.length ? ` · ${generosTxt(seg.generos)}` : ''}
+                    </span>
+                    {seg.motivo && <p className="text-[#8B8BA0] text-[10px] mt-0.5">{seg.motivo}</p>}
+                  </div>
+                ) : null}
+
+                {cortes.length > 0 && (
+                  <div className="text-[11px]">
+                    <span className="text-[#EF4444] font-medium">Conjuntos que NÃO serão duplicados ({cortes.length}):</span>
+                    <ul className="mt-1 space-y-1">
+                      {cortes.map((c: any, i: number) => (
+                        <li key={i} className="text-[#8B8BA0] flex items-start gap-1.5">
+                          <span className="text-[#EF4444] mt-0.5">✕</span>
+                          <span><span className="text-[#F1F1F3]">{c.nome}</span> — {c.motivo}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {plan.plano?.racional_80x10x10 && (
             <div className="text-[11px] text-[#8B8BA0] leading-relaxed">
@@ -145,6 +202,9 @@ export function OptimizationPlan({ plan, isGenerating, isDeciding, isExecuting, 
                 <span>Objetivo: <span className="text-[#F1F1F3]">{plan.resultado.objetivo}</span></span>
                 <span>Conjuntos: <span className="text-[#F1F1F3]">{plan.resultado.adsets_criados}</span></span>
                 <span>Anúncios: <span className="text-[#F1F1F3]">{plan.resultado.ads_criados}</span></span>
+                {plan.resultado.conjuntos_pulados > 0 && (
+                  <span>Perdedores cortados: <span className="text-[#F1F1F3]">{plan.resultado.conjuntos_pulados}</span></span>
+                )}
               </div>
               {Array.isArray(plan.resultado.avisos) && plan.resultado.avisos.length > 0 && (
                 <ul className="text-[#EAB308] list-disc pl-4">

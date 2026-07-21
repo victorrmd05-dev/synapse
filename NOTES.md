@@ -1,7 +1,49 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-06-29 — **Tracking: "Limpar log" + filtro "só conversões"** no painel CAPI (log local, não afeta o Meta). Antes: **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
+> Última atualização: 2026-07-20 — **Gestor-Meta-Ads: paridade total com o MetaScale** (fix de modelo IA `claude-opus-4-8`, filtro por data, Claude Ads Audit transparente, distribuição de verba real, Plano de Otimização ancorado na Análise Profunda, "Salvar análise" completo). Antes: **Tracking: "Limpar log" + filtro "só conversões"** no painel CAPI (log local, não afeta o Meta). Antes: **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
+
+---
+
+## ▶️ Como abrir o dashboard (rodar local)
+O app é um Next.js que roda **na sua máquina** — não há URL pública, é sempre `localhost`.
+
+**Passo a passo:**
+1. Abrir um terminal na raiz do projeto:
+   `C:\Users\cerqu\Documents\Projetos_IDE\Alavanca _synapse`
+2. (Só na 1ª vez, ou depois de mudar dependências) instalar os pacotes:
+   ```bash
+   npm install
+   ```
+3. Subir o servidor de desenvolvimento:
+   ```bash
+   npm run dev
+   ```
+4. Abrir no navegador: **http://localhost:3000**
+   - Se a porta 3000 estiver ocupada, o Next sobe em 3001 (ele avisa no terminal — usar a URL que aparecer).
+5. Para **parar** o servidor: `Ctrl + C` no terminal.
+
+**Rotas principais do dashboard:**
+| Tela | URL |
+|---|---|
+| Home | http://localhost:3000/ |
+| Mineração | http://localhost:3000/mineracao |
+| Produção (Kanban) | http://localhost:3000/producao |
+| Copywriting | http://localhost:3000/copywriting |
+| Revisor | http://localhost:3000/revisor |
+| Design/LP | http://localhost:3000/design |
+| Tracking (FOP) | http://localhost:3000/tracking |
+| Meta Ads — Dashboard | http://localhost:3000/meta-ads/dashboard |
+| Meta Ads — Campanhas | http://localhost:3000/meta-ads/campanhas |
+| Agents Config | http://localhost:3000/agents |
+
+**Requisito:** o `.env.local` precisa estar preenchido (Supabase, chaves de IA, Meta, etc.) — sem
+ele o painel abre mas fica sem dados. Ele **nunca** é commitado; fica só na sua máquina.
+
+**Armadilhas conhecidas (do próprio diário):**
+- **Não rodar `npm run build` com o `npm run dev` ativo** — disputam a pasta `.next` e a tela fica
+  branca/sem estilo. Para checar tipos com o dev rodando, usar `npx tsc --noEmit`.
+- Se mexeu no `.env.local`, **reiniciar o `npm run dev`** (ele só lê o env no boot).
 
 ---
 
@@ -158,7 +200,7 @@ pasta local `agentes/`. Decisão do Fernando: **unificar em `agentes_config`**, 
 - ⚠️ **Não rodar `npm run build` com `npm run dev` ativo** — disputam o `.next` e a tela fica
   branca/sem estilo (aconteceu). Validar com `tsc --noEmit` + `next lint`; build só com dev parado.
 
-## 🗄️ Camada de dados — RLS corrigido (25/06/2026)
+## 🗄️ Camada de dados — RLS corrigido (/6)
 **Causa raiz do "nada aparece no painel":** 6 tabelas do pipeline tinham RLS **ligado e ZERO
 policies** → a `anon key` do browser lia 0 linhas (default deny), mesmo com dados inseridos pela
 `service_role`. O frontend inteiro estava cego.
@@ -628,3 +670,73 @@ grafo do segundo cérebro.
   (saída em `graphify-out/`: `graph.json`, `graph.html`, `GRAPH_REPORT.md`).
 - Rodar **todo dia** e sempre que a nota do projeto for atualizada. Para automatizar de verdade
   (sem depender de sessão), usar uma Tarefa Agendada do Windows com esse mesmo comando.
+
+---
+
+## 🔄 Dashboard Atualizado via MetaScale (2026-07-18)
+O Frontend da rota pp/meta-ads foi 100% sincronizado com as últimas atualizações de UI desenvolvidas no projeto base MetaScale.
+
+**O que foi migrado:**
+- **Dashboard Principal (/meta-ads/dashboard/page.tsx):** Agora suporta a visualização real do funil e distribuição de verbas sem mocks.
+- **Listagem de Campanhas (/meta-ads/campanhas/page.tsx):** Importada inteiramente para suportar filtros rápidos (Escalável, Otimizar, etc).
+- **Detalhes da Campanha (/meta-ads/campanhas/[id]/page.tsx):** Traz as atualizações visuais da página de análise.
+
+**Nota técnica:**
+Foi uma migração estrita de frontend. Os componentes em src/components/campaigns e a API em src/app/api/meta precisam estar em suas últimas versões para garantir o correto funcionamento destes novos containers visuais.
+
+---
+
+## 🔄 Gestor-Meta-Ads — PARIDADE TOTAL com o MetaScale (2026-07-20)
+Porte completo das atualizações do projeto MetaScale (`C:\Users\cerqu\Documents\Obsidian\MetaScale`)
+para a parte de Gestor Meta Ads do Synapse. **Merge cirúrgico**, não cópia cega: os libs
+`anthropic.ts`/`meta-api.ts` são compartilhados com outros agentes (minerador/design) e o Synapse
+é **stateful** (persiste em `meta_campaigns`/`meta_campaign_metrics`/`meta_optimization_plans` e lê
+delas na lista/optimize/diagnose) — o MetaScale é stateless. Preservei a arquitetura stateful e o
+sistema de agentes (`getAgentConfig`/`buildSystemPrompt`); trouxe só as melhorias.
+
+**O que foi portado:**
+- ✅ **Fix de modelo IA:** `callDiagnostic`/`callDeepDiagnostic` usavam `claude-3-5-sonnet-20240620`
+  (descontinuado → 404, diagnósticos quebrados). Trocado para **`claude-opus-4-8`** + parse robusto
+  (pega bloco `text` + `safeParseJson`). Rota `/api/ai/diagnostic` não engole mais o erro.
+- ✅ **Filtro por data** (Hoje/Ontem/3/7/14/30d + Personalizado): novo `src/lib/date-range.ts` +
+  `src/components/ui/DateRangePicker.tsx`; `DateParams`/`dateQuery` em `meta-api.ts`
+  (`fetchMetaInsights` e `fetchCampaignAnalysis` aceitam preset **ou** `since/until`→`time_range`).
+  Rota `sync` aceita GET/POST + `range`/`since`/`until` e **continua persistindo** no Supabase.
+  Dashboard com seletor no TopBar, default `last_7d`, persiste no navegador.
+- ✅ **Claude Ads Audit transparente:** `ClaudeAdsHealth` agora mostra os **5 fatores reais**
+  (ROAS 40 / Connect 20 / CTR 15 / Checkout 15 / LP 10) com valor·meta·pontos; nota = soma dos pontos.
+  Fim dos "agentes online" falsos hardcoded.
+- ✅ **Distribuição de Verba real** (gasto por objetivo, não mais 85/10/5 fake) + **CPA formatado**
+  (`maximumFractionDigits: 2`).
+- ✅ **Conta Meta real** no dashboard (via `fetchAccountInfo`) em vez de "Conta Meta Ads" fixo.
+- ✅ **Plano de Otimização ancorado na Análise Profunda:** `optimize/plan` agora busca as quebras
+  (`fetchCampaignAnalysis`) e usa o contrato ancorado → o plano deriva `segmentacao` (idade/gênero),
+  `posicionamentos` (ex.: só Reels) e `conjuntos_pausar` (perdedores, por adset_id). `optimize/execute`
+  ganhou `aplicarAlavancas()` (injeta age/gender/positions no targeting, reconcilia plataformas, pula
+  os conjuntos perdedores com salvaguarda anti-esvaziamento) + `conjuntos_pulados` no resultado.
+  `OptimizationPlan.tsx` exibe o bloco "Realocação de mídia".
+- ✅ **"Salvar análise" (página inteira):** nova rota `/api/diagnostics/save` grava um `.md` completo
+  em `analises-ia/` (métricas + funil + diagnóstico + Análise Profunda + media buyer + plano) e faz
+  insert best-effort no Supabase (`meta_ai_diagnostics`, via `supabaseServer`). Botão "Salvar análise"
+  na página de campanhas. Pasta `analises-ia/` gitignorada (exceto README).
+- ✅ **Componentes atualizados:** `AIAnalyst` (estado de erro), `FunnelBars` (status box dinâmico),
+  `MetaMetricsGrid` (rótulo de janela), `SummaryHeader`, `TopBar` (slot `actions`).
+- ✅ **Limpeza:** removida a pasta duplicada/órfã `meta-ads/campanhas/campanhas/` (rota quebrada,
+  tentativa de port anterior). `scratch` adicionado ao `exclude` do tsconfig.
+
+**Decisões de merge (o que NÃO copiei):**
+- `CampaignCard` mantido: o link é `/meta-ads/campanhas?campaign=` (roteamento do Synapse), não
+  `/campanhas/` do MetaScale.
+- Rota `sync` NÃO virou stateless — mantida a persistência no Supabase (lista/optimize/diagnose leem dela).
+- `optimize/plan` NÃO virou stateless — mantido o sistema de agentes + tabela `meta_optimization_plans`
+  + fluxo de aprovação; só enxertei a ancoragem nas quebras.
+- Usado `supabaseServer` (service-role já existente) em vez de criar `supabase-admin.ts`.
+
+**Validação:**
+- ✅ `npx tsc --noEmit` **limpo (exit 0)** — a checagem de tipos oficial do projeto.
+- ⚠️ `npm run build` falha em ESLint `no-explicit-any`/`no-unused-vars`, mas é **condição
+  pré-existente do projeto inteiro** (erra até em arquivos não tocados: `TipTapEditor.tsx`,
+  `generateWithProvider.ts`) — não é regressão deste porte. Para o build passar seria preciso
+  limpar o lint do projeto ou setar `eslint.ignoreDuringBuilds` (não feito sem pedido).
+- ⏳ **Não testado ao vivo** (npm run dev + clicar). A **execução real do Plano** cria campanha
+  PAUSED na conta ativa — reversível, mas não disparada de propósito. Validar quando quiser.

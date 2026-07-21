@@ -3,15 +3,16 @@
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, RefreshCw, Sparkles, ChevronDown } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Sparkles, ChevronDown, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/Badge';
 import { MetaMetricsGrid } from '@/components/campaigns/MetaMetricsGrid';
 import { FunnelBars } from '@/components/campaigns/FunnelBars';
 import { AIAnalyst } from '@/components/campaigns/AIAnalyst';
 import { TrendChart } from '@/components/campaigns/TrendChart';
+import { DeepAnalysis } from '@/components/campaigns/DeepAnalysis';
 import { OptimizationPlan, OptimizationPlanRow } from '@/components/campaigns/OptimizationPlan';
-import { Campaign, CampaignMetrics, EscalaStatus, AIDiagnostic } from '@/types';
+import { Campaign, CampaignMetrics, EscalaStatus, AIDiagnostic, CampaignAnalysis, DeepDiagnostic } from '@/types';
 
 function mapRowToCampaign(camp: any, metric: any | undefined): Campaign {
   const metrics: CampaignMetrics | undefined = metric
@@ -69,6 +70,14 @@ function CampanhasInner() {
   const [isDeciding, setIsDeciding] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  // Estados da Análise Profunda
+  const [analysis, setAnalysis] = useState<CampaignAnalysis | null>(null);
+  const [deep, setDeep] = useState<DeepDiagnostic | null>(null);
+  const [deepLoading, setDeepLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [deepError, setDeepError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const fetchDados = useCallback(async () => {
     const { data: camps } = await supabase
@@ -155,6 +164,14 @@ function CampanhasInner() {
     });
   }, [campaigns, queryCampaign]);
 
+  // Reseta a Análise Profunda ao trocar de campanha
+  useEffect(() => {
+    setAnalysis(null);
+    setDeep(null);
+    setDeepError(null);
+    setSaveState('idle');
+  }, [selectedId]);
+
   const selected = campaigns.find((c) => c.id === selectedId) || null;
   const selectedDiagnostic = selectedId ? diagnostics[selectedId] ?? null : null;
   const selectedPlan = selectedId ? plans[selectedId] ?? null : null;
@@ -240,6 +257,91 @@ function CampanhasInner() {
     }
   };
 
+  const handleRunDeep = async () => {
+    if (!selected) return;
+    setDeepLoading(true);
+    setDeepError(null);
+    setDeep(null);
+    try {
+      const res = await fetch(
+        `/api/meta/analysis?campaignId=${selected.meta_campaign_id}&range=last_30d`
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Falha na análise profunda.');
+      const a: CampaignAnalysis = {
+        byAdset: data.byAdset || [],
+        byPlacement: data.byPlacement || [],
+        byAge: data.byAge || [],
+      };
+      setAnalysis(a);
+      setDeepLoading(false);
+
+      setAiLoading(true);
+      try {
+        const air = await fetch('/api/ai/deep-diagnostic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ campaignName: selected.nome, analysis: a }),
+        });
+        const aid = await air.json();
+        if (aid.success && aid.diagnostic) setDeep(aid.diagnostic);
+      } catch {
+        // Ignora erro
+      } finally {
+        setAiLoading(false);
+      }
+    } catch (err: any) {
+      setDeepError(err?.message || 'Erro ao rodar a análise profunda.');
+      setDeepLoading(false);
+    }
+  };
+
+  const handlePauseAdset = async (adsetId: string, _nome: string) => {
+    try {
+      const res = await fetch('/api/meta/adset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adsetId, status: 'PAUSED' }),
+      });
+      const data = await res.json();
+      return { success: !!data.success, error: data.error };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Erro de rede.' };
+    }
+  };
+
+  // Salva a PÁGINA INTEIRA (métricas + funil + diagnóstico + Análise Profunda +
+  // media buyer + plano) num .md arrastável, além do best-effort no Supabase.
+  const handleSaveDiagnostic = async () => {
+    if (!selected || !selectedDiagnostic) return;
+    setSaveState('saving');
+    try {
+      const res = await fetch('/api/diagnostics/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          meta_campaign_id: selected.meta_campaign_id,
+          campaign_nome: selected.nome,
+          objetivo: selected.objetivo,
+          status: selected.ativo ? 'Ativa' : 'Pausada',
+          range_label: 'Últimos 30 dias',
+          gargalo: selectedDiagnostic.gargalo,
+          diagnostico: selectedDiagnostic.diagnostico,
+          recomendacoes: selectedDiagnostic.recomendacoes,
+          prioridade: selectedDiagnostic.prioridade,
+          metrics: selected.metrics,
+          analysis,
+          deep,
+          plan: selectedPlan?.plano ?? null,
+        }),
+      });
+      const json = await res.json();
+      setSaveState(json.success ? 'saved' : 'error');
+    } catch {
+      setSaveState('error');
+    }
+  };
+
   if (loading) {
     return <div className="text-center text-[#8B8BA0] text-sm mt-10">Carregando campanhas…</div>;
   }
@@ -307,14 +409,30 @@ function CampanhasInner() {
               </div>
             </div>
 
-            <button
-              onClick={handleDiagnose}
-              disabled={isDiagnosing}
-              className="flex items-center gap-2 bg-[#6366F1] hover:bg-[#4f52e2] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-[#6366F1]/20 disabled:opacity-50"
-            >
-              {isDiagnosing ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              {isDiagnosing ? 'Analisando…' : 'Pedir diagnóstico desta campanha'}
-            </button>
+            <div className="flex items-center gap-3">
+              {saveState !== 'idle' && (
+                <span className={`text-[11px] ${saveState === 'error' ? 'text-red-400' : 'text-[#22C55E]'}`}>
+                  {saveState === 'saving' ? 'Salvando…' : saveState === 'saved' ? 'Salvo em analises-ia/' : 'Falha ao salvar'}
+                </span>
+              )}
+              <button
+                onClick={handleSaveDiagnostic}
+                disabled={!selectedDiagnostic || saveState === 'saving'}
+                className="flex items-center gap-2 bg-[#2A2A38] hover:bg-[#343446] text-[#F1F1F3] px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                title={!selectedDiagnostic ? 'Peça o diagnóstico antes de salvar' : 'Salvar a análise completa em .md'}
+              >
+                {saveState === 'saving' ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
+                Salvar análise
+              </button>
+              <button
+                onClick={handleDiagnose}
+                disabled={isDiagnosing}
+                className="flex items-center gap-2 bg-[#6366F1] hover:bg-[#4f52e2] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-[#6366F1]/20 disabled:opacity-50"
+              >
+                {isDiagnosing ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                {isDiagnosing ? 'Analisando…' : 'Pedir diagnóstico desta campanha'}
+              </button>
+            </div>
           </div>
 
           <MetaMetricsGrid metrics={m} />
@@ -323,6 +441,16 @@ function CampanhasInner() {
             <FunnelBars metrics={m} />
             <AIAnalyst diagnostic={selectedDiagnostic} />
           </div>
+
+          <DeepAnalysis 
+            analysis={analysis}
+            deep={deep}
+            loading={deepLoading}
+            aiLoading={aiLoading}
+            error={deepError}
+            onRun={handleRunDeep}
+            onPauseAdset={handlePauseAdset}
+          />
 
           <OptimizationPlan
             plan={selectedPlan}
