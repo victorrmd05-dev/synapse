@@ -25,5 +25,13 @@ export const supabaseServer = createClient(
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      // O Next.js 14 intercepta o fetch global e CACHEIA respostas dentro de
+      // Route Handlers (Data Cache) — mesmo com `dynamic = 'force-dynamic'`
+      // na rota, leituras do Supabase voltavam CONGELADAS (ex.: diagnósticos
+      // excluídos que "ressuscitavam" na lista). `cache: 'no-store'` força
+      // toda chamada REST do supabase-js a ir ao banco de verdade.
+      fetch: (url, init) => fetch(url, { ...init, cache: 'no-store' }),
+    },
   }
 );

@@ -729,6 +729,67 @@ export async function fetchCampaignAnalysis(
   return { byAdset, byPlacement, byAge };
 }
 
+// --- Visão por conjunto (painel sempre visível, sem Análise Profunda) -------
+
+export interface AdsetOverviewRow {
+  id: string;
+  name: string;
+  status: string;
+  effective_status: string;
+  daily_budget?: string;
+  spend: number;
+  impressoes: number;
+  compras: number;
+  roas: number;
+  cpa: number;
+  saude: BreakdownStatus;
+}
+
+/**
+ * Lista os conjuntos de uma campanha com status de entrega + métricas do período,
+ * mesclando /adsets (config) com /insights?level=adset (números). Ordenado por gasto.
+ */
+export async function fetchAdsetsOverview(
+  campaignId: string,
+  date: DateParams | string = { preset: 'last_30d' }
+): Promise<AdsetOverviewRow[]> {
+  if (!META_ACCESS_TOKEN || !AD_ACCOUNT_ID) {
+    throw new Error('Credenciais Meta ausentes no .env.local');
+  }
+
+  const [meta, insights] = await Promise.all([
+    graphGet(`${campaignId}/adsets?fields=name,status,effective_status,daily_budget&limit=100`),
+    fetchInsightRows(
+      campaignId,
+      `level=adset&${dateQuery(date)}&fields=adset_id,adset_name,${ANALYSIS_FIELDS}&limit=300`
+    ),
+  ]);
+
+  const metricById = new Map<string, BreakdownRow>();
+  for (const r of insights) {
+    metricById.set(r.adset_id, mapBreakdownRow(r, r.adset_name || 'Conjunto'));
+  }
+
+  return ((meta.data || []) as any[])
+    .map((a) => {
+      const m = metricById.get(a.id);
+      return {
+        id: a.id as string,
+        name: (a.name as string) || 'Conjunto',
+        status: (a.status as string) || 'UNKNOWN',
+        effective_status: (a.effective_status as string) || a.status || 'UNKNOWN',
+        daily_budget: a.daily_budget as string | undefined,
+        spend: m?.spend ?? 0,
+        impressoes: m?.impressoes ?? 0,
+        compras: m?.compras ?? 0,
+        roas: m?.roas ?? 0,
+        cpa: m?.cpa ?? 0,
+        saude: m?.status ?? 'otimizar',
+      };
+    })
+    .sort((a, b) => b.spend - a.spend);
+}
+
 /**
  * Altera o status de um conjunto (ad set) na conta real — PAUSED ou ACTIVE.
  * Requer que o token tenha permissão de escrita (ads_management).

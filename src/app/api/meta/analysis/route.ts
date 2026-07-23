@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 /**
  * Análise Profunda de uma campanha: quebras por conjunto, posicionamento e público.
  * GET /api/meta/analysis?campaignId=<meta_id>&range=last_30d
+ * ou período personalizado: &since=YYYY-MM-DD&until=YYYY-MM-DD
  */
 export async function GET(req: NextRequest) {
   if (!hasMetaCredentials()) {
@@ -18,6 +19,8 @@ export async function GET(req: NextRequest) {
 
   const campaignId = req.nextUrl.searchParams.get('campaignId');
   const range = req.nextUrl.searchParams.get('range') || 'last_30d';
+  const since = req.nextUrl.searchParams.get('since');
+  const until = req.nextUrl.searchParams.get('until');
   if (!campaignId) {
     return NextResponse.json(
       { success: false, error: 'Parâmetro campaignId é obrigatório.' },
@@ -26,7 +29,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const analysis = await fetchCampaignAnalysis(campaignId, range);
+    const date = since && until ? { since, until } : { preset: range };
+    const analysis = await fetchCampaignAnalysis(campaignId, date);
     return NextResponse.json({ success: true, range, ...analysis });
   } catch (error: any) {
     console.error('Falha na análise profunda:', error);

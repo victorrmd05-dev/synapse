@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, RefreshCw, Sparkles, ChevronDown, Save } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Sparkles, ChevronDown, Save, History } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/Badge';
 import { MetaMetricsGrid } from '@/components/campaigns/MetaMetricsGrid';
@@ -12,6 +12,18 @@ import { AIAnalyst } from '@/components/campaigns/AIAnalyst';
 import { TrendChart } from '@/components/campaigns/TrendChart';
 import { DeepAnalysis } from '@/components/campaigns/DeepAnalysis';
 import { OptimizationPlan, OptimizationPlanRow } from '@/components/campaigns/OptimizationPlan';
+import { AdsetsPanel } from '@/components/campaigns/AdsetsPanel';
+import { AdCreatives } from '@/components/campaigns/AdCreatives';
+import { DiagnosticsHistory } from '@/components/campaigns/DiagnosticsHistory';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
+import {
+  RangeSelection,
+  DEFAULT_RANGE,
+  loadRange,
+  saveRange,
+  rangeToQuery,
+  rangeLabel,
+} from '@/lib/date-range';
 import { Campaign, CampaignMetrics, EscalaStatus, AIDiagnostic, CampaignAnalysis, DeepDiagnostic } from '@/types';
 
 function mapRowToCampaign(camp: any, metric: any | undefined): Campaign {
@@ -78,6 +90,17 @@ function CampanhasInner() {
   const [aiLoading, setAiLoading] = useState(false);
   const [deepError, setDeepError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [savedFile, setSavedFile] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Janela de data — mesma seleção/memória do Dashboard (localStorage compartilhado)
+  const [range, setRange] = useState<RangeSelection>(DEFAULT_RANGE);
+  const [isSyncingRange, setIsSyncingRange] = useState(false);
+
+  // Restaura a janela salva no navegador ao montar
+  useEffect(() => {
+    setRange(loadRange());
+  }, []);
 
   const fetchDados = useCallback(async () => {
     const { data: camps } = await supabase
@@ -172,6 +195,29 @@ function CampanhasInner() {
     setSaveState('idle');
   }, [selectedId]);
 
+  // Troca de janela de data → persiste, re-sincroniza as métricas na Meta
+  // (a rota sync grava o snapshot da janela no Supabase) e limpa a Análise
+  // Profunda (as quebras eram de outra janela).
+  const handleRangeChange = useCallback(
+    async (sel: RangeSelection) => {
+      saveRange(sel);
+      setRange(sel);
+      setAnalysis(null);
+      setDeep(null);
+      setDeepError(null);
+      setIsSyncingRange(true);
+      try {
+        await fetch(`/api/meta/sync?${rangeToQuery(sel)}`, { method: 'GET' });
+        await fetchDados();
+      } catch {
+        // Realtime cobre se o fetch manual falhar
+      } finally {
+        setIsSyncingRange(false);
+      }
+    },
+    [fetchDados]
+  );
+
   const selected = campaigns.find((c) => c.id === selectedId) || null;
   const selectedDiagnostic = selectedId ? diagnostics[selectedId] ?? null : null;
   const selectedPlan = selectedId ? plans[selectedId] ?? null : null;
@@ -264,7 +310,7 @@ function CampanhasInner() {
     setDeep(null);
     try {
       const res = await fetch(
-        `/api/meta/analysis?campaignId=${selected.meta_campaign_id}&range=last_30d`
+        `/api/meta/analysis?campaignId=${selected.meta_campaign_id}&${rangeToQuery(range)}`
       );
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Falha na análise profunda.');
@@ -277,6 +323,7 @@ function CampanhasInner() {
       setDeepLoading(false);
 
       setAiLoading(true);
+      let deepResult: DeepDiagnostic | null = null;
       try {
         const air = await fetch('/api/ai/deep-diagnostic', {
           method: 'POST',
@@ -284,12 +331,19 @@ function CampanhasInner() {
           body: JSON.stringify({ campaignName: selected.nome, analysis: a }),
         });
         const aid = await air.json();
-        if (aid.success && aid.diagnostic) setDeep(aid.diagnostic);
+        if (aid.success && aid.diagnostic) {
+          deepResult = aid.diagnostic;
+          setDeep(aid.diagnostic);
+        }
       } catch {
         // Ignora erro
       } finally {
         setAiLoading(false);
       }
+
+      // Auto-save: toda Análise Profunda gera o relatório COMPLETO
+      // (.md em analises-ia/ + relatorio_md no histórico), sem clique extra.
+      await handleSaveDiagnostic({ analysisArg: a, deepArg: deepResult });
     } catch (err: any) {
       setDeepError(err?.message || 'Erro ao rodar a análise profunda.');
       setDeepLoading(false);
@@ -311,9 +365,15 @@ function CampanhasInner() {
   };
 
   // Salva a PÁGINA INTEIRA (métricas + funil + diagnóstico + Análise Profunda +
-  // media buyer + plano) num .md arrastável, além do best-effort no Supabase.
-  const handleSaveDiagnostic = async () => {
-    if (!selected || !selectedDiagnostic) return;
+  // media buyer + plano) num .md arrastável, além do relatório completo no
+  // Supabase (relatorio_md — o Histórico mostra a análise inteira).
+  // Aceita analysis/deep por argumento porque o auto-save roda logo após a
+  // Análise Profunda, antes do estado do React atualizar.
+  const handleSaveDiagnostic = async (opts?: {
+    analysisArg?: CampaignAnalysis | null;
+    deepArg?: DeepDiagnostic | null;
+  }) => {
+    if (!selected) return;
     setSaveState('saving');
     try {
       const res = await fetch('/api/diagnostics/save', {
@@ -324,19 +384,22 @@ function CampanhasInner() {
           campaign_nome: selected.nome,
           objetivo: selected.objetivo,
           status: selected.ativo ? 'Ativa' : 'Pausada',
-          range_label: 'Últimos 30 dias',
-          gargalo: selectedDiagnostic.gargalo,
-          diagnostico: selectedDiagnostic.diagnostico,
-          recomendacoes: selectedDiagnostic.recomendacoes,
-          prioridade: selectedDiagnostic.prioridade,
+          range_label: rangeLabel(range),
+          gargalo: selectedDiagnostic?.gargalo ?? 'nenhum',
+          diagnostico:
+            selectedDiagnostic?.diagnostico ||
+            '_(diagnóstico do funil ainda não gerado — use "Pedir diagnóstico desta campanha")_',
+          recomendacoes: selectedDiagnostic?.recomendacoes ?? [],
+          prioridade: selectedDiagnostic?.prioridade ?? 'media',
           metrics: selected.metrics,
-          analysis,
-          deep,
+          analysis: opts?.analysisArg !== undefined ? opts.analysisArg : analysis,
+          deep: opts?.deepArg !== undefined ? opts.deepArg : deep,
           plan: selectedPlan?.plano ?? null,
         }),
       });
       const json = await res.json();
       setSaveState(json.success ? 'saved' : 'error');
+      setSavedFile(json.success && json.mdFile ? json.mdFile : null);
     } catch {
       setSaveState('error');
     }
@@ -369,20 +432,32 @@ function CampanhasInner() {
           Voltar ao Dashboard
         </Link>
 
-        {/* Seletor de campanha — essencial para escala (várias campanhas ativas) */}
-        <div className="relative">
-          <select
-            value={selectedId ?? ''}
-            onChange={(e) => setSelectedId(e.target.value)}
-            className="appearance-none bg-[#1A1A24] border border-[#2A2A38] text-[#F1F1F3] text-sm rounded-lg pl-4 pr-10 py-2.5 focus:outline-none focus:border-[#6366F1] cursor-pointer min-w-[280px]"
-          >
-            {campaigns.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.ativo ? '🟢 ' : '⚪ '}{c.nome}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B8BA0] pointer-events-none" />
+        <div className="flex items-center gap-3 flex-wrap">
+          {isSyncingRange && (
+            <span className="flex items-center gap-1.5 text-[11px] text-[#8B8BA0]">
+              <RefreshCw size={12} className="animate-spin" />
+              Sincronizando janela…
+            </span>
+          )}
+
+          {/* Janela de data — mesma do Dashboard (Hoje/Ontem/3/7/14/30d/Personalizado) */}
+          <DateRangePicker value={range} onChange={handleRangeChange} disabled={isSyncingRange} />
+
+          {/* Seletor de campanha — essencial para escala (várias campanhas ativas) */}
+          <div className="relative">
+            <select
+              value={selectedId ?? ''}
+              onChange={(e) => setSelectedId(e.target.value)}
+              className="appearance-none bg-[#1A1A24] border border-[#2A2A38] text-[#F1F1F3] text-sm rounded-lg pl-4 pr-10 py-2.5 focus:outline-none focus:border-[#6366F1] cursor-pointer min-w-[280px]"
+            >
+              {campaigns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.ativo ? '🟢 ' : '⚪ '}{c.nome}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8B8BA0] pointer-events-none" />
+          </div>
         </div>
       </div>
 
@@ -411,15 +486,30 @@ function CampanhasInner() {
 
             <div className="flex items-center gap-3">
               {saveState !== 'idle' && (
-                <span className={`text-[11px] ${saveState === 'error' ? 'text-red-400' : 'text-[#22C55E]'}`}>
-                  {saveState === 'saving' ? 'Salvando…' : saveState === 'saved' ? 'Salvo em analises-ia/' : 'Falha ao salvar'}
+                <span
+                  className={`text-[11px] max-w-[260px] truncate ${saveState === 'error' ? 'text-red-400' : 'text-[#22C55E]'}`}
+                  title={savedFile ? `analises-ia/${savedFile}` : undefined}
+                >
+                  {saveState === 'saving'
+                    ? 'Salvando…'
+                    : saveState === 'saved'
+                      ? `Salvo: analises-ia/${savedFile || ''}`
+                      : 'Falha ao salvar'}
                 </span>
               )}
               <button
-                onClick={handleSaveDiagnostic}
-                disabled={!selectedDiagnostic || saveState === 'saving'}
+                onClick={() => setShowHistory(true)}
+                className="flex items-center gap-2 bg-[#2A2A38] hover:bg-[#343446] text-[#F1F1F3] px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                title="Ver diagnósticos salvos"
+              >
+                <History size={16} />
+                Histórico
+              </button>
+              <button
+                onClick={() => handleSaveDiagnostic()}
+                disabled={saveState === 'saving'}
                 className="flex items-center gap-2 bg-[#2A2A38] hover:bg-[#343446] text-[#F1F1F3] px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                title={!selectedDiagnostic ? 'Peça o diagnóstico antes de salvar' : 'Salvar a análise completa em .md'}
+                title="Salvar a análise completa (.md em analises-ia/ + histórico)"
               >
                 {saveState === 'saving' ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
                 Salvar análise
@@ -435,7 +525,7 @@ function CampanhasInner() {
             </div>
           </div>
 
-          <MetaMetricsGrid metrics={m} />
+          <MetaMetricsGrid metrics={m} rangeLabel={rangeLabel(range)} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <FunnelBars metrics={m} />
@@ -452,6 +542,16 @@ function CampanhasInner() {
             onPauseAdset={handlePauseAdset}
           />
 
+          {/* Conjuntos sempre visíveis (sem depender da Análise Profunda) */}
+          <AdsetsPanel
+            campaignId={selected.meta_campaign_id}
+            rangeQuery={rangeToQuery(range)}
+            rangeLabel={rangeLabel(range)}
+          />
+
+          {/* Criativos dos anúncios (imagem + copy) */}
+          <AdCreatives campaignId={selected.meta_campaign_id} />
+
           <OptimizationPlan
             plan={selectedPlan}
             isGenerating={isGeneratingPlan}
@@ -464,6 +564,14 @@ function CampanhasInner() {
 
           <TrendChart />
         </>
+      )}
+
+      {showHistory && (
+        <DiagnosticsHistory
+          campaignId={selected?.meta_campaign_id ?? null}
+          campaignNames={Object.fromEntries(campaigns.map((c) => [c.meta_campaign_id, c.nome]))}
+          onClose={() => setShowHistory(false)}
+        />
       )}
     </div>
   );

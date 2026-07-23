@@ -1,7 +1,7 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-07-20 — **Gestor-Meta-Ads: paridade total com o MetaScale** (fix de modelo IA `claude-opus-4-8`, filtro por data, Claude Ads Audit transparente, distribuição de verba real, Plano de Otimização ancorado na Análise Profunda, "Salvar análise" completo). Antes: **Tracking: "Limpar log" + filtro "só conversões"** no painel CAPI (log local, não afeta o Meta). Antes: **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
+> Última atualização: 2026-07-23 — **Campanhas: Histórico de diagnósticos + painel de Conjuntos + galeria de Criativos** (GUIA_IMPLEMENTACAO.md implementado; endpoints já existiam do commit a4e1ca7, faltava a UI + 2 bugs de backend). Antes: **Gestor-Meta-Ads: paridade total com o MetaScale** (fix de modelo IA `claude-opus-4-8`, filtro por data, Claude Ads Audit transparente, distribuição de verba real, Plano de Otimização ancorado na Análise Profunda, "Salvar análise" completo). Antes: **Tracking: "Limpar log" + filtro "só conversões"** no painel CAPI (log local, não afeta o Meta). Antes: **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
 
 ---
 
@@ -600,6 +600,135 @@ do painel (só aparecem quando há eventos):
 - **Validado:** `tsc` limpo (só erro pré-existente em `scratch/`). Commit `2881ece`.
 - Futuro opcional (sem botão): retenção automática (manter só N dias/registros) p/ a tabela não
   crescer pra sempre.
+
+---
+
+## 🗂️ Campanhas — Histórico de Diagnósticos + Conjuntos sempre visíveis + Criativos (23/07/2026)
+Implementação do `GUIA_IMPLEMENTACAO.md` (3 melhorias na página `/meta-ads/campanhas`). Os 3
+endpoints do guia **já existiam** (commit `a4e1ca7`) — faltava a UI inteira e 2 bugs de backend.
+
+**Bugs de backend corrigidos (os endpoints não funcionariam):**
+1. `/api/meta/creatives` usava `process.env.META_ADS_ACCESS_TOKEN` — a env real é
+   `META_ACCESS_TOKEN` → sempre retornava 400 "não configurados".
+2. `/api/meta/adsets/list` usava `getCampaignAdSets()` (só config: budget/targeting, sem status
+   nem métricas) — inútil pra tabela Nome|Status|Gasto|ROAS do guia. → Novo helper
+   `fetchAdsetsOverview()` em `meta-api.ts`: mescla `/adsets` (status/effective_status/daily_budget)
+   com `/insights?level=adset` (reaproveita `mapBreakdownRow` → spend/compras/roas/cpa + saúde
+   escalar/otimizar/pausar). Aceita `range` opcional (default `last_30d`).
+3. **Criativos sem imagem** (descoberto no teste real): (a) a extração de imagem estava presa
+   atrás de `if (!title)`; (b) criativos Advantage+ (`asset_feed_spec`) só trazem o **hash** da
+   imagem, não URL; (c) `thumbnail_url` padrão vem 64x64. → Extração independente por campo +
+   resolução de hashes em URL cheia via `/adimages` (1 chamada em lote, best-effort) + fallback
+   `creative.thumbnail_width(512).thumbnail_height(512)`. Validado: 39/39 criativos com imagem.
+
+**UI nova (3 componentes em `src/components/campaigns/`):**
+- **`AdsetsPanel.tsx`** — painel "Conjuntos de Anúncios" **sempre visível** (sem depender da
+  Análise Profunda), entre DeepAnalysis e OptimizationPlan. Tabela: Conjunto | Entrega (badge
+  Ativo/Pausado) | Orçamento/dia | Gasto | Impressões | ROAS | CPA | Saúde | Controle. Botão
+  **pausar/reativar por conjunto** (reusa `POST /api/meta/adset`, com confirm de conta real e
+  update otimista do status).
+- **`AdCreatives.tsx`** — grid de criativos (imagem 512px + nome + status + título + copy),
+  modal expandido ao clicar (imagem grande, texto completo, whitespace preservado) e link
+  **"Abrir no Gerenciador"** (a rota devolve `accountId` sem o prefixo `act_` pro deep-link).
+- **`DiagnosticsHistory.tsx`** — modal "Histórico" (botão novo no header, ícone History) listando
+  `meta_ai_diagnostics` via `/api/diagnostics/list`: Data | Campanha | Gargalo | Prioridade |
+  Ver detalhes (expande diagnóstico + recomendações + modelo). Checkbox "Só esta campanha".
+  ⚠️ **Armadilha real:** `recomendacoes` no banco ora é `string[]`, ora `{texto, impacto}[]`
+  (formatos de IA diferentes ao longo do tempo) — helper `recTexto()` normaliza os dois; renderizar
+  o objeto direto quebraria o React ("Objects are not valid as a React child").
+
+**Decisão:** seguido o roteamento do Synapse (`?campaign=<id>` na página única), não o
+`[id]/page.tsx` sugerido pelo guia (rota órfã, ver sessões anteriores).
+
+**Rodada 2 (mesmo dia, feedback do Fernando):**
+- **Onde os relatórios ficam:** pasta `analises-ia/` na raiz (`<slug>_<meta_campaign_id>.md` +
+  `diagnosticos.json`), gitignorada — deletar manualmente à vontade. O modal Histórico lê do
+  **Supabase** (`meta_ai_diagnostics`), não desses arquivos.
+- **🐛 Bug crítico achado no teste:** `meta_ai_diagnostics` tem **UNIQUE (meta_campaign_id, data)**
+  (convenção da rota diagnose: 1/dia). O "Salvar análise" fazia INSERT → **falhava silenciosamente**
+  (best-effort) sempre que o diagnóstico do dia já existia — ou seja, quase sempre. → Trocado por
+  **UPSERT** `onConflict: 'meta_campaign_id,data'`. (A tabela também tem **FK** pra `meta_campaigns` —
+  id inventado é rejeitado.)
+- **Coluna nova `relatorio_md`** (migration `20260723120000`, aplicada via MCP): o markdown COMPLETO
+  (métricas + funil + diagnóstico + Análise Profunda + plano — igual ao .md da pasta) agora é salvo
+  também no Supabase, então o Histórico mostra a análise inteira.
+- **Auto-save da Análise Profunda:** ao terminar `handleRunDeep` (quebras + media buyer IA), a página
+  chama o save sozinha → **toda Análise Profunda gera o relatório completo** (.md + histórico) sem
+  clique extra. `handleSaveDiagnostic` aceita `analysisArg`/`deepArg` (o estado do React ainda não
+  atualizou no momento do auto-save). Botão "Salvar análise" não exige mais diagnóstico prévio.
+- **Histórico (DiagnosticsHistory) turbinado:** botão **Excluir** por linha (nova rota
+  `POST /api/diagnostics/delete {id}`, service_role; só apaga do banco, arquivos ficam), botão
+  **"Relatório"** que abre o `relatorio_md` renderizado (lib `marked`, estilos via arbitrary variants
+  do Tailwind — sem plugin typography) em **tela cheia**, e toggle **maximizar** no modal.
+- **Validado (23/07):** upsert testado com o registro real do dia (re-save preservando o conteúdo →
+  `supabase:true`, `relatorio_md` preenchido), delete testado com registro dummy (criado e excluído),
+  lista devolve `relatorio_md`; arquivos de teste limpos; `tsc` limpo; página 200.
+
+**Rodada 3 (mesmo dia) — "parece que não funciona" era UX, não bug:**
+Fernando reportou que excluir/salvar "não funcionavam". Diagnóstico pelos logs do dev + SQL:
+- **Excluir FUNCIONAVA** (registros 21/07 e 18/07 realmente sumiram do banco). A percepção de
+  "volta tudo no F5" vinha de: (a) o registro DE HOJE é **recriado pelo próprio Salvar/auto-save**
+  (desenho: 1 registro por campanha/dia); (b) com "Só esta campanha" desmarcado aparecem os
+  registros antigos de OUTRAS campanhas (29/06), que nunca foram excluídos.
+- **Salvar FUNCIONAVA** (arquivo reescrito às 12:32) — mas o nome era fixo por campanha, então
+  **sobrescrevia o mesmo .md** e nunca "aparecia arquivo novo" na pasta.
+- **Relatório saiu sem quebras** porque o "Salvar análise" foi clicado SEM rodar a Análise
+  Profunda antes (zero chamadas a `/api/meta/analysis` nos logs da sessão).
+Correções de UX: **arquivo datado** `<slug>_<id>_<YYYY-MM-DD>.md` (novo arquivo por dia; re-save
+no dia atualiza o do dia, ontem nunca é sobrescrito) e o header agora mostra **o nome do arquivo
+salvo** ("Salvo: analises-ia/<arquivo>"). Validado: `tsc` limpo, save de teste gerou nome datado.
+📌 **Fluxo pro relatório completo: Rodar Análise Profunda → auto-save faz o resto.**
+
+**Rodada 4 — 🐛 BUG REAL encontrado: Data Cache do Next congelava as leituras do Supabase:**
+O diagnóstico da rodada 3 estava incompleto: os DELETEs de fato apagavam no banco, mas a lista
+`/api/diagnostics/list` voltava **CONGELADA** — o Fernando excluía 18/07 e 21/07 e elas
+"ressuscitavam" no F5 (e o registro novo de hoje nunca aparecia).
+- **Causa raiz:** o Next.js 14 intercepta o `fetch` global e cacheia respostas dentro de Route
+  Handlers (Data Cache, chaveado por URL) — **mesmo com `export const dynamic = 'force-dynamic'`**
+  na rota. O fetch interno do supabase-js caía nesse cache: a query do modal (`limit=50`) ficou
+  congelada com o estado de antes das exclusões, enquanto URLs diferentes (`limit=3`, `limit=5`)
+  tinham snapshots de outros momentos — por isso os testes por curl "passavam".
+- **Como foi provado:** API na 3000 devolvia 21/18; consulta direta ao REST do Supabase com a
+  mesma URL/key do `.env.local` devolvia só 23/07 + 3 de junho (mesmo projeto `apdjykklderoyiosmytw`
+  do MCP). Mesma origem, respostas diferentes = cache no meio.
+- **Correção (raiz):** `src/lib/supabase-server.ts` agora injeta
+  `global.fetch = (url, init) => fetch(url, { ...init, cache: 'no-store' })` no client — TODA
+  leitura server-side do Supabase vai ao banco de verdade. Vale pra todas as rotas que usam
+  `supabaseServer` (não só diagnostics).
+- **Validado:** a URL exata do modal passou a devolver só o estado real do banco.
+- ⚠️ **Aprendizado:** rota com `force-dynamic` NÃO garante fetch fresco no Next 14; qualquer
+  client HTTP server-side (supabase-js, SDKs) precisa de `cache: 'no-store'` explícito.
+
+**Rodada 5 — Visualização da publicação nos Criativos (Ad Preview API):**
+- Rota nova `GET /api/meta/preview?adId=X&format=Y` → Graph `/{ad_id}/previews` devolve o
+  **iframe oficial da Meta** com o anúncio como o público vê. Whitelist de formatos:
+  MOBILE_FEED_STANDARD, DESKTOP_FEED_STANDARD, INSTAGRAM_STANDARD, INSTAGRAM_STORY, INSTAGRAM_REELS.
+- No modal do `AdCreatives`: seção **"Visualização da publicação"** com chips de formato
+  (Feed Mobile/Desktop, Instagram, Story, Reels) → renderiza o iframe. Preview limpa ao trocar
+  de anúncio.
+- **Validado:** rota testada nos 3 formatos com anúncio real (200/OK), `tsc` limpo.
+
+**Rodada 6 — Janela de data na página Campanhas (igual ao Dashboard):**
+- `DateRangePicker` (Hoje/Ontem/3/7/14/30d/Personalizado) no header da página Campanhas, com a
+  **mesma memória** do Dashboard (localStorage `synapse.dateRange` compartilhado — escolher numa
+  página vale na outra).
+- Trocar a janela → `saveRange` + `GET /api/meta/sync?<range>` (grava o snapshot da janela no
+  Supabase, padrão do Dashboard) + refetch + **limpa a Análise Profunda** (quebras eram de outra
+  janela). Indicador "Sincronizando janela…".
+- A janela flui pra tudo: `MetaMetricsGrid` (rótulo), **Análise Profunda**
+  (`/api/meta/analysis` agora aceita `since/until` além de `range`), **AdsetsPanel**
+  (`/api/meta/adsets/list` idem; props `rangeQuery`/`rangeLabel`) e **range_label do relatório
+  salvo** (antes fixo "Últimos 30 dias").
+- **Validado:** `tsc` limpo; adsets em `last_7d` (R$528) vs custom 15–22/07 (R$603) — números
+  reais diferentes por janela; analysis com `since/until` OK (18 conjuntos/18 posicionamentos).
+
+**Validação (23/07):** `npx tsc --noEmit` limpo; lint dos arquivos novos sem erros (só os
+warnings `no-explicit-any` padrão do projeto); os 3 endpoints testados com a campanha real
+`120249862631490627` (Premier Esportes): adsets com métricas e saúde corretas (8 compras,
+ROAS 2.88 no "Genérico_Aberto"), 39 criativos todos com imagem, histórico com diagnósticos
+reais; página GET 200 e compilando sem erro. ⏳ **Falta o clique do Fernando na tela**
+(pausar/ativar conjunto real, modais). Nota de ambiente: `node_modules` estava com o pacote
+`typescript` quebrado/ausente — `npm install typescript` resolveu.
 
 ---
 

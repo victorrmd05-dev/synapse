@@ -257,6 +257,10 @@ export async function POST(req: NextRequest) {
     salvo_em: new Date().toISOString(),
   };
 
+  // Relatório completo em markdown — usado no arquivo .md E no Supabase
+  // (coluna relatorio_md), pro Histórico mostrar a análise inteira.
+  const fullMd = buildFullMarkdown(body, record.salvo_em);
+
   // 1) Arquivos no projeto (pasta analises-ia/):
   //    - diagnosticos.json: todas as análises (upsert por campanha)
   //    - <campanha>_<id>.md: análise legível COMPLETA, arrastável para o chat
@@ -272,9 +276,12 @@ export async function POST(req: NextRequest) {
     else list.push(record);
     await fs.writeFile(FILE_PATH, JSON.stringify(list, null, 2), 'utf8');
 
+    // Nome DATADO: um arquivo novo por dia (salvar de novo no mesmo dia
+    // atualiza o do dia; o de ontem nunca é sobrescrito).
     const nome = slugify(record.campaign_nome) || 'campanha';
-    mdFile = `${nome}_${record.meta_campaign_id}.md`;
-    await fs.writeFile(path.join(DATA_DIR, mdFile), buildFullMarkdown(body, record.salvo_em), 'utf8');
+    const dia = record.salvo_em.slice(0, 10); // YYYY-MM-DD
+    mdFile = `${nome}_${record.meta_campaign_id}_${dia}.md`;
+    await fs.writeFile(path.join(DATA_DIR, mdFile), fullMd, 'utf8');
 
     fileOk = true;
   } catch (e: any) {
@@ -285,14 +292,22 @@ export async function POST(req: NextRequest) {
   let supabaseOk = false;
   let supabaseError: string | undefined;
   try {
-    const { error } = await supabaseServer.from('meta_ai_diagnostics').insert({
-      data: new Date().toISOString().slice(0, 10), // coluna date
-      meta_campaign_id: record.meta_campaign_id,
-      gargalo: record.gargalo,
-      diagnostico: record.diagnostico,
-      recomendacoes: record.recomendacoes,
-      prioridade: record.prioridade,
-    });
+    // UPSERT: a tabela tem UNIQUE (meta_campaign_id, data) — um diagnóstico por
+    // campanha/dia (convenção da rota diagnose). Um INSERT simples falharia
+    // sempre que o diagnóstico do dia já existisse; aqui atualizamos o registro
+    // do dia anexando o relatório completo.
+    const { error } = await supabaseServer.from('meta_ai_diagnostics').upsert(
+      {
+        data: new Date().toISOString().slice(0, 10), // coluna date
+        meta_campaign_id: record.meta_campaign_id,
+        gargalo: record.gargalo,
+        diagnostico: record.diagnostico,
+        recomendacoes: record.recomendacoes,
+        prioridade: record.prioridade,
+        relatorio_md: fullMd,
+      },
+      { onConflict: 'meta_campaign_id,data' }
+    );
     if (error) supabaseError = error.message; // ex.: coluna inexistente => segue só com o arquivo
     else supabaseOk = true;
   } catch (e: any) {
