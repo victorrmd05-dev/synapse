@@ -722,6 +722,37 @@ O diagnóstico da rodada 3 estava incompleto: os DELETEs de fato apagavam no ban
 - **Validado:** `tsc` limpo; adsets em `last_7d` (R$528) vs custom 15–22/07 (R$603) — números
   reais diferentes por janela; analysis com `since/until` OK (18 conjuntos/18 posicionamentos).
 
+---
+
+## 📚 Biblioteca de Páginas — /paginas + pasta única `lps/` (23/07/2026)
+Organização das landing pages (pedido do Fernando): **uma pasta só** e **todas as páginas no
+banco/dashboard** pra servir de modelo e registrar qual **validou (ROAS OK)**.
+
+- **Pasta única:** `lps/` é o local oficial. `capa_iphone_aluminio/` (página manual + 13 assets)
+  movida para **`lps/capa-iphone-aluminio/`** (subpasta com `index.html` + `assets/`). A raiz do
+  projeto ficou limpa. `lps/` segue gitignorada (o HTML de verdade vive no banco).
+- **Tabela nova `lp_biblioteca`** (migration `20260723150000`, aplicada via MCP): nome, slug
+  (UNIQUE), origem (`pipeline`/`manual`), `design_id` (UNIQUE, elo com workflow_design),
+  codigo_html, url_publicada, **`validada`** (flag ROAS OK), notas. RLS + policies públicas +
+  Realtime (convenção do projeto).
+- **Motor ligado:** `/api/design/generate` faz **upsert automático** na biblioteca ao gerar
+  (regerar atualiza o mesmo registro via `design_id`); `/api/deploy` espelha a `url_publicada`
+  ao publicar. Slug do arquivo em disco e da biblioteca agora são a MESMA string (`slugLp`).
+- **Backfill** `scripts/lp-backfill.mjs` (idempotente, roda com `node`): importa (1) pipeline
+  (workflow_design com HTML), (2) **manuais** (subpastas de `lps/` com index.html), (3) **soltos**
+  (lps/*.html de designs antigos já removidos do banco; ignora `-tracked`). Resultado: **8 páginas**
+  (1 pipeline + 1 manual capa-iphone + 6 soltos).
+- **UI nova `/paginas`** (Sidebar → "Páginas", ícone LayoutTemplate, após Design/Webmaster):
+  grid de cards com **mini-preview real** (iframe `srcDoc` escalado 0.29, sandbox), badge de
+  origem, botão **"Validar ROAS"** (toggle otimista → badge verde "ROAS OK"), filtro "Só
+  validadas", link "No Ar", **Excluir** (banco + dashboard com confirm; aviso de que o Cloudflare
+  é manual e os arquivos locais ficam) e **preview em tela cheia** (usa a URL viva quando
+  publicada — assets ok; senão renderiza o HTML do banco).
+- ⚠️ **Limitação conhecida:** páginas manuais com assets locais (capa-iphone) mostram o preview
+  sem imagens (o banco só tem o HTML; os arquivos estão em `lps/capa-iphone-aluminio/assets/`).
+  Se publicar no Cloudflare, o preview passa a usar a URL viva e fica perfeito.
+- **Validado:** migration ok, backfill 8/8, `tsc` limpo, `/paginas` GET 200.
+
 **Validação (23/07):** `npx tsc --noEmit` limpo; lint dos arquivos novos sem erros (só os
 warnings `no-explicit-any` padrão do projeto); os 3 endpoints testados com a campanha real
 `120249862631490627` (Premier Esportes): adsets com métricas e saúde corretas (8 compras,

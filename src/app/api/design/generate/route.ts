@@ -272,22 +272,41 @@ comentários fora do HTML, sem explicações antes ou depois.`;
     }
 
     // 11. Salvar também em disco (rede de segurança p/ edição manual no terminal)
+    const slugNome = (campanha?.nome_projeto || design_id)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+    const slugLp = `${slugNome || 'lp'}-${design_id.slice(0, 8)}`;
     let arquivo: string | null = null;
     try {
       const dir = path.join(process.cwd(), 'lps');
       await fs.mkdir(dir, { recursive: true });
-      const slugNome = (campanha?.nome_projeto || design_id)
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 60);
-      const nomeArquivo = `${slugNome || 'lp'}-${design_id.slice(0, 8)}.html`;
+      const nomeArquivo = `${slugLp}.html`;
       await fs.writeFile(path.join(dir, nomeArquivo), html, 'utf-8');
       arquivo = `lps/${nomeArquivo}`;
     } catch (err) {
       console.warn('[design/generate] não salvou em disco:', err instanceof Error ? err.message : err);
+    }
+
+    // 12. Upsert na Biblioteca de Páginas (/paginas) — toda LP gerada vira
+    //     modelo consultável; regerar atualiza o HTML do mesmo registro.
+    try {
+      await supabase.from('lp_biblioteca').upsert(
+        {
+          nome: campanha?.nome_projeto || `LP ${design_id.slice(0, 8)}`,
+          slug: slugLp,
+          origem: 'pipeline',
+          design_id,
+          codigo_html: html,
+          atualizado_em: new Date().toISOString(),
+        },
+        { onConflict: 'design_id' }
+      );
+    } catch (err) {
+      console.warn('[design/generate] não salvou na biblioteca:', err instanceof Error ? err.message : err);
     }
 
     return Response.json({

@@ -117,6 +117,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // 5. Espelha a URL pública na Biblioteca de Páginas (/paginas) — best-effort.
+    try {
+      await supabase
+        .from('lp_biblioteca')
+        .update({ url_publicada: resultado.url, atualizado_em: new Date().toISOString() })
+        .eq('design_id', design_id);
+    } catch (err) {
+      console.warn('[api/deploy] não atualizou a biblioteca:', err instanceof Error ? err.message : err);
+    }
+
     return Response.json({
       sucesso: true,
       url: resultado.url,

@@ -19,7 +19,8 @@ import {
   Megaphone,
   Calculator,
   Bot,
-  Radar
+  Radar,
+  LayoutTemplate
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -96,6 +97,15 @@ export function Sidebar() {
         >
           <Monitor size={18} />
           Design/Webmaster
+        </Link>
+        <Link
+          href="/paginas"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            pathname === '/paginas' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-secondary hover:text-white hover:bg-surface'
+          }`}
+        >
+          <LayoutTemplate size={18} />
+          Páginas
         </Link>
         <Link 
           href="/video-maker" 
