@@ -20,7 +20,8 @@ import {
   Calculator,
   Bot,
   Radar,
-  LayoutTemplate
+  LayoutTemplate,
+  Microscope
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -62,8 +63,17 @@ export function Sidebar() {
           <Search size={18} />
           Mineração
         </Link>
-        <Link 
-          href="/producao" 
+        <Link
+          href="/autopsia"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            pathname.startsWith('/autopsia') ? 'bg-primary/10 text-primary border border-primary/20' : 'text-secondary hover:text-white hover:bg-surface'
+          }`}
+        >
+          <Microscope size={18} />
+          Autópsia
+        </Link>
+        <Link
+          href="/producao"
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
             pathname === '/producao' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-secondary hover:text-white hover:bg-surface'
           }`}
