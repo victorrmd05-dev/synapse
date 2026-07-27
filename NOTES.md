@@ -1,7 +1,132 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-07-23 — **Campanhas: Histórico de diagnósticos + painel de Conjuntos + galeria de Criativos** (GUIA_IMPLEMENTACAO.md implementado; endpoints já existiam do commit a4e1ca7, faltava a UI + 2 bugs de backend). Antes: **Gestor-Meta-Ads: paridade total com o MetaScale** (fix de modelo IA `claude-opus-4-8`, filtro por data, Claude Ads Audit transparente, distribuição de verba real, Plano de Otimização ancorado na Análise Profunda, "Salvar análise" completo). Antes: **Tracking: "Limpar log" + filtro "só conversões"** no painel CAPI (log local, não afeta o Meta). Antes: **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
+> Última atualização: 2026-07-27 — 🔬 **Autópsia de Concorrente: fases 0–1 CONSTRUÍDAS (9 de 16 tarefas)** — sessão interrompida por limite de créditos. **O ponto exato de retomada está na seção "🔬 Autópsia de Concorrente" logo abaixo do índice — leia ela primeiro.** Antes: **Campanhas: Histórico de diagnósticos + painel de Conjuntos + galeria de Criativos** (GUIA_IMPLEMENTACAO.md implementado; endpoints já existiam do commit a4e1ca7, faltava a UI + 2 bugs de backend). Antes: **Gestor-Meta-Ads: paridade total com o MetaScale** (fix de modelo IA `claude-opus-4-8`, filtro por data, Claude Ads Audit transparente, distribuição de verba real, Plano de Otimização ancorado na Análise Profunda, "Salvar análise" completo). Antes: **Tracking: "Limpar log" + filtro "só conversões"** no painel CAPI (log local, não afeta o Meta). Antes: **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
+
+---
+
+## 🔬 Autópsia de Concorrente — EM CONSTRUÇÃO (parada em 27/07/2026)
+
+> **📍 LEIA ISTO PRIMEIRO AO RETOMAR.** A sessão parou por limite de créditos no meio da
+> execução de um plano de 16 tarefas. **9 estão implementadas e commitadas**, 7 faltam.
+> Nada está pela metade no código — a parada foi entre tarefas, não dentro de uma.
+
+### O que é
+A `/mineracao` acha **muitos** anúncios rasos e dá score. A **autópsia** disseca **um**
+anunciante a fundo: baixa todos os criativos únicos, extrai grades de frames, **transcreve o
+áudio** e gera um dossiê `.md`/`.html` publicável. São complementares — minerar é o funil de
+descoberta, autopsiar é o que se faz depois de escolher o alvo.
+
+Origem: `PLANO-AUTOPSIA-CONCORRENTE.md` (handoff do workspace `low-ticket`, onde o método foi
+executado à mão e validado num concorrente real).
+
+### Os 3 documentos que governam este trabalho
+| Arquivo | O que é |
+|---|---|
+| `docs/superpowers/specs/2026-07-26-autopsia-concorrente-design.md` | **Design aprovado** — decisões D1–D8, schema, fluxo, critérios de aceite |
+| `docs/superpowers/plans/2026-07-27-autopsia-concorrente.md` | **Plano de 16 tarefas** com o código completo de cada uma |
+| `.superpowers/sdd/2026-07-27-autopsia-concorrente/progress.md` | **Ledger** — o que foi feito, achados, minors adiados (gitignorado) |
+
+### Decisões tomadas com o Fernando (não reabrir)
+- **D1 — Transcrição em worker Python local**, com a fila (`autopsia_jobs`) modelada desde o
+  dia 1. Custo R$ 0; `faster-whisper` e `ffmpeg` já estão instalados na máquina. Trocar por API
+  (Groq/Deepgram) depois = escrever **outro consumidor da mesma fila**, sem reescrever o módulo.
+- **D2 — Storage salva só a IMAGEM na mineração**; vídeo baixa sob demanda (favorito/autópsia).
+- **D4 — A rota nunca processa mídia, só enfileira.** Transcrever passa dos 300s de `maxDuration`.
+- **D5 — O agente devolve JSON por seção; o `.md`/`.html` sai de montador determinístico**
+  (mesmo padrão do `fop.ts`).
+- **D6 — `getTenantClient()` é a porta única dos dados.** Hoje devolve o `supabaseServer` de
+  sempre; existe para que o dia do BYOK mude 1 arquivo em vez de 60. Código NOVO usa ela.
+- **D8 — App de uso pessoal:** guardar o material completo no Supabase do Fernando, bucket
+  público, **sem cautela defensiva no código**. A questão de hospedar material de terceiro só
+  volta se virar produto pago.
+
+### ✅ O que JÁ ESTÁ FEITO (9 tarefas, 11 commits, todos na `main`)
+
+| # | Tarefa | Commit | Review |
+|---|---|---|---|
+| 1 | `storage.ts` (`salvarMidia`) + `supabase-tenant.ts` + bucket `criativos` | `3466dd0` + `34aa24c` | ✅ limpa |
+| 2 | Mineração persiste imagem + migration de colunas + `storage-backfill.mjs` | `e5898a9` | ✅ limpa |
+| 3 | Migration das 3 tabelas da autópsia | `c29cc16` | ✅ limpa |
+| 4 | `creativeKeyFromSnap` extraída p/ `minerador-media.ts` | `e59f7fc` | ✅ limpa, 0 achados |
+| 5 | `src/lib/autopsia/coleta.ts` (ScrapeCreators paginado + dedup) | `8d8a975` | ⚠️ **não rodou** |
+| 6 | `POST /api/autopsia/criar` | `606b2d5` | ✅ limpa |
+| 7 | Página `/autopsia` + item na Sidebar | `995955a` | ✅ limpa |
+| 8 | Página `/autopsia/[id]` com 4 abas | `98b9479` | ✅ limpa |
+| 9 | Botão "Autopsiar este anunciante" no modal de `/mineracao` | `34ea3fc` | ⚠️ **não rodou** |
+
+**Estado real do banco agora:** 1 autópsia (`a0bf2707-aac4-4125-a5f7-71d4e03bcfa7`,
+"Alimento Sagrado", 22 anúncios → 8 criativos), 8 jobs de `download` **pendentes**, 33 anúncios
+minerados (3 com imagem no Storage). Bucket `criativos` criado, público, limite 50MB.
+
+**Já dá para usar hoje:** abrir `/autopsia`, colar um `page_id` (ou clicar em "Autopsiar este
+anunciante" no modal da mineração) → a coleta roda de verdade e a fila enche. O que **ainda não
+acontece** é o processamento (nada baixa, nada transcreve) porque o worker é a Task 10.
+
+### ⏭️ ONDE RETOMAR — exatamente
+
+1. **Rodar a review da Task 5** (foi despachada e a sessão caiu antes do resultado):
+   diff já gerado em `.superpowers/sdd/.../review-e59f7fc..8d8a975.diff`
+2. **Rodar a review da Task 9** (implementada, nunca revisada): gerar o pacote com
+   `scripts/review-package <plano> 98b9479 34ea3fc`
+3. **Task 10** — `scripts/worker-autopsia.py`, job `download`. O código completo está no plano.
+4. Tasks 11 → 16 na ordem do plano.
+
+O método de execução era **subagent-driven**: um subagente implementador por tarefa (com o
+brief extraído do plano), depois um revisor por tarefa, ledger atualizado a cada passo. Os
+scripts estão em
+`C:\Users\cerqu\.claude\plugins\cache\superpowers-marketplace\superpowers\6.2.0\skills\subagent-driven-development\scripts\`.
+
+### 🔴 Achados desta sessão que valem mais que o código
+
+**1. Variável de ambiente do Windows sombreava o `.env.local` — e falhava em SILÊNCIO.**
+Havia `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_URL` no ambiente do usuário do Windows apontando
+para **outro** projeto Supabase (`nafpijwkdzqagfiigqvi`; este repo é `apdjykklderoyiosmytw`).
+O **Next não sobrescreve `process.env` já setado**, então o app montava o client com a URL
+deste projeto e a chave do outro → toda escrita server-side falhava auth, sem erro visível
+(o código grava best-effort e ignora `error`). **As duas foram removidas**; backup em
+`C:\Users\cerqu\supabase-env-backup.txt` com o comando de restauração dentro.
+⚠️ Processo já em execução mantém o valor antigo em memória — **subir `npm run dev` de um
+terminal novo**. Registrado na memória do projeto como `env-os-shadows-env-local`.
+
+**2. O acervo antigo de imagens foi perdido — chegamos ~3 dias tarde.**
+O parâmetro `oe=` das URLs do FB CDN é a validade, e mede ~5 dias. Os 30 anúncios estavam
+minerados em 21–22/07; no dia 27 o backfill devolveu **0 salvos / 30 HTTP 403**. Não é bug —
+é exatamente o problema que motivou a fase 0, descoberto tarde demais para esses. **Daqui em
+diante toda mineração salva a imagem no ato.** Os cards antigos mostram o placeholder "sem
+imagem" até re-minerar aquelas keywords.
+
+**3. Erro meu no plano, corrigido:** `fileSizeLimit: '200MB'` no `createBucket` **não funciona**
+neste projeto — o teto global de Storage é ~50MB (medido: 52MB passa, 55MB falha). Ficaria
+latente, só explodindo se alguém apagasse o bucket. Corrigido para 50MB e provado **apagando e
+recriando o bucket**. Vídeo de anúncio real tem 1,4–5MB (8 amostras do gabarito), então há 10x
+de folga.
+
+**4. A coleta automatizada bateu EXATO com o gabarito manual.** Rodada no mesmo anunciante que
+o método manual dissecou à mão em 24/07 (*Alimento Sagrado*, `page_id 1130979790090955`):
+**22 anúncios → 8 criativos únicos**, durações 31/82/91/105/109/110/111s e 130s — idênticas aos
+8 arquivos em `low-ticket/alimento-sagrado/videos/`. A dedup por path do CDN está correta.
+**Esse anunciante é o gabarito oficial do módulo** — use sempre ele para validar.
+
+**5. `SCRAPE_CREATORS_API_KEY`** é o nome real da env (com underscore). O `CLAUDE.md` documenta
+`SCRAPECREATORS_API_KEY` e está **errado** — a Task 16 do plano corrige.
+
+### 📋 Minors adiados (nenhum bloqueia; triar na review final)
+- `api/mineracao/run/route.ts:341-344` — o `.update` do `image_storage_path` não tem try/catch
+  próprio; se lançasse, viraria 500 numa mineração que já deu certo. **Colide com o requisito
+  "mineração nunca reprova por causa do Storage". Fix de 1 linha — o mais relevante da lista.**
+- `api/autopsia/criar/route.ts:32` — body JSON malformado devolve 500 em vez de 400.
+- `api/autopsia/criar/route.ts:37-46` — `ad_minerado_id` não-UUID vira 404 genérico.
+- `api/autopsia/criar/route.ts:117-130` — se o insert de jobs falhar, a autópsia fica
+  `processando` sem retomada automática (herdado do spec; sugere rota futura de reparo).
+- `autopsia/[id]/page.tsx:80` — variável `workerParece0ffline` com zero no lugar do "o" (typo).
+- `autopsia/page.tsx` e `producao/page.tsx` — fetch não distingue erro de lista vazia
+  (padrão fraco pré-existente do projeto, não regressão).
+
+### 🚧 Fora de escopo desta rodada (fase 6 do spec)
+BYOK completo, multi-tenant real, billing, retenção, `/configuracoes` funcional (hoje é casca,
+com um **Meta App ID real hard-coded** em `src/app/configuracoes/page.tsx` para remover), e
+transcrição por API como 2º consumidor da fila.
 
 ---
 
@@ -774,10 +899,17 @@ reais; página GET 200 e compilando sem erro. ⏳ **Falta o clique do Fernando n
 | Video-Maker | ⚠️ sync | ❌ falta Higgsfield | Pendente |
 | Gestor-Meta-Ads | ✅ sync | ✅ `/api/meta/sync` + `/api/meta/diagnose` (leitura + diagnóstico IA) | **Dashboard real + AI Diagnostic** (falta detalhe `[id]`; subir campanha de compra) |
 | CEO / CTO | ✅ sync | aprovação/suporte | Camada humana + futura automação |
+| **Autópsia** (10º) | ⏳ Task 13 do plano | ✅ `/api/autopsia/criar` + `/autopsia` + `/autopsia/[id]` | **Fases 0–1 prontas (9/16 tarefas)** — falta worker, transcrição e dossiê. Ver seção no topo |
 
 ---
 
 ## 🚀 Próximos Passos
+- [ ] 🔬 **RETOMAR A AUTÓPSIA — é o trabalho em curso.** 9 de 16 tarefas feitas. Próximo passo
+      exato na seção "🔬 Autópsia de Concorrente" no topo deste arquivo: rodar as reviews
+      pendentes das Tasks 5 e 9, depois Task 10 (worker Python).
+- [ ] (Autópsia) Aplicar o fix de 1 linha do try/catch em `mineracao/run/route.ts:341-344`.
+- [ ] (Autópsia) Re-minerar as keywords antigas — o acervo de imagens de 21–22/07 expirou e
+      não volta; agora toda mineração salva no Storage.
 - [ ] Refinar keywords de dropshipping (e avaliar blacklistar marcas médias tipo Gocase se quiser só desconhecidos).
 - [ ] Ligar as keywords ao Obsidian (nexus.ai) via MCP — listas viram fonte editável.
 - [ ] (Opcional) Dropdown de keywords prontas na tela de mineração.
