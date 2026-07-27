@@ -64,17 +64,23 @@ Esse método já foi executado à mão num concorrente real (*Alimento Sagrado*,
 | D3 | **Escopo desta rodada = fases 0–5** | Entrega o módulo funcionando para uso próprio. BYOK/billing entram depois, com evidência. |
 | D4 | **A rota nunca processa mídia — só enfileira** | `maxDuration` é limite de plataforma (300 s). 8 vídeos passam de 20 min. Não é otimizável; é categoria errada de lugar. |
 | D5 | **O agente devolve JSON por seção; o `.md` e o `.html` saem de um montador determinístico** | Mesmo padrão de `src/lib/tracking/fop.ts`. O `.html` precisa de estrutura e de URLs absolutas do Storage, e um campo `em_aberto[]` de primeira classe transforma a regra "o dossiê não preenche slot em aberto" em schema, em vez de depender do modelo se comportar. |
-| D6 | **`getTenantClient()` desde a primeira linha** | §11.4 do handoff. Hoje devolve o client atual; no dia do BYOK muda um arquivo em vez de sessenta. |
+| D6 | **`getTenantClient()` desde a primeira linha** | §11.4 do handoff. Hoje é um arquivo de 10 linhas que devolve o `supabaseServer` atual — custo praticamente zero, e no dia em que o BYOK for construído muda um arquivo em vez de sessenta. Mantido mesmo com o app sendo pessoal (D8), justamente por ser barato: a apólice custa menos que o sinistro. |
 | D7 | **Página nova `/autopsia`, com entrada em `/mineracao`** | Mineração é lista larga que se percorre; autópsia é peça longa que se lê. Não vai em `/producao`, que é o kanban da nossa produção. |
 
-### Decisão explicitamente adiada (do dono do produto, não da implementação)
+### D8 — Uso pessoal: guardar o material completo, sem hedge
 
-**Redistribuição de material de terceiros.** Baixar criativo alheio para pesquisa própria é
-uma coisa; hospedar e servir esse vídeo para clientes pagantes é outra. O bucket `criativos`
-nasce **público** (a UI precisa exibir), o que torna o material acessível por link. Enquanto
-o uso é interno isso é aceitável. **Antes do primeiro cliente pagante, decidir** entre
-guardar só transcrição/frames com link para o original, bucket privado com URL assinada, ou
-hospedar tudo. Não bloqueia nenhuma fase desta rodada.
+**Decisão do Fernando em 27/07:** este app é de **uso pessoal**, roda no Supabase dele, e o
+módulo deve **guardar no banco/Storage o que for melhor para o trabalho** — vídeo completo,
+frames, transcrições, sem meio-termo.
+
+Isso encerra a ressalva que o §10.4 do handoff levantava (redistribuição de material de
+terceiros): baixar criativo alheio para **pesquisa própria** é uso interno, e é o que está
+sendo construído. Bucket `criativos` **público** é aceitável — a UI precisa exibir e o custo
+de URL assinada não se paga aqui.
+
+A pergunta só volta a existir no dia em que o acervo for servido a **cliente pagante** — aí
+deixa de ser pesquisa e vira distribuição. Registrado na fase 6 (§10), não bloqueia nada
+agora e não deve gerar cautela defensiva no código desta rodada.
 
 ---
 
@@ -328,9 +334,15 @@ expiram esta semana.
 
 ## 10. Fora de escopo (fase 6, registrado para não se perder)
 
+> Nada aqui é premissa desta rodada. O app é de uso pessoal (D8); esta lista só existe para
+> o dia em que essa premissa mudar — e para que ninguém confunda "não construído" com
+> "esquecido".
+
 - BYOK completo: banco de controle, credenciais cifradas, provisionamento por SQL colado,
   `synapse_schema_version`.
 - Multi-tenant real (`user_id` + RLS de verdade), limites por plano, billing, retenção.
+- Rever a hospedagem do acervo de terceiros **se** o material passar a ser servido a cliente
+  pagante (deixa de ser pesquisa própria — ver D8).
 - `/configuracoes` funcional — hoje é casca (inputs sem binding, sem rota de salvar, botão
   escrito ".env"). Contém um **Meta App ID real hard-coded** em
   `src/app/configuracoes/page.tsx`, que deve ser removido antes de qualquer cliente.
