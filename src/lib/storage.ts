@@ -49,9 +49,13 @@ export async function garantirBucket(nome = BUCKET_CRIATIVOS): Promise<void> {
   const supabase = getTenantClient();
   const { data } = await supabase.storage.getBucket(nome);
   if (data) return;
+  // Teto global de Storage deste projeto Supabase e ~50MB (medido: 52MB
+  // passa, 55MB falha com "The object exceeded the maximum allowed size").
+  // Pedir mais faz createBucket falhar. Criativo de anuncio tem 4-5MB, entao
+  // 50MB sobra.
   const { error } = await supabase.storage.createBucket(nome, {
     public: true,
-    fileSizeLimit: '200MB',
+    fileSizeLimit: '50MB',
   });
   // Corrida entre duas chamadas simultâneas: "already exists" não é erro.
   if (error && !/exist/i.test(error.message)) throw error;
