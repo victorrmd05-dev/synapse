@@ -20,6 +20,7 @@ import { getAgentConfig, buildSystemPrompt } from '@/lib/agents/buildSystemPromp
 import { gerarJSONComAgente, parseJSONFlexivel } from '@/lib/agents/generateWithProvider';
 import { naListaNegra } from '@/lib/minerador-blacklist';
 import { pickThumbnail, pickVideos, pickImages } from '@/lib/minerador-media';
+import { salvarMidia } from '@/lib/storage';
 
 // A avaliação roda no provider do agente (agentes_config.modelo). Hoje: Claude.
 // gerarJSONComAgente cai p/ OpenAI automaticamente se o Claude falhar.
@@ -313,7 +314,10 @@ Responda SOMENTE com o JSON no formato definido na sua SKILL.`;
     // 3. Salvar no Supabase
     let inseridos = 0;
     if (paraInserir.length > 0) {
-      const { error } = await supabase.from('ads_minerados').insert(paraInserir);
+      const { data: registrosInseridos, error } = await supabase
+        .from('ads_minerados')
+        .insert(paraInserir)
+        .select('id, image_url');
       if (error) {
         return Response.json(
           { error: 'Falha ao salvar em ads_minerados', detalhe: error.message, avaliacoes },
@@ -321,6 +325,27 @@ Responda SOMENTE com o JSON no formato definido na sua SKILL.`;
         );
       }
       inseridos = paraInserir.length;
+
+      // Persistir a miniatura no Storage. As URLs do FB CDN expiram em ~5 dias;
+      // sem isso o card fica com imagem quebrada em uma semana.
+      // Best-effort e em paralelo: uma falha aqui NUNCA reprova a mineração.
+      if (registrosInseridos && registrosInseridos.length > 0) {
+        await Promise.all(
+          registrosInseridos.map(async (registro: any) => {
+            if (!registro.image_url) return;
+            const publica = await salvarMidia({
+              url: registro.image_url,
+              caminho: `minerados/${registro.id}.jpg`,
+            });
+            if (publica) {
+              await supabase
+                .from('ads_minerados')
+                .update({ image_storage_path: publica })
+                .eq('id', registro.id);
+            }
+          })
+        );
+      }
     }
 
     return Response.json({

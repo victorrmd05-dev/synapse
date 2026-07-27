@@ -60,7 +60,8 @@ export default function MineracaoPage() {
       
     if (!error && data) {
       const mappedData = data.map(ad => {
-        let hdImage: string | null = ad.image_url || null;
+        // Storage primeiro: a URL do FB CDN expira em ~5 dias e o card quebra.
+        let hdImage: string | null = ad.image_storage_path || ad.image_url || null;
         let videos: string[] = ad.video_urls || [];
 
         try {
@@ -69,7 +70,7 @@ export default function MineracaoPage() {
             const snap = raw.snapshot;
             if (snap) {
               // Reextrai do snapshot (cobre carrossel, onde a imagem vive em cards[]).
-              hdImage = pickThumbnail(snap) || hdImage;
+              if (!ad.image_storage_path) hdImage = pickThumbnail(snap) || hdImage;
               if (videos.length === 0) videos = pickVideos(snap);
             }
           }
