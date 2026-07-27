@@ -335,10 +335,10 @@ Expected: 2 linhas.
 //
 // Rodar: node scripts/storage-backfill.mjs
 //
-// NOTA: a extracao de miniatura esta duplicada aqui numa versao mini, porque
-// este script e .mjs e o helper original (src/lib/minerador-media.ts) e TS.
-// Sao 10 linhas e o script e de uso unico — duplicar custa menos que montar
-// build de TS so para isso.
+// Usa a coluna image_url, que a correcao de 29/06 ja preencheu com a
+// miniatura certa (inclusive carrossel, onde a imagem vive em cards[]).
+// Verificado antes de escrever o script: os 30 anuncios do banco tem
+// image_url — nao ha motivo para reextrair do raw_json aqui.
 
 import { createClient } from '@supabase/supabase-js';
 import { loadEnv } from './_env.mjs';
@@ -352,22 +352,6 @@ const HDRS = {
   Accept: '*/*',
 };
 
-function firstUrl(arr, keys) {
-  for (const item of arr ?? []) for (const k of keys) if (typeof item?.[k] === 'string' && item[k]) return item[k];
-  return null;
-}
-
-function pickThumbnail(snap) {
-  if (!snap) return null;
-  const imgs = [...(snap.images ?? []), ...(snap.extra_images ?? [])];
-  const cards = snap.cards ?? [];
-  return (
-    firstUrl(imgs, ['original_image_url', 'resized_image_url']) ||
-    firstUrl(cards, ['original_image_url', 'resized_image_url']) ||
-    firstUrl([...(snap.videos ?? []), ...(snap.extra_videos ?? []), ...cards], ['video_preview_image_url'])
-  );
-}
-
 const { data: existe } = await sb.storage.getBucket('criativos');
 if (!existe) {
   const { error } = await sb.storage.createBucket('criativos', { public: true, fileSizeLimit: '200MB' });
@@ -377,7 +361,7 @@ if (!existe) {
 
 const { data: ads, error } = await sb
   .from('ads_minerados')
-  .select('id, image_url, raw_json')
+  .select('id, image_url')
   .is('image_storage_path', null);
 if (error) throw error;
 
@@ -386,13 +370,7 @@ let ok = 0;
 let falha = 0;
 
 for (const ad of ads) {
-  let url = ad.image_url;
-  try {
-    const raw = typeof ad.raw_json === 'string' ? JSON.parse(ad.raw_json) : ad.raw_json;
-    url = pickThumbnail(raw?.snapshot) || url;
-  } catch {
-    /* usa image_url */
-  }
+  const url = ad.image_url;
   if (!url) {
     console.log(`- ${ad.id}: sem URL de imagem`);
     falha++;

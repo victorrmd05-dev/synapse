@@ -74,3 +74,6 @@ lps/
 # prints do Gerenciador de Eventos (Meta) — só inspeção local (podem ter dados da conta)
 prints_gerenciador/*
 !prints_gerenciador/LEIA-ME.md
+
+# Scratch do subagent-driven-development (ledger, briefs, review packages)
+.superpowers/
