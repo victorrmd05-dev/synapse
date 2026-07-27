@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, RefreshCw, Star, X, Database, CheckCircle2, Globe, BookOpen, Video as VideoIcon, PlayCircle, Trash2, Sparkles, Loader2, Heart, ImageOff } from 'lucide-react';
+import { Search, RefreshCw, Star, X, Database, CheckCircle2, Globe, BookOpen, Video as VideoIcon, PlayCircle, Trash2, Sparkles, Loader2, Heart, ImageOff, Microscope } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { pickThumbnail, pickVideos } from '../../lib/minerador-media';
 
@@ -37,6 +37,7 @@ export default function MineracaoPage() {
   const [isPurging, setIsPurging] = useState(false);
   // Feedback do gatilho do Copywriter (geração roda em background após aprovar).
   const [copyGenMsg, setCopyGenMsg] = useState<string | null>(null);
+  const [autopsiando, setAutopsiando] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProdutos();
@@ -87,6 +88,7 @@ export default function MineracaoPage() {
           favorito: ad.favorito || false,
           image_url: hdImage || null,
           page_name: ad.page_name || 'Desconhecido',
+          page_id: ad.page_id || null,
           page_profile_pic_url: ad.page_profile_pic_url || '',
           ad_copy: ad.ad_copy || '',
           cta_text: ad.cta_text || 'Saiba mais',
@@ -184,6 +186,30 @@ export default function MineracaoPage() {
       .finally(() => {
         setTimeout(() => setCopyGenMsg(null), 12000);
       });
+  }
+
+  // Autopsiar = analisar o ANUNCIANTE inteiro (todos os criativos dele), não
+  // só este anúncio. É o passo seguinte depois de escolher um alvo na lista.
+  async function autopsiar(adId: string, pageName: string) {
+    if (autopsiando) return;
+    if (!confirm(`Autopsiar "${pageName}"? Isso coleta todos os anúncios ativos desse anunciante (1 crédito da ScrapeCreators por página de 30).`)) return;
+    setAutopsiando(adId);
+    try {
+      const res = await fetch('/api/autopsia/criar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ad_minerado_id: adId }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error ?? 'Falha ao criar a autópsia.');
+      } else {
+        window.location.href = `/autopsia/${json.autopsia_id}`;
+      }
+    } catch (e) {
+      alert((e as Error).message);
+    }
+    setAutopsiando(null);
   }
 
   async function excluirAnuncio(ad: any) {
@@ -585,8 +611,19 @@ export default function MineracaoPage() {
                   )}
                 </div>
 
+                <div className="mt-3">
+                  <button
+                    onClick={() => autopsiar(selectedAd.id, selectedAd.page_name)}
+                    disabled={autopsiando === selectedAd.id}
+                    className="flex items-center gap-2 bg-primary hover:bg-primary-hover disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+                  >
+                    {autopsiando === selectedAd.id ? <Loader2 size={15} className="animate-spin" /> : <Microscope size={15} />}
+                    {autopsiando === selectedAd.id ? 'Coletando…' : 'Autopsiar este anunciante'}
+                  </button>
+                </div>
+
                 <div className="mt-4 pt-4 border-t border-[#3E4042] flex flex-col gap-3">
-                  <button 
+                  <button
                     onClick={() => aprovarAnuncio(selectedAd)}
                     disabled={isApproving || isDeleting}
                     className="w-full bg-primary hover:bg-primary-hover text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-[0_0_20px_rgba(99,102,241,0.3)] disabled:opacity-50"
