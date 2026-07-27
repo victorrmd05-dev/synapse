@@ -19,7 +19,7 @@ import { supabaseServer as supabase } from '@/lib/supabase-server';
 import { getAgentConfig, buildSystemPrompt } from '@/lib/agents/buildSystemPrompt';
 import { gerarJSONComAgente, parseJSONFlexivel } from '@/lib/agents/generateWithProvider';
 import { naListaNegra } from '@/lib/minerador-blacklist';
-import { pickThumbnail, pickVideos, pickImages } from '@/lib/minerador-media';
+import { pickThumbnail, pickVideos, pickImages, creativeKeyFromSnap } from '@/lib/minerador-media';
 import { salvarMidia } from '@/lib/storage';
 
 // A avaliação roda no provider do agente (agentes_config.modelo). Hoje: Claude.
@@ -34,28 +34,6 @@ interface Body {
   limit?: number;
   apenas_validados?: boolean;
   min_score?: number;
-}
-
-// Assinatura ESTÁVEL do criativo (para dedup de duplicata real). As URLs do
-// FB CDN trazem querystring assinada que muda toda hora (oh=, oe=, _nc_gid=…),
-// então comparamos só o PATH do arquivo — o token do vídeo/imagem é estável e
-// idêntico quando o criativo é o mesmo, mesmo com ad_archive_id diferente.
-function creativeKeyFromSnap(snap: any): string | null {
-  const vid =
-    (Array.isArray(snap?.videos) ? snap.videos : [])[0] ??
-    (Array.isArray(snap?.extra_videos) ? snap.extra_videos : [])[0];
-  const vurl = vid?.video_hd_url || vid?.video_sd_url;
-  if (vurl) {
-    try { return 'v:' + new URL(vurl).pathname; } catch { /* url inválida */ }
-  }
-  const img =
-    (Array.isArray(snap?.images) ? snap.images : [])[0] ??
-    (Array.isArray(snap?.extra_images) ? snap.extra_images : [])[0];
-  const iurl = img?.original_image_url || img?.resized_image_url;
-  if (iurl) {
-    try { return 'i:' + new URL(iurl).pathname; } catch { /* url inválida */ }
-  }
-  return null;
 }
 
 interface Avaliacao {

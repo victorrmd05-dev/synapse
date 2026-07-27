@@ -54,3 +54,31 @@ export function pickImages(snap: any): string[] {
     .map((i) => i?.original_image_url || i?.resized_image_url)
     .filter((u): u is string => typeof u === 'string' && u.length > 0);
 }
+
+/**
+ * Assinatura ESTÁVEL do criativo, para dedup de duplicata real.
+ *
+ * As URLs do FB CDN trazem querystring assinada que muda toda hora
+ * (oh=, oe=, _nc_gid=…), então comparamos só o PATH do arquivo — o token do
+ * vídeo/imagem é estável e idêntico quando o criativo é o mesmo, mesmo com
+ * ad_archive_id diferente (o mesmo vídeo aparece em várias páginas da marca).
+ *
+ * Prefixo 'v:' para vídeo e 'i:' para imagem, para nunca colidirem.
+ */
+export function creativeKeyFromSnap(snap: any): string | null {
+  const vid =
+    (Array.isArray(snap?.videos) ? snap.videos : [])[0] ??
+    (Array.isArray(snap?.extra_videos) ? snap.extra_videos : [])[0];
+  const vurl = vid?.video_hd_url || vid?.video_sd_url;
+  if (vurl) {
+    try { return 'v:' + new URL(vurl).pathname; } catch { /* url inválida */ }
+  }
+  const img =
+    (Array.isArray(snap?.images) ? snap.images : [])[0] ??
+    (Array.isArray(snap?.extra_images) ? snap.extra_images : [])[0];
+  const iurl = img?.original_image_url || img?.resized_image_url;
+  if (iurl) {
+    try { return 'i:' + new URL(iurl).pathname; } catch { /* url inválida */ }
+  }
+  return null;
+}
