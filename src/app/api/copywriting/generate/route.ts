@@ -1,18 +1,22 @@
 // src/app/api/copywriting/generate/route.ts
 //
-// VERSÃO COM OPENAI (API oficial)
-// Usa o SDK da OpenAI apontando para a API oficial (api.openai.com). Mesma
-// lógica de negócio de antes (busca campanha + produto em queries separadas,
-// monta prompt do agente sincronizado do GitHub, salva resultado).
+// RODA NO OPENCODE ZEN (GRATUITO).
+// Antes apontava para a API oficial da OpenAI (gpt-4o-mini, PAGA) — o custo
+// passava despercebido porque a doc do projeto dizia que já era Zen. Mesma
+// lógica de negócio de sempre (busca campanha + produto, monta o prompt do
+// agente sincronizado, salva resultado).
+//
+// Esta rota gera o RASCUNHO dentro do painel. A copy final de campanha é feita
+// no Claude Code (skill `copy`) e gravada direto em workflow_copywriting.
 //
 // Variáveis de ambiente necessárias:
-//   OPENAI_API_KEY=sk-...        (chave da sua conta OpenAI)
-//   OPENAI_MODEL=gpt-4o-mini     (opcional; default abaixo)
+//   OPENCODE_API_KEY=...                     (ver src/lib/opencode.ts)
+//   OPENCODE_MODEL=deepseek-v4-flash-free    (opcional)
 
 import { supabaseServer as supabase } from '@/lib/supabase-server';
 import { getAgentConfig, buildSystemPrompt } from '@/lib/agents/buildSystemPrompt';
 import { pesquisaDeMercadoParaCopy } from '@/lib/tavily';
-import { OPENAI_MODEL as MODELO, chatComRetry } from '@/lib/openai';
+import { chatComZen, OPENCODE_MODEL as MODELO } from '@/lib/opencode';
 
 interface GenerateBody {
   campanha_id: string;
@@ -121,6 +125,46 @@ export async function POST(request: Request) {
     const termoBase = produto.ad_title || produto.page_name || campanha.nome_projeto || '';
     const pesquisa = await pesquisaDeMercadoParaCopy(termoBase);
 
+    // 3b. DOSSIÊ DA AUTÓPSIA — o melhor contexto que existe no sistema.
+    //     Quando a campanha nasceu de uma autópsia, o dossiê já traz a anatomia
+    //     dos criativos do concorrente, as vulnerabilidades e a decisão do que
+    //     modelar. Passamos as SEÇÕES do dossiê, não as transcrições cruas: o
+    //     dossiê é a versão comprimida e já julgada desse material — é para isso
+    //     que ele existe. Mandar 20 transcrições aqui estouraria o contexto sem
+    //     melhorar a copy.
+    let blocoDossie = '';
+    if (campanha.autopsia_id) {
+      const { data: autopsia } = await supabase
+        .from('autopsias')
+        .select('page_name, dossie_json')
+        .eq('id', campanha.autopsia_id)
+        .maybeSingle();
+
+      const d = autopsia?.dossie_json as Record<string, string> | null;
+      if (d) {
+        blocoDossie = `\n\nDOSSIÊ DA AUTÓPSIA DO CONCORRENTE (${autopsia?.page_name ?? '—'}).
+Isto é análise já feita em cima dos criativos reais dele — anúncios baixados,
+frames extraídos e áudio transcrito. É a fonte mais confiável que você tem aqui.
+Use "O que modelamos" como briefing e "Vulnerabilidades" como vantagem competitiva.
+NÃO copie a copy dele: modele a ESTRUTURA e ataque as brechas.
+
+[O ALVO]
+${d.alvo ?? '—'}
+
+[ANATOMIA DA OPERAÇÃO DELE — como os criativos são construídos]
+${d.anatomia ?? '—'}
+
+[VULNERABILIDADES — onde ele é atacável]
+${d.vulnerabilidades ?? '—'}
+
+[O QUE MODELAMOS × O QUE REJEITAMOS — este é o briefing]
+${d.modelar_x_rejeitar ?? '—'}
+
+[PLANO JÁ DECIDIDO]
+${d.plano ?? '—'}`;
+      }
+    }
+
     // 4. Montar o prompt do usuário
     let userPrompt = `Dados do produto minerado (input do agente Minerador):
 - Nome da página/anunciante: ${produto.page_name ?? 'não informado'}
@@ -128,6 +172,8 @@ export async function POST(request: Request) {
 - Copy original do anúncio: ${produto.ad_copy ?? 'não informado'}
 - Score de validação: ${produto.score_escala ?? 'não informado'}
 - Nome do projeto: ${campanha.nome_projeto}`;
+
+    userPrompt += blocoDossie;
 
     if (pesquisa) {
       userPrompt += `\n\nPesquisa de mercado (dados REAIS coletados na web agora — use o vocabulário,
@@ -137,8 +183,17 @@ ${pesquisa}`;
 
     userPrompt += `\n\nGere a copy do anúncio Meta Ads e a copy da página de vendas para este produto,
 seguindo as estruturas e técnicas da sua skill e o TEMPLATE (seção a seção).
+
+IMAGENS — obrigatório:
+1. Dentro de "pagina_vendas", marque onde cada imagem entra com uma linha isolada no
+   formato exato: [IMAGEM N · nome-do-arquivo.png — descrição curta]
+   São de 3 a 5 imagens. A primeira é sempre o hero, logo abaixo do título.
+2. Em "prompts_imagens", escreva o prompt COMPLETO de cada uma, no formato da sua
+   skill (bloco <<< >>> + "salvar como"), incluindo o bloco de estilo-mestre com a
+   paleta em hex. O Fernando gera as imagens fora e sobe numa pasta.
+
 Retorne em JSON estruturado:
-{ "meta_ads_copy": "...", "pagina_vendas": "..." }`;
+{ "meta_ads_copy": "...", "pagina_vendas": "...", "prompts_imagens": "..." }`;
 
     if (notas_revisao) {
       userPrompt += `\n\nATENÇÃO: esta é uma regeração. O Revisor pediu ajustes com a seguinte nota:
@@ -146,12 +201,12 @@ Retorne em JSON estruturado:
 Leve este feedback em conta na nova versão.`;
     }
 
-    // 5. Chamar a OpenAI com retry em erros transitórios (429/5xx).
-    //    response_format json_object garante que a resposta seja JSON válido.
-    const response = await chatComRetry({
-      model: MODELO,
+    // 5. Chamar o Zen com retry em erros transitórios (429/5xx).
+    //    Sem `response_format`: nem todo modelo do Zen aceita JSON mode, e o
+    //    parse abaixo já procura o objeto JSON dentro do texto. O piso de
+    //    max_tokens vem do chatComZen (modelo de raciocínio — ver opencode.ts).
+    const response = await chatComZen({
       max_tokens: config.max_tokens,
-      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -162,6 +217,7 @@ Leve este feedback em conta na nova versão.`;
 
     let metaAdsCopy = '';
     let paginaVendas = textoResposta;
+    let promptsImagens = '';
 
     try {
       const jsonMatch = textoResposta.match(/\{[\s\S]*\}/);
@@ -169,6 +225,7 @@ Leve este feedback em conta na nova versão.`;
         const parsed = JSON.parse(jsonMatch[0]);
         metaAdsCopy = parsed.meta_ads_copy ?? parsed.copy_text ?? '';
         paginaVendas = parsed.pagina_vendas ?? parsed.copy_text ?? textoResposta;
+        promptsImagens = parsed.prompts_imagens ?? '';
       }
     } catch {
       // mantém o texto bruto em paginaVendas
@@ -181,6 +238,7 @@ Leve este feedback em conta na nova versão.`;
       tipo_copy: 'Página de Vendas',
       conteudo_texto: paginaVendas,
       meta_ads_copy: metaAdsCopy,
+      prompts_imagens: promptsImagens || null,
       revisor_ok: false,
       notas_revisao: null,
       // Copy pronta -> entra na fila do Revisor para a IA revisora analisar.

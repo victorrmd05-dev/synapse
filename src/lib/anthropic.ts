@@ -12,6 +12,14 @@ export const anthropic = new Anthropic({
 export const ANTHROPIC_DESIGN_MODEL =
   process.env.ANTHROPIC_DESIGN_MODEL || 'claude-sonnet-4-6';
 
+// Modelo usado nos DIAGNÓSTICOS e no PLANO de otimização do Meta Ads.
+// Estava 'claude-opus-4-8' hardcoded em três lugares. Preço por 1M tokens:
+// Opus $5/$25 · Sonnet 5 $3/$15 · Haiku 4.5 $1/$5 — e essas rotas só devolvem
+// um JSON curto. Trocável pelo .env.local sem mexer no código
+// (ex.: ANTHROPIC_DIAGNOSTIC_MODEL=claude-haiku-4-5 para cortar 5x).
+export const ANTHROPIC_DIAGNOSTIC_MODEL =
+  process.env.ANTHROPIC_DIAGNOSTIC_MODEL || 'claude-sonnet-5';
+
 /**
  * Gera texto com o Claude, com retry em erros transitórios (429/5xx/overloaded).
  * Devolve o texto concatenado dos blocos de resposta.
@@ -26,7 +34,13 @@ export async function gerarComClaude(
       const response = await anthropic.messages.create({
         model: params.model || ANTHROPIC_DESIGN_MODEL,
         max_tokens: params.max_tokens,
-        system: params.system,
+        // O system prompt do agente (SOUL + AGENTS + TOOLS + SKILL concatenados)
+        // é grande e IDÊNTICO entre chamadas — vai como bloco cacheado. A 1ª
+        // chamada paga 1.25x; as seguintes (dentro de ~5 min) pagam ~0.1x nesse
+        // trecho. O prompt do usuário fica FORA do cache, depois do breakpoint.
+        system: [
+          { type: 'text', text: params.system, cache_control: { type: 'ephemeral' } },
+        ],
         messages: [{ role: 'user', content: params.user }],
       });
       return response.content
@@ -77,8 +91,13 @@ Métricas: ${JSON.stringify(metrics, null, 2)}`;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-8',
+      model: ANTHROPIC_DIAGNOSTIC_MODEL,
       max_tokens: 1024,
+      // Classificação de gargalo com regras já dadas no prompt — não precisa de
+      // raciocínio extenso. Sem isso o Sonnet 5 pensa por padrão e o thinking
+      // come o max_tokens (a resposta sairia truncada) além de custar mais.
+      thinking: { type: 'disabled' },
+      output_config: { effort: 'low' },
       system: "Retorne apenas o JSON, sem markdown, sem texto adicional.",
       messages: [
         { role: 'user', content: prompt }
@@ -145,8 +164,10 @@ Retorne SOMENTE um JSON, sem markdown, no formato:
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-8',
+      model: ANTHROPIC_DIAGNOSTIC_MODEL,
       max_tokens: 3500, // resposta rica (vazamentos + várias ações) — evita truncar o JSON
+      thinking: { type: 'disabled' },
+      output_config: { effort: 'medium' },
       system:
         'Retorne apenas o JSON, sem markdown, sem texto adicional. Limite a no máximo 4 vazamentos e 6 ações para caber na resposta.',
       messages: [{ role: 'user', content: prompt }],
@@ -283,8 +304,10 @@ ${PLAN_CONTRACT}`;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-8',
+      model: ANTHROPIC_DIAGNOSTIC_MODEL,
       max_tokens: 3500,
+      thinking: { type: 'disabled' },
+      output_config: { effort: 'medium' },
       system: "Retorne apenas o JSON, sem markdown, sem texto adicional.",
       messages: [{ role: 'user', content: prompt }],
     });

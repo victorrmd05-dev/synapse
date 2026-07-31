@@ -10,7 +10,7 @@
 
 import { supabaseServer as supabase } from '@/lib/supabase-server';
 import { getAgentConfig, buildSystemPrompt } from '@/lib/agents/buildSystemPrompt';
-import { OPENAI_MODEL as MODELO, chatComRetry } from '@/lib/openai';
+import { chatComZen } from '@/lib/opencode';
 
 interface ReviewBody {
   copy_id: string;
@@ -100,11 +100,11 @@ Responda APENAS em JSON com este formato exato:
   "recomendacao": "<parágrafo curto com o veredito e, se reprovar, o que o Copywriter deve ajustar>"
 }`;
 
-    // 5. Chamar a IA revisora (OpenAI) com retry e saída JSON garantida
-    const response = await chatComRetry({
-      model: MODELO,
+    // 5. Chamar a IA revisora no OpenCode Zen (GRATUITO) com retry.
+    //    1ª passada de QA é volume, não julgamento fino — por isso não gasta
+    //    provider pago. Sem `response_format`: o parse abaixo já é tolerante.
+    const response = await chatComZen({
       max_tokens: config.max_tokens,
-      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },

@@ -18,20 +18,24 @@ export const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 // A API da OpenAI pode devolver erros transitórios (429 rate limit, 5xx).
 // Re-tentamos algumas vezes com backoff antes de desistir. 4xx (auth, request
 // inválido) não adianta re-tentar.
+// O `client` é parametrizável porque o OpenCode Zen (src/lib/opencode.ts) fala o
+// mesmo protocolo — assim os dois providers compartilham o mesmo backoff em vez
+// de duplicar a lógica. Default = OpenAI oficial (PAGA).
 export async function chatComRetry(
   params: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
-  tentativas = 4
+  tentativas = 4,
+  client: OpenAI = openai
 ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
   let ultimoErro: unknown;
   for (let i = 1; i <= tentativas; i++) {
     try {
-      return await openai.chat.completions.create(params);
+      return await client.chat.completions.create(params);
     } catch (err) {
       ultimoErro = err;
       const status = (err as { status?: number })?.status;
       const transitorio = !status || status >= 500 || status === 429;
       console.warn(
-        `[openai] tentativa ${i}/${tentativas} falhou (status ${status ?? '?'})` +
+        `[llm:${params.model}] tentativa ${i}/${tentativas} falhou (status ${status ?? '?'})` +
           (transitorio && i < tentativas ? ' — re-tentando…' : '')
       );
       if (!transitorio || i === tentativas) break;

@@ -69,9 +69,12 @@ export function buildSystemPrompt(config: AgentConfig): string {
         config.template_md
     );
   }
-  if (config.heartbeat_md) {
-    partes.push('## Gatilhos Autônomos (referência, não aplicável a esta chamada pontual)\n' + config.heartbeat_md);
-  }
+  // HEARTBEAT NÃO ENTRA MAIS NO PROMPT (28/07/2026).
+  // Ele descreve gatilhos autônomos — irrelevante numa chamada pontual, e o próprio
+  // texto que ia junto admitia isso. O custo era real: o minerador carregava 2.146
+  // caracteres (~600 tokens) de heartbeat A CADA ANÚNCIO avaliado; minerar 30
+  // anúncios queimava ~18 mil tokens de instrução inútil. A coluna continua no banco
+  // e no sync — só não é mais concatenada.
 
   return partes.join('\n\n---\n\n');
 }
