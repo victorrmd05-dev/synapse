@@ -30,8 +30,10 @@ type Field = (typeof ARQUIVOS)[number]['field'];
 const OBRIGATORIOS: Field[] = ['agents_md', 'skill_md'];
 
 // Ordem fixa de exibição dos agentes (hierarquia/fluxo do pipeline), não alfabética.
+// ⚠️ Agente NOVO precisa entrar aqui: slug ausente cai no fim da lista (ver
+// `ordenarAgentes`), o que faz parecer que ele "não apareceu" depois do sync.
 const ORDEM_AGENTES = [
-  'alavanca-ceo', 'cto', 'minerador', 'copywriting',
+  'alavanca-ceo', 'cto', 'minerador', 'autopsia', 'copywriting',
   'revisor', 'designer-webmaster', 'video-maker', 'tracking', 'gestor-meta-ads',
 ];
 function ordenarAgentes(lista: AgenteConfigRow[]): AgenteConfigRow[] {
@@ -46,6 +48,7 @@ function ordenarAgentes(lista: AgenteConfigRow[]): AgenteConfigRow[] {
 // (CEO = aprovações do usuário; CTO = infra/suporte técnico aos outros).
 const PAGINA_DO_AGENTE: Record<string, { href: string; label: string }> = {
   minerador: { href: '/mineracao', label: 'Mineração' },
+  autopsia: { href: '/autopsia', label: 'Autópsia' },
   copywriting: { href: '/copywriting', label: 'Copywriting' },
   revisor: { href: '/revisor', label: 'Revisor' },
   'designer-webmaster': { href: '/design', label: 'Design/Webmaster' },

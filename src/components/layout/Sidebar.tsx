@@ -108,6 +108,18 @@ export function Sidebar() {
           <Monitor size={18} />
           Design/Webmaster
         </Link>
+        {/* Tracking vem ANTES de Páginas: a ordem da sidebar segue o funil real —
+            o Designer gera a página, o Tracking instala o FOP nela, e só então ela
+            vira modelo na biblioteca de Páginas. */}
+        <Link
+          href="/tracking"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            pathname === '/tracking' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-secondary hover:text-white hover:bg-surface'
+          }`}
+        >
+          <Radar size={18} />
+          Tracking
+        </Link>
         <Link
           href="/paginas"
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
@@ -117,23 +129,14 @@ export function Sidebar() {
           <LayoutTemplate size={18} />
           Páginas
         </Link>
-        <Link 
-          href="/video-maker" 
+        <Link
+          href="/video-maker"
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
             pathname === '/video-maker' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-secondary hover:text-white hover:bg-surface'
           }`}
         >
           <Video size={18} />
           Video Maker
-        </Link>
-        <Link
-          href="/tracking"
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-            pathname === '/tracking' ? 'bg-primary/10 text-primary border border-primary/20' : 'text-secondary hover:text-white hover:bg-surface'
-          }`}
-        >
-          <Radar size={18} />
-          Tracking
         </Link>
 
         {/* Gestor Meta Ads (Submenu) */}

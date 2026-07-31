@@ -9,7 +9,7 @@ export default function ComoFuncionaPage() {
     {
       icon: <Database className="w-6 h-6 text-[#6366F1]" />,
       title: '1. Ingestão e Sincronização (Meta Ads)',
-      description: 'O MetaScale conecta-se diretamente à sua conta de anúncios através da Meta Graph API. Nós extraímos em tempo real todas as métricas brutas das suas campanhas: impressões, cliques no link, visualizações de página, checkouts iniciados e compras.',
+      description: 'O Alavanca Synapse conecta-se diretamente à sua conta de anúncios através da Meta Graph API. Nós extraímos em tempo real todas as métricas brutas das suas campanhas: impressões, cliques no link, visualizações de página, checkouts iniciados e compras.',
     },
     {
       icon: <Activity className="w-6 h-6 text-[#22C55E]" />,
@@ -36,7 +36,7 @@ export default function ComoFuncionaPage() {
   return (
     <div className="max-w-5xl mx-auto pb-12">
       <TopBar 
-        title="Como Funciona o MetaScale" 
+        title="Como Funciona o Alavanca Synapse" 
         subtitle="Entenda o motor por trás do seu novo cockpit de anúncios" 
       />
 
@@ -64,7 +64,7 @@ export default function ComoFuncionaPage() {
       <div className="mt-16 bg-gradient-to-r from-[#6366F1]/10 to-[#A855F7]/10 border border-[#6366F1]/20 rounded-2xl p-8 text-center">
         <h2 className="text-2xl font-semibold text-white mb-4">Governança de Elite</h2>
         <p className="text-[#8B8BA0] max-w-2xl mx-auto leading-relaxed">
-          O MetaScale não foi criado para ser mais um dashboard genérico. Ele foi forjado para responder à única pergunta que importa no tráfego pago: <strong className="text-[#F1F1F3]">&quot;Se eu injetar dinheiro hoje, eu vou lucrar amanhã?&quot;</strong>. Completude absoluta, sem atalhos.
+          O Alavanca Synapse não foi criado para ser mais um dashboard genérico. Ele foi forjado para responder à única pergunta que importa no tráfego pago: <strong className="text-[#F1F1F3]">&quot;Se eu injetar dinheiro hoje, eu vou lucrar amanhã?&quot;</strong>. Completude absoluta, sem atalhos.
         </p>
       </div>
     </div>

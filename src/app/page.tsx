@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, ArrowUpRight, TrendingUp, DollarSign, Activity } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Link from 'next/link';
+import { MusicButton } from '../components/ui/MusicButton';
 
 export default function VisaoGeralPage() {
   const [totalItens, setTotalItens] = useState(0);
@@ -35,6 +36,7 @@ export default function VisaoGeralPage() {
         </div>
         
         <div className="flex items-center gap-3">
+          <MusicButton />
           <div className="bg-surface border border-surface-elevated px-4 py-2 rounded-lg flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-status-green animate-pulse"></div>
             <span className="text-sm font-medium text-white">Supabase Conectado</span>
