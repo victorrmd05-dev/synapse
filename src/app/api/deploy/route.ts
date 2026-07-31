@@ -12,18 +12,27 @@
 // Requer: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID no ambiente.
 
 import { supabaseServer as supabase } from '@/lib/supabase-server';
-import { deployHtmlToPages } from '@/lib/cloudflare';
+import {
+  deployHtmlToPages,
+  apontarSubdominio,
+  listarZonas,
+  type SubdominioResult,
+} from '@/lib/cloudflare';
 
 // O deploy roda um processo Wrangler e pode levar dezenas de segundos.
 export const maxDuration = 120;
 
 interface DeployBody {
   design_id: string;
+  /** Zona (domínio) do Cloudflare. Ausente = publicação de teste no .pages.dev. */
+  zone_id?: string;
+  /** Subdomínio dentro dessa zona (ex: "metodo-do-corredor"). */
+  subdominio?: string;
 }
 
 export async function POST(request: Request) {
   try {
-    const { design_id } = (await request.json()) as DeployBody;
+    const { design_id, zone_id, subdominio } = (await request.json()) as DeployBody;
     if (!design_id) {
       return Response.json({ error: 'design_id é obrigatório' }, { status: 400 });
     }
@@ -96,10 +105,40 @@ export async function POST(request: Request) {
       );
     }
 
+    // 3b. Subdomínio próprio (opcional).
+    //
+    // Sem zone_id/subdominio isto é PUBLICAÇÃO DE TESTE: fica no .pages.dev e
+    // acabou. Com os dois, aponta o subdomínio para o projeto que acabou de
+    // subir. O deploy já deu certo neste ponto — então falhar aqui NÃO desfaz a
+    // publicação: devolvemos a URL de teste com o aviso, em vez de fingir que
+    // nada subiu (a página está no ar de qualquer jeito).
+    let urlFinal = resultado.url;
+    let dominio: SubdominioResult | null = null;
+    let avisoDominio: string | null = null;
+
+    if (zone_id && subdominio) {
+      try {
+        const zonas = await listarZonas();
+        const zona = zonas.find((z) => z.id === zone_id);
+        if (!zona) throw new Error(`domínio ${zone_id} não está na conta Cloudflare`);
+
+        dominio = await apontarSubdominio({
+          zoneId: zona.id,
+          zoneNome: zona.nome,
+          subdominio,
+          projeto: resultado.slug,
+        });
+        urlFinal = dominio.url;
+      } catch (err) {
+        avisoDominio = err instanceof Error ? err.message : 'erro desconhecido';
+        console.error('[api/deploy] falha ao apontar o subdomínio:', avisoDominio);
+      }
+    }
+
     // 4. Persistir URL pública + marcar como aprovada/publicada
     const { data: registro, error: updateError } = await supabase
       .from('workflow_design')
-      .update({ url_recurso: resultado.url, data_aprovacao: new Date().toISOString() })
+      .update({ url_recurso: urlFinal, data_aprovacao: new Date().toISOString() })
       .eq('id', design_id)
       .select()
       .single();
@@ -111,7 +150,7 @@ export async function POST(request: Request) {
           sucesso: true,
           aviso: 'Página publicada, mas falhou ao salvar a URL no banco.',
           detalhe: updateError.message,
-          url: resultado.url,
+          url: urlFinal,
         },
         { status: 200 }
       );
@@ -121,7 +160,7 @@ export async function POST(request: Request) {
     try {
       await supabase
         .from('lp_biblioteca')
-        .update({ url_publicada: resultado.url, atualizado_em: new Date().toISOString() })
+        .update({ url_publicada: urlFinal, atualizado_em: new Date().toISOString() })
         .eq('design_id', design_id);
     } catch (err) {
       console.warn('[api/deploy] não atualizou a biblioteca:', err instanceof Error ? err.message : err);
@@ -129,7 +168,12 @@ export async function POST(request: Request) {
 
     return Response.json({
       sucesso: true,
-      url: resultado.url,
+      url: urlFinal,
+      // A `.pages.dev` continua valendo mesmo com domínio próprio — útil para
+      // conferir se um problema é do subdomínio ou da página.
+      url_teste: resultado.url,
+      dominio,
+      aviso_dominio: avisoDominio,
       deployment_url: resultado.deploymentUrl,
       slug: resultado.slug,
       registro,

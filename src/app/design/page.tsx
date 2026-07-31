@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Monitor, Smartphone, Globe, ExternalLink, CheckCircle2, Download, Rocket, Edit2, Eye, X, Briefcase, Play, Loader2, Sparkles } from 'lucide-react';
+import { Monitor, Smartphone, Globe, ExternalLink, CheckCircle2, Rocket, Briefcase, Play, Loader2, Sparkles } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import ImagensLP from '../../components/design/ImagensLP';
 
 export default function DesignPage() {
   const [lps, setLps] = useState<any[]>([]);
@@ -12,12 +13,31 @@ export default function DesignPage() {
   const [gerando, setGerando] = useState<Set<string>>(new Set());
   // Id da página sendo publicada no Cloudflare agora (deploy em andamento).
   const [publicando, setPublicando] = useState<string | null>(null);
+  // Destino da publicação. `zonaId` vazio = publicar só para teste (.pages.dev)
+  // — o seletor nasce vazio de propósito, para não subir oferta no domínio
+  // errado por distração (decisão de 29/07).
+  const [dominios, setDominios] = useState<{ id: string; nome: string }[]>([]);
+  const [zonaId, setZonaId] = useState('');
+  const [subdominio, setSubdominio] = useState('');
 
   useEffect(() => {
     fetchLps();
 
+    // Domínios do Cloudflare para o seletor de destino. Best-effort: se falhar,
+    // a lista fica vazia e só o modo teste (.pages.dev) segue disponível.
+    fetch('/api/deploy/dominios')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.dominios) setDominios(d.dominios); })
+      .catch(() => {});
+
     const channel = supabase.channel('design_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'workflow_design' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'workflow_design' }, () => {
+        fetchLps();
+      })
+      // workflow_tracking também: instalar o FOP troca o HTML que esta tela
+      // exibe (ver htmlPublicavel). Sem escutar aqui, o preview só mudaria no
+      // próximo F5 — e daria a impressão de que a instalação não pegou.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'workflow_tracking' }, () => {
         fetchLps();
       })
       .subscribe();
@@ -33,6 +53,48 @@ export default function DesignPage() {
   //   com HTML            -> Pronta p/ Revisão
   //   data_aprovacao set  -> Aprovada p/ Tráfego
   //   url_recurso set     -> No Ar (deploy feito)
+  // O HTML que de fato vai para o ar.
+  //
+  // ESTA É A REGRA DO /api/deploy, ESPELHADA. O deploy publica
+  // workflow_tracking.codigo_html_final quando o tracking está instalado, e o
+  // codigo_html cru caso contrário. A tela usava só o codigo_html — então,
+  // depois de instalar o FOP, o preview e o "Abrir no Navegador" continuavam
+  // mostrando a página SEM pixel. Parecia que a instalação não tinha funcionado;
+  // tinha, só morava noutra tabela e ninguém exibia.
+  //
+  // ⚠️ Se a regra do /api/deploy mudar, mudar aqui junto. Preview que diverge do
+  // que é publicado é pior que não ter preview.
+  function htmlPublicavel(lp: any): string | null {
+    if (lp?._tracking?.status === 'instalado' && lp._tracking.codigo_html_final) {
+      return lp._tracking.codigo_html_final;
+    }
+    return lp?.codigo_html ?? null;
+  }
+
+  function temTracking(lp: any): boolean {
+    return lp?._tracking?.status === 'instalado' && !!lp._tracking.codigo_html_final;
+  }
+
+  /** `Modelagem — Saga Adestramento` → `modelagem-saga-adestramento`. */
+  function sugerirSubdominio(lp: any): string {
+    const base = lp?._campanha || lp?.title || lp?.tipo_design || '';
+    return String(base)
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60);
+  }
+
+  // Sugere o subdomínio ao trocar de LP. Só sugestão: o campo é editável, e o
+  // nome interno da campanha costuma NÃO ser um bom nome público (aqui vira
+  // "modelagem-saga-adestramento", quando a oferta é "Método do Corredor").
+  useEffect(() => {
+    setSubdominio(activeLp ? sugerirSubdominio(activeLp) : '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLp?.id]);
+
   function getDesignStatus(lp: any): { label: string; cls: string } {
     if (lp.url_recurso) return { label: 'No Ar', cls: 'bg-status-green/20 text-status-green' };
     if (lp.data_aprovacao) return { label: 'Aprovada p/ Tráfego', cls: 'bg-status-green/20 text-status-green' };
@@ -41,12 +103,22 @@ export default function DesignPage() {
   }
 
   async function fetchLps() {
-    const { data, error } = await supabase
-      .from('workflow_design')
-      .select('*')
-      .order('data_criacao', { ascending: false });
+    // Busca o tracking JUNTO: sem isso a tela mostrava o HTML cru do Designer
+    // mesmo depois de instalar o FOP, e o pixel "sumia" — era só a tela olhando
+    // para a coluna errada. Ver a nota em htmlPublicavel().
+    const [{ data, error }, { data: tks }, { data: camps }] = await Promise.all([
+      supabase.from('workflow_design').select('*').order('data_criacao', { ascending: false }),
+      supabase.from('workflow_tracking').select('design_id, status, codigo_html_final'),
+      supabase.from('campanhas_producao').select('id, nome_projeto'),
+    ]);
 
     if (!error && data) {
+      const trackingPorDesign = new Map((tks ?? []).map((t: any) => [t.design_id, t]));
+      const nomePorCampanha = new Map((camps ?? []).map((c: any) => [c.id, c.nome_projeto]));
+      data.forEach((lp: any) => {
+        lp._tracking = trackingPorDesign.get(lp.id) ?? null;
+        lp._campanha = nomePorCampanha.get(lp.campanha_id) ?? null;
+      });
       setLps(data);
       // Mantém o item ativo sincronizado com os dados frescos (o HTML chega
       // via Realtime durante a geração), ou seleciona o primeiro.
@@ -90,23 +162,51 @@ export default function DesignPage() {
 
   // Aprova e publica a LP no Cloudflare Pages via /api/deploy. Ao concluir,
   // url_recurso é salvo e o Realtime atualiza o status para "No Ar".
+  //
+  // Sem zona escolhida = publicação de TESTE (fica no .pages.dev). Com zona +
+  // subdomínio, a rota aponta o domínio próprio depois do deploy.
   async function publicarPagina(lp: any) {
     if (!lp || publicando) return;
     if (!lp.codigo_html) {
       alert('Esta página ainda não tem HTML gerado. Gere o design antes de publicar.');
       return;
     }
+
+    const zona = dominios.find((d) => d.id === zonaId) ?? null;
+    const sub = subdominio.trim();
+    if (zona && !sub) {
+      alert('Escreva o subdomínio antes de publicar em ' + zona.nome + '.');
+      return;
+    }
+    if (zona) {
+      // Subdomínio é quase definitivo: depois que o Meta vê o domínio, trocar
+      // perde histórico no pixel. Confirmar aqui custa 1 clique.
+      if (!confirm(`Publicar em https://${sub}.${zona.nome} ?\n\nO subdomínio fica ligado a esta oferta. Trocar depois que o Meta já viu o domínio faz perder histórico no pixel.`)) return;
+    }
+
     setPublicando(lp.id);
     try {
       const res = await fetch('/api/deploy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ design_id: lp.id }),
+        body: JSON.stringify({
+          design_id: lp.id,
+          ...(zona ? { zone_id: zona.id, subdominio: sub } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.sucesso) {
         alert('Falha ao publicar: ' + (data.detalhe || data.error || 'erro desconhecido'));
         return;
+      }
+      // O deploy pode ter dado certo e o subdomínio não — a página está no ar
+      // no .pages.dev de qualquer jeito, então avisamos em vez de dizer "falhou".
+      if (data.aviso_dominio) {
+        alert(
+          'A página subiu, mas o subdomínio não foi apontado:\n\n' +
+            data.aviso_dominio +
+            '\n\nEla está no ar em ' + (data.url_teste || data.url)
+        );
       }
       // Sucesso: o Realtime traz url_recurso e o status vira "No Ar".
       if (data.url) window.open(data.url, '_blank');
@@ -120,26 +220,10 @@ export default function DesignPage() {
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col animate-in fade-in duration-500 overflow-hidden">
-      {/* Top Bar */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-surface-elevated shrink-0">
-        <div className="relative w-full max-w-lg">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="text-secondary" size={16} />
-          </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-surface-elevated rounded-lg bg-[#13131b] text-text-primary placeholder-secondary focus:outline-none focus:border-primary text-sm transition-colors"
-            placeholder="Pesquisar landing pages..."
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="px-3 py-1.5 bg-surface border border-surface-elevated rounded-full flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-status-green animate-pulse"></span>
-            <span className="text-xs font-medium text-secondary">Supabase Sync: Online</span>
-          </div>
-        </div>
-      </div>
-
+      {/* A barra de topo (busca + "Supabase Sync: Online") foi removida em
+          29/07: a busca nunca filtrou nada — era um input sem handler — e o selo
+          de sync era decorativo, não lia estado real de conexão. Os dois juntos
+          comiam ~70px de altura numa tela onde a coluna da direita é o gargalo. */}
       <div className="flex-1 flex gap-6 overflow-hidden">
         
         {/* Column 1: Fila de LPs */}
@@ -195,11 +279,26 @@ export default function DesignPage() {
             <div className="flex items-center gap-3">
               <Monitor className="text-primary" size={18} />
               <h2 className="text-white font-semibold text-sm">Preview Desktop</h2>
+              {/* Diz QUAL versão está na tela. Sem isso não dá para saber se o
+                  que se vê é o que vai ao ar — foi exatamente essa dúvida que
+                  fez o pixel parecer sumido. */}
+              {activeLp?.codigo_html && (
+                temTracking(activeLp) ? (
+                  <span className="px-2 py-0.5 rounded-full bg-status-green/20 text-status-green text-[10px] font-bold uppercase tracking-wider">
+                    com tracking
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full bg-surface-elevated text-secondary text-[10px] font-bold uppercase tracking-wider">
+                    sem tracking
+                  </span>
+                )
+              )}
             </div>
-            <button 
+            <button
               onClick={() => {
-                if (!activeLp?.codigo_html) return;
-                const blob = new Blob([activeLp.codigo_html], { type: 'text/html;charset=utf-8' });
+                const html = htmlPublicavel(activeLp);
+                if (!html) return;
+                const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 window.open(url, '_blank');
               }}
@@ -212,8 +311,8 @@ export default function DesignPage() {
           <div className="flex-1 bg-white relative overflow-hidden">
             {activeLp ? (
               activeLp.codigo_html ? (
-                <iframe 
-                  srcDoc={activeLp.codigo_html} 
+                <iframe
+                  srcDoc={htmlPublicavel(activeLp) ?? ''}
                   className="w-full h-full border-0"
                   title="Desktop Preview"
                 />
@@ -258,6 +357,13 @@ export default function DesignPage() {
           <div className="flex-1 overflow-y-auto custom-scrollbar p-5">
             {activeLp ? (
               <>
+                {/* Imagens da LP vem PRIMEIRO de propósito: é a ação pendente
+                    enquanto não há HTML, e o deploy sobe só o arquivo HTML — as
+                    imagens precisam estar no Storage público antes de gerar a
+                    página. O celular de 540px empurrava este bloco para fora da
+                    dobra e ninguém achava o botão. */}
+                <ImagensLP campanhaId={activeLp.campanha_id ?? null} />
+
                 {/* Mobile Preview */}
                 <div className="mb-8">
                   <div className="flex items-center justify-between mb-4">
@@ -265,29 +371,29 @@ export default function DesignPage() {
                       <Smartphone size={14} /> Preview Mobile
                     </h3>
                   </div>
-                  
-                  <div className="flex justify-center">
-                    <div className="w-[280px] h-[540px] bg-white border-[12px] border-[#0a0a0f] rounded-[2.5rem] shadow-2xl relative overflow-hidden ring-1 ring-surface-elevated">
-                      {/* Notch simulation */}
-                      <div className="absolute top-0 inset-x-0 h-5 bg-[#0a0a0f] rounded-b-2xl w-24 mx-auto z-10"></div>
-                      
-                      {activeLp.codigo_html ? (
+
+                  {activeLp.codigo_html ? (
+                    <div className="flex justify-center">
+                      <div className="w-[280px] h-[540px] bg-white border-[12px] border-[#0a0a0f] rounded-[2.5rem] shadow-2xl relative overflow-hidden ring-1 ring-surface-elevated">
+                        {/* Notch simulation */}
+                        <div className="absolute top-0 inset-x-0 h-5 bg-[#0a0a0f] rounded-b-2xl w-24 mx-auto z-10"></div>
                         <div className="absolute inset-0 pt-4 overflow-hidden rounded-[1.5rem]">
-                          <iframe 
-                            srcDoc={activeLp.codigo_html} 
+                          <iframe
+                            srcDoc={htmlPublicavel(activeLp) ?? ''}
                             className="border-0 bg-white"
                             style={{ width: '375px', height: '756px', transform: 'scale(0.6826)', transformOrigin: 'top left' }}
                             title="Mobile Preview"
                           />
                         </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center h-full bg-[#0F0F13]">
-                          <Globe size={32} className="text-surface-elevated mb-3" />
-                          <p className="text-xs text-secondary">Sem HTML</p>
-                        </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* Sem HTML o celular inteiro é 540px de espaço morto — vira
+                       uma faixa curta e o que importa fica visível. */
+                    <div className="flex items-center gap-2 bg-[#0F0F13] border border-surface-elevated rounded-lg p-3 text-xs text-secondary">
+                      <Globe size={14} className="shrink-0" /> Sem HTML gerado ainda.
+                    </div>
+                  )}
                 </div>
 
                 {/* Technical Health */}
@@ -333,6 +439,50 @@ export default function DesignPage() {
           </div>
 
           <div className="p-5 border-t border-surface-elevated bg-[#0a0a0f] space-y-3">
+            {/* DESTINO DA PUBLICAÇÃO.
+                Nasce em "só teste" de propósito: subir oferta no domínio errado
+                é caro de desfazer, porque o subdomínio que o Meta já viu não se
+                troca sem perder histórico de domínio no pixel. */}
+            {activeLp && (
+              <div className="bg-surface border border-surface-elevated rounded-lg p-3 space-y-2">
+                <p className="text-[10px] text-secondary uppercase tracking-wider">Publicar em</p>
+                <select
+                  value={zonaId}
+                  onChange={(e) => setZonaId(e.target.value)}
+                  className="w-full bg-[#0f0f16] border border-surface-elevated rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-primary/40 cursor-pointer"
+                >
+                  <option value="">Só teste — .pages.dev</option>
+                  {dominios.map((d) => (
+                    <option key={d.id} value={d.id}>{d.nome}</option>
+                  ))}
+                </select>
+
+                {zonaId ? (
+                  <>
+                    <div className="flex items-center gap-1">
+                      <input
+                        value={subdominio}
+                        onChange={(e) => setSubdominio(e.target.value)}
+                        placeholder="metodo-do-corredor"
+                        className="min-w-0 flex-1 bg-[#0f0f16] border border-surface-elevated rounded-lg px-2.5 py-2 text-xs text-white placeholder-secondary/40 focus:outline-none focus:border-primary/40"
+                      />
+                      <span className="text-xs text-secondary shrink-0">
+                        .{dominios.find((d) => d.id === zonaId)?.nome}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-secondary leading-relaxed">
+                      Vira <span className="text-text-primary">https://{subdominio.trim() || '…'}.{dominios.find((d) => d.id === zonaId)?.nome}</span>.
+                      O subdomínio fica ligado a esta oferta — trocar depois que o Meta já viu o domínio faz perder histórico no pixel.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[10px] text-secondary leading-relaxed">
+                    URL descartável para conferir a página e testar eventos. Escolha um domínio quando for subir a oferta de verdade.
+                  </p>
+                )}
+              </div>
+            )}
+
             {activeLp?.url_recurso ? (
               <>
                 <a
@@ -371,22 +521,10 @@ export default function DesignPage() {
                 )}
               </button>
             )}
-            <div className="flex gap-3">
-              <button className="flex-1 border border-surface-elevated hover:bg-surface text-white py-2.5 rounded-lg flex items-center justify-center gap-2 text-xs font-medium transition-colors">
-                <Edit2 size={14} /> Editar
-              </button>
-              <button 
-                onClick={() => {
-                  if (!activeLp?.codigo_html) return;
-                  const blob = new Blob([activeLp.codigo_html], { type: 'text/html;charset=utf-8' });
-                  const url = URL.createObjectURL(blob);
-                  window.open(url, '_blank');
-                }}
-                className="flex-1 border border-surface-elevated hover:bg-surface text-white py-2.5 rounded-lg flex items-center justify-center gap-2 text-xs font-medium transition-colors cursor-pointer"
-              >
-                <Eye size={14} /> Live Link
-              </button>
-            </div>
+            {/* "Editar" e "Live Link" saíram em 29/07. O Editar nunca teve
+                onClick — era botão morto. O Live Link abria o mesmo blob que o
+                "Abrir no Navegador" do cabeçalho, então era duplicata. Remover
+                os dois devolve altura à coluna sem tirar nenhuma função. */}
           </div>
         </div>
       </div>
