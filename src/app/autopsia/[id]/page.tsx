@@ -12,7 +12,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
-import { ArrowLeft, Loader2, FileText, Film, Image as ImageIcon, Mic, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, FileText, Film, Image as ImageIcon, Mic, AlertTriangle, Rocket } from 'lucide-react';
 
 interface Autopsia {
   id: string; page_id: string; page_name: string | null; page_profile_pic_url: string | null;
@@ -27,7 +27,8 @@ interface Criativo {
   url_origem: string | null; storage_path: string | null; transcricao: string | null;
   frames_paths: string[] | null;
 }
-interface Job { id: string; tipo: string; status: string; erro: string | null; iniciado_em: string | null; criado_em: string; }
+interface Job { id: string; tipo: string; status: string; erro: string | null; iniciado_em: string | null; concluido_em: string | null; criado_em: string; }
+interface Campanha { id: string; nome_projeto: string; status_geral: string | null; }
 
 type Aba = 'criativos' | 'transcricoes' | 'frames' | 'dossie';
 
@@ -39,16 +40,92 @@ export default function AutopsiaDetalhePage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [aba, setAba] = useState<Aba>('criativos');
   const [loading, setLoading] = useState(true);
+  const [gerando, setGerando] = useState(false);
+  const [publicando, setPublicando] = useState(false);
+  const [produzindo, setProduzindo] = useState(false);
+  const [campanha, setCampanha] = useState<Campanha | null>(null);
+
+  async function publicar() {
+    setPublicando(true);
+    try {
+      const res = await fetch('/api/autopsia/publicar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ autopsia_id: id }),
+      });
+      const json = await res.json();
+      if (!res.ok) alert(json.error ?? 'Falha ao publicar.');
+    } catch (e) {
+      alert((e as Error).message);
+    }
+    setPublicando(false);
+  }
+
+  // Manda a autópsia para a esteira de produção.
+  //
+  // Só CRIA a campanha e para — não dispara IA nenhuma. A copy é escrita depois,
+  // com o dossiê e as transcrições como contexto (material muito mais rico que o
+  // anúncio minerado avulso que a /mineracao usa). Ver `autopsia_id` na tabela.
+  async function produzirCampanha() {
+    if (campanha) return;
+    setProduzindo(true);
+    try {
+      // Reaproveita o anúncio minerado da mesma página, quando existir — é ele
+      // que carrega link de destino, criativo e copy original.
+      const { data: ad } = await supabase
+        .from('ads_minerados')
+        .select('id')
+        .eq('page_id', autopsia!.page_id)
+        .order('data_mineracao', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const { data, error } = await supabase
+        .from('campanhas_producao')
+        .insert([{
+          autopsia_id: id,
+          ad_minerado_id: ad?.id ?? null,
+          nome_projeto: `Modelagem — ${autopsia!.page_name ?? autopsia!.page_id}`,
+          status_geral: 'aguardando_producao',
+        }])
+        .select('id,nome_projeto,status_geral')
+        .single();
+
+      if (error) throw error;
+      setCampanha(data as Campanha);
+    } catch (e) {
+      alert('Falha ao criar a campanha: ' + (e as Error).message);
+    }
+    setProduzindo(false);
+  }
+
+  async function gerarDossie() {
+    setGerando(true);
+    try {
+      const res = await fetch('/api/autopsia/dossie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ autopsia_id: id }),
+      });
+      const json = await res.json();
+      if (!res.ok) alert(json.error ?? 'Falha ao gerar o dossiê.');
+    } catch (e) {
+      alert((e as Error).message);
+    }
+    setGerando(false);
+  }
 
   const fetchTudo = useCallback(async () => {
-    const [a, c, j] = await Promise.all([
+    const [a, c, j, camp] = await Promise.all([
       supabase.from('autopsias').select('*').eq('id', id).single(),
       supabase.from('autopsia_criativos').select('*').eq('autopsia_id', id).order('dias_no_ar', { ascending: false }),
-      supabase.from('autopsia_jobs').select('id,tipo,status,erro,iniciado_em,criado_em').eq('autopsia_id', id),
+      supabase.from('autopsia_jobs').select('id,tipo,status,erro,iniciado_em,concluido_em,criado_em').eq('autopsia_id', id),
+      supabase.from('campanhas_producao').select('id,nome_projeto,status_geral').eq('autopsia_id', id).maybeSingle(),
     ]);
     if (a.data) setAutopsia(a.data as Autopsia);
     if (c.data) setCriativos(c.data as Criativo[]);
     if (j.data) setJobs(j.data as Job[]);
+    setCampanha((camp.data as Campanha) ?? null);
     setLoading(false);
   }, [id]);
 
@@ -63,11 +140,36 @@ export default function AutopsiaDetalhePage() {
     return () => { supabase.removeChannel(channel); };
   }, [id, fetchTudo]);
 
-  // Job pendente há mais de 10 minutos sem ninguém pegar = worker parado.
+  // Worker parado = ninguém CONCLUIU nem COMEÇOU nada há muito tempo.
+  //
+  // Antes isso olhava a idade dos jobs pendentes — e dava falso positivo sempre:
+  // os jobs de frames/transcrever nascem todos juntos quando os downloads acabam,
+  // então bastava passar 10 min para o alerta acender, mesmo com o worker rodando
+  // normalmente (ele faz um job por vez, e o Whisper leva minutos por vídeo).
+  // Idade de fila não mede saúde do worker; tempo desde a última atividade mede.
   const pendentes = jobs.filter((j) => j.status === 'pendente');
+  const processando = jobs.filter((j) => j.status === 'processando');
+  const OCIOSO_MS = 15 * 60 * 1000;
+
+  const ultimaAtividade = jobs.reduce((maior, j) => {
+    const t = Math.max(
+      j.iniciado_em ? new Date(j.iniciado_em).getTime() : 0,
+      j.concluido_em ? new Date(j.concluido_em).getTime() : 0,
+    );
+    return t > maior ? t : maior;
+  }, 0);
+
+  // Sem atividade nenhuma ainda: conta a partir do job mais antigo da fila —
+  // é o caso "apertei o botão e nunca rodei o worker".
+  const referencia =
+    ultimaAtividade > 0
+      ? ultimaAtividade
+      : Math.min(...[...pendentes, ...processando].map((j) => new Date(j.criado_em).getTime()));
+
   const workerParece0ffline =
-    pendentes.length > 0 &&
-    pendentes.every((j) => Date.now() - new Date(j.criado_em).getTime() > 10 * 60 * 1000);
+    (pendentes.length > 0 || processando.length > 0) &&
+    Number.isFinite(referencia) &&
+    Date.now() - referencia > OCIOSO_MS;
   const jobsComErro = jobs.filter((j) => j.status === 'erro');
 
   if (loading) {
@@ -113,7 +215,8 @@ export default function AutopsiaDetalhePage() {
           <div className="text-sm">
             <p className="text-status-yellow font-semibold">O worker parece estar parado.</p>
             <p className="text-secondary text-xs mt-1">
-              {pendentes.length} job(s) esperando há mais de 10 minutos. Rode na raiz do projeto:{' '}
+              Nenhum job avançou nos últimos 15 minutos e {pendentes.length + processando.length} ainda
+              estão na fila. Rode na raiz do projeto:{' '}
               <code className="text-white">py -3 scripts/worker-autopsia.py</code>
             </p>
           </div>
@@ -209,13 +312,82 @@ export default function AutopsiaDetalhePage() {
       {aba === 'dossie' && (
         <div className="bg-surface border border-surface-elevated rounded-xl p-6">
           {autopsia.dossie_md ? (
-            <pre className="text-sm text-text-primary whitespace-pre-wrap font-sans leading-relaxed">
-              {autopsia.dossie_md}
-            </pre>
+            <>
+              <div className="flex items-center gap-3 mb-5 pb-5 border-b border-surface-elevated">
+                <button
+                  onClick={gerarDossie}
+                  disabled={gerando}
+                  className="text-secondary hover:text-white text-sm px-3 py-2 rounded-lg border border-surface-elevated disabled:opacity-40"
+                >
+                  {gerando ? 'Analisando…' : 'Regerar'}
+                </button>
+                <button
+                  onClick={publicar}
+                  disabled={publicando}
+                  className="bg-primary hover:bg-primary-hover disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg"
+                >
+                  {publicando ? 'Publicando…' : autopsia.dossie_html_url ? 'Republicar' : 'Publicar dossiê'}
+                </button>
+                {autopsia.dossie_html_url && (
+                  <a
+                    href={autopsia.dossie_html_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-status-green text-sm hover:underline"
+                  >
+                    No ar — abrir
+                  </a>
+                )}
+
+                <div className="ml-auto">
+                  {campanha ? (
+                    <Link
+                      href="/producao"
+                      className="text-status-green text-sm hover:underline flex items-center gap-1.5"
+                    >
+                      <Rocket size={14} /> Em produção — ver
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={produzirCampanha}
+                      disabled={produzindo}
+                      className="bg-status-green/15 border border-status-green/40 text-status-green hover:bg-status-green/25 disabled:opacity-40 text-sm font-semibold px-4 py-2 rounded-lg flex items-center gap-2"
+                    >
+                      <Rocket size={14} />
+                      {produzindo ? 'Criando…' : 'Produzir campanha'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {campanha && (
+                <p className="text-secondary text-xs mb-5 -mt-2">
+                  Campanha <span className="text-white">{campanha.nome_projeto}</span> criada e aguardando
+                  produção. A copy é escrita a partir deste dossiê — seções <strong>5</strong> (modelar ×
+                  rejeitar) e <strong>6</strong> (plano) são o briefing.
+                </p>
+              )}
+              <pre className="text-sm text-text-primary whitespace-pre-wrap font-sans leading-relaxed">
+                {autopsia.dossie_md}
+              </pre>
+            </>
           ) : (
-            <p className="text-secondary text-sm">
-              O dossiê é gerado depois que os criativos estiverem transcritos.
-            </p>
+            <div className="text-center py-10">
+              <p className="text-secondary text-sm mb-4">
+                O dossiê é gerado a partir das transcrições e dos metadados dos criativos.
+              </p>
+              <button
+                onClick={gerarDossie}
+                disabled={gerando || autopsia.total_transcritos === 0}
+                className="bg-primary hover:bg-primary-hover disabled:opacity-40 text-white text-sm font-semibold px-5 py-2.5 rounded-lg inline-flex items-center gap-2"
+              >
+                {gerando ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
+                {gerando ? 'Analisando…' : 'Gerar dossiê com IA'}
+              </button>
+              {autopsia.total_transcritos === 0 && (
+                <p className="text-secondary text-xs mt-3">Nenhum criativo transcrito ainda — rode o worker.</p>
+              )}
+            </div>
           )}
         </div>
       )}

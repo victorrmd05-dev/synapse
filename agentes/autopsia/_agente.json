@@ -1,0 +1,7 @@
+{
+  "slug": "autopsia",
+  "nome": "Autópsia de Concorrente",
+  "modelo": "claude-sonnet-4-6",
+  "max_tokens": 8000,
+  "ativo": true
+}
