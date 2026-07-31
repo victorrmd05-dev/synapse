@@ -1,15 +1,807 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-07-27 — 🔬 **Autópsia de Concorrente: fases 0–1 CONSTRUÍDAS (9 de 16 tarefas)** — sessão interrompida por limite de créditos. **O ponto exato de retomada está na seção "🔬 Autópsia de Concorrente" logo abaixo do índice — leia ela primeiro.** Antes: **Campanhas: Histórico de diagnósticos + painel de Conjuntos + galeria de Criativos** (GUIA_IMPLEMENTACAO.md implementado; endpoints já existiam do commit a4e1ca7, faltava a UI + 2 bugs de backend). Antes: **Gestor-Meta-Ads: paridade total com o MetaScale** (fix de modelo IA `claude-opus-4-8`, filtro por data, Claude Ads Audit transparente, distribuição de verba real, Plano de Otimização ancorado na Análise Profunda, "Salvar análise" completo). Antes: **Tracking: "Limpar log" + filtro "só conversões"** no painel CAPI (log local, não afeta o Meta). Antes: **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
+> Última atualização: 2026-07-29 — 🎯 **A LP do Método do Corredor está DENTRO do dashboard
+> e o fluxo `/design` fecha ponta a ponta.** As 3 tarefas de imagem foram concluídas (upload,
+> botão, substituição de `[IMAGEM N]`), a LP foi construída no modelo validado do
+> alimento-sagrado e entrou em `workflow_design.codigo_html` via script repetível. Detalhes na
+> seção "🖼️ Imagens da LP" e "🏁 LP no modelo low-ticket, dentro do dashboard". Também:
+> 📡 **FOP validado ponta a ponta em PRODUÇÃO, com deduplicação confirmada pelo Meta** —
+> a LP está no ar em `modelagem-saga-adestramento-8f8e98fd.pages.dev` e o Gerenciador de
+> Eventos marca as linhas de Servidor como **"Desduplicado"**. No caminho, 2 bugs reais
+> corrigidos (CAPI assado como `localhost`, `fbp` nulo no PageView), a instalação passou a
+> ter **travamento** (HTML final verificado antes de gravar) e a `/tracking` ganhou o selo
+> **teste × produção** na tela principal. Ver "📡 Tracking FOP". Também: 🌍 **publicação com
+> subdomínio próprio por oferta** — escolhe o domínio, escreve o subdomínio, e o deploy
+> aponta o DNS sozinho (testado com DNS real). Ver "🌍 Publicação com domínio próprio".
+> E 🎬 **Remotion instalado no monorepo** (`remotion/`, renderizando) — a funcionalidade de
+> variações ainda NÃO existe; o plano está em `PLANO-REMOTION-VARIACOES.md`. Criado também o
+> `.env.local.example`, que não existia.
+> Antes:
+> 🔴 **LEIA A SEÇÃO "ONDE PARAMOS" (é a primeira abaixo).** Sessão encerrada por fim de créditos no meio da tarefa de upload das imagens da LP: a rota `/api/design/imagens` foi escrita mas **nunca passou por `tsc`** — rode isso primeiro. A esteira rodou ponta a ponta pela 1ª vez (minerar → autopsiar → dossiê → campanha → copy). **Nada commitado o dia inteiro.** Antes: 💸 **Custo de LLM zerado: migração para o OpenCode Zen.** Descoberto que **não existia caminho gratuito** — o `CLAUDE.md` dizia que o copywriting rodava no Zen, mas o código apontava para a OpenAI paga e o `OPENCODE_API_KEY` nunca era lido. Criado `src/lib/opencode.ts`, 6 rotas migradas, fallback silencioso para `gpt-4o-mini` eliminado, e `UPDATE` no banco (o furo real: o Zen era só fallback de falha). Caminho gratuito **provado** com chamada real. Ver seção "💸 Custo zero de LLM". Antes: 💸 **Corte de custo da API Anthropic + Havan na lista negra.** Os três diagnósticos do Meta Ads rodavam `claude-opus-4-8` **hardcoded** (o modelo mais caro da linha) para devolver um JSON curto — trocados por `ANTHROPIC_DIAGNOSTIC_MODEL` (default `claude-sonnet-5`), com `thinking` desligado e `effort` explícito, e o system prompt dos agentes agora vai com `cache_control` em `gerarComClaude()`. Detalhes e a pegadinha do thinking do Sonnet 5 na seção "💸 Custo da API Anthropic". ⏳ **Só tem `tsc` limpo — ainda NÃO foi rodado contra campanha real.** Antes: 🧹 **Mineração blindada para o re-mine do zero + rebranding da aba.** O bloco que salva a miniatura no Storage não tinha `try/catch`: uma falha no `.update()` devolvia **500 numa mineração que já tinha inserido os anúncios**, e o dedup depois responderia "0 inseridos" (parecendo quebra). Blindado e provado com mineração real; a resposta agora traz `miniaturas_salvas`/`miniaturas_falharam`. Título da aba deixou de ser `MetaScale | ADS Cockpit v1.0` (e o nome antigo vazava até para o criativo enviado ao Meta, em `meta-api.ts`). ⏳ **PENDENTE combinado: implementar a limpeza do Storage junto da exclusão — ver seção "🧹 Limpar o Storage ao excluir anúncio (PENDENTE)".** Antes: 🔬 **Autópsia de Concorrente: MÓDULO COMPLETO (16/16 tarefas) e VALIDADO contra o gabarito** — coleta por `page_id`, worker Python local (download → 3 grades ffmpeg → faster-whisper), dossiê em 9 seções e publicação em HTML autocontido no Cloudflare. Os 6 critérios de aceite com os números reais estão na seção "🔬 Autópsia de Concorrente — MÓDULO CONSTRUÍDO E VALIDADO". ⚠️ Anthropic sem crédito: o dossiê sai por `gpt-4o-mini (fallback)`. Antes: **Campanhas: Histórico de diagnósticos + painel de Conjuntos + galeria de Criativos** (GUIA_IMPLEMENTACAO.md implementado; endpoints já existiam do commit a4e1ca7, faltava a UI + 2 bugs de backend). Antes: **Gestor-Meta-Ads: paridade total com o MetaScale** (fix de modelo IA `claude-opus-4-8`, filtro por data, Claude Ads Audit transparente, distribuição de verba real, Plano de Otimização ancorado na Análise Profunda, "Salvar análise" completo). Antes: **Tracking: "Limpar log" + filtro "só conversões"** no painel CAPI (log local, não afeta o Meta). Antes: **Dashboard Meta Ads LIGADO A DADOS REAIS** (Gestor-Meta-Ads, parte de leitura). `/api/meta/sync` agora puxa campanhas + `/insights` reais da conta Cavalheiros, calcula métricas derivadas e grava em duas tabelas novas (`meta_campaigns`, `meta_campaign_metrics`); dashboard lê com Realtime e botão Sync. Funil de compra com estado vazio honesto (sem `purchase`/`roas` ainda — campanhas atuais são tráfego/awareness). Antes: Tracking (FOP) validado ponta a ponta, relay em Edge Function, deploy de LPs no Cloudflare, motor do Designer.
 
 ---
 
-## 🔬 Autópsia de Concorrente — EM CONSTRUÇÃO (parada em 27/07/2026)
+## 🔴 ONDE PARAMOS — retomar por aqui (29/07/2026)
 
-> **📍 LEIA ISTO PRIMEIRO AO RETOMAR.** A sessão parou por limite de créditos no meio da
-> execução de um plano de 16 tarefas. **9 estão implementadas e commitadas**, 7 faltam.
-> Nada está pela metade no código — a parada foi entre tarefas, não dentro de uma.
+> A LP do Método do Corredor está **no ar**, com FOP instalado e **deduplicação
+> confirmada pelo Meta**. **Continua nada commitado** — a working tree só cresceu.
+
+**No ar:** https://modelagem-saga-adestramento-8f8e98fd.pages.dev
+
+### ▶️ Próximo passo
+
+1. **Republicar** — o fix do `fbp` está no `codigo_html_final` mas a página no ar ainda é
+   a versão anterior. `/design` → "Aprovar e Publicar".
+2. **Conferir o `test_event_code`** no selo da `/tracking` antes de cada rodada — ele expira
+   por sessão do Meta. Hoje está em `TEST72769`, batendo com o Gerenciador.
+3. Decidir as pendências de oferta abaixo. A página está no ar com `#CHECKOUT_URL`:
+   **ninguém consegue comprar.** É teste de tracking, não de venda.
+4. **Escolher o subdomínio da oferta** quando for pra valer. Hoje está no `.pages.dev`; o
+   seletor "Publicar em" já lista os 3 domínios. Sugestão do campo vem do nome da campanha
+   (`modelagem-saga-adestramento`) — o certo aqui seria `adestramento`.
+
+### 🎬 Frente nova aberta: variações de vídeo com Remotion
+
+**A base está instalada e renderiza** (`remotion/`, movida do `my-video`). **A
+funcionalidade não existe ainda.** O plano completo, com schema, tarefas e riscos, está em
+**`PLANO-REMOTION-VARIACOES.md`** — é por ele que se retoma.
+
+Resumo de uma linha: **fila `video_jobs` + worker em `remotion/`**, porque render mede
+**59,6s para 5s de vídeo** e não cabe em route handler.
+
+4 decisões esperam você (§7 do plano): voz da ElevenLabs, formatos de saída, estilo da
+legenda, e se o worker roda à mão ou sobe junto com o `dev`.
+
+### ✅ Modo do pixel (teste × produção) — CONSTRUÍDO na `/tracking`
+
+`src/components/tracking/ModoDoPixel.tsx`, na **tela principal**, logo abaixo do cabeçalho.
+Estado atual: **em teste com `TEST72769`** (o código que o Gerenciador está mostrando —
+o banco tinha `TEST67494`, desatualizado, e foi corrigido).
+
+### ⚠️ A armadilha nova: "Gerar Página com IA" SOBRESCREVE a LP feita à mão
+
+O botão play / "Gerar Página com IA" chama `/api/design/generate`, que faz
+`UPDATE workflow_design SET codigo_html = <html da IA>`. **Isso apaga a LP construída no
+modelo low-ticket sem perguntar.** Hoje o botão some quando já existe `codigo_html`
+(a UI só mostra o play para `!lp.codigo_html`), então o risco é baixo — mas a rota
+continua chamável.
+
+**Se acontecer, não é perda:** a fonte da verdade é a pasta
+`low-ticket/metodo-do-corredor/lp/`. Recuperar é rodar de novo:
+```bash
+node scripts/lp-para-dashboard.mjs "C:/Users/cerqu/Documents/Projetos_IDE/low-ticket/metodo-do-corredor/lp" 8f8e98fd-dd25-424f-a1d3-f9a8338bd741
+```
+
+### 📌 Pendências de OFERTA (decisão do Fernando — não inferir)
+
+Estas travam a publicação de verdade, não o dashboard:
+
+1. **Formato de entrega** — PDF? vídeo? área de membros? A copy aprovada nunca diz.
+   Trava o FAQ e o texto do checkout.
+2. **Quem não tem corredor de 3 metros** — objeção mais óbvia do mecanismo, sem resposta
+   na copy. Apartamento pequeno é fatia grande do tráfego.
+3. **URL de checkout** — a LP tem 3 `#CHECKOUT_URL` de placeholder.
+4. **Pixel + endpoint do CAPI** — o tracking nasce DESLIGADO de propósito
+   (`FOP.ativo === false` enquanto os IDs forem placeholder). Pixel com ID falso polui a
+   conta de anúncio.
+5. **Marca guarda-chuva** — rodapé e favicon estão provisórios.
+6. **Ticket R$ 27** — se mudar, muda em 6 lugares da página.
+
+O detalhamento completo está em `low-ticket/metodo-do-corredor/notes.md` (diário do
+produto). Aqui fica só o ponteiro — o produto não mora neste repo.
+
+### ✅ O que ficou pronto e validado na sessão de 28/07
+
+- **Esteira ponta a ponta rodou pela 1ª vez:** minerou → autopsiou (20 criativos, 18
+  transcritos) → dossiê → publicado no Cloudflare → campanha → copy no `/revisor`.
+- **Dossiê da Saga Adestramento** no ar: `https://autopsia-saga-adestramento-4aff5b.pages.dev`
+- **Copy do "Método do Corredor"** gravada em `workflow_copywriting`
+  (`4ec8e821-c35b-4c4d-a56c-c6eedda39a70`), campanha `fcad8b73-c12f-4021-947e-3b43845ebb24`.
+  Página + 5 anúncios + 4 prompts de imagem.
+- **Botão "Produzir campanha"** na `/autopsia/[id]` + coluna `campanhas_producao.autopsia_id`
+- **Card da `/producao`** mostra o próximo passo e tem botão "Gerar copy"
+- **Aba "Prompts de Imagem"** na `/copywriting` e na `/revisor` + coluna
+  `workflow_copywriting.prompts_imagens`
+- **Alerta de "worker parado"** corrigido (media tempo desde a última conclusão, não
+  idade da fila)
+
+### 📌 Pendências abertas (decisão do Fernando, não inferir)
+
+1. **Quem grava os vídeos dos anúncios** — os ads 1, 3 e 5 precisam de alguém em cena
+   com um cão real. Sem isso só o estático e o carrossel são produzíveis. É a mesma
+   pergunta da seção 8 do dossiê.
+2. **Confirmar o ticket de R$ 27** — se mudar, a tabela de ancoragem da página muda.
+3. **Prova social** — a copy não tem depoimento porque não existe depoimento real.
+4. **Nome da marca** — hoje só existe o nome do método.
+5. **Agente `autopsia` está no modelo grátis** e não deu conta de gerar o dossiê (20
+   criativos, 18k caracteres). Ou volta para Claude, ou dossiê continua sendo feito no
+   Claude Code. **Decisão pendente.**
+6. **Spec `docs/superpowers/specs/2026-07-28-esteira-producao-design.md`** — escrito e
+   nunca executado. Boa parte virou realidade por outro caminho (botões diretos em vez
+   de skill + view). **Decidir: apagar ou atualizar.**
+7. **Worker rodando em segundo plano** varrendo fila vazia — pode matar.
+8. **Nada commitado.** Sugestão de fatiar em: (a) custo/OpenCode Zen, (b) blacklist
+   Havan, (c) skills e docs dos agentes, (d) esteira autópsia→produção→copy.
+
+---
+
+## 🖼️ Imagens da LP — as 3 tarefas fechadas (29/07/2026)
+
+> ✅ **Rodou de verdade**, não só `tsc`. Upload real, URL pública servindo, HTML gerado
+> com as tags trocadas.
+
+### O desenho (decisão que continua valendo)
+O `/api/deploy` sobe **um único arquivo HTML**, sem bundle de assets → imagem tem que ser
+URL absoluta pública. Bucket `criativos`, que já é público.
+
+```
+lp/<campanha_id>/hero.png       ← original intocado (o que o Fernando sobe)
+lp/<campanha_id>/web/hero.webp  ← derivada automática, é ela que entra na página
+lp/<campanha_id>/pagina/*.webp  ← assets da LP feita à mão (ver seção seguinte)
+```
+
+**A pasta é a fonte da verdade — não existe tabela de imagens.** O casamento com a copy é
+pelo **nome do arquivo**: a copy traz `[IMAGEM 1 · hero.png — …]` e a pasta tem `hero.png`.
+
+| Passo | Estado |
+|---|---|
+| 1. `api/design/imagens` (GET lista / POST sobe) | ✅ rodado |
+| 2. Botão de upload na `/design` | ✅ `src/components/design/ImagensLP.tsx` |
+| 3. `design/generate` trocar `[IMAGEM N]` pelas URLs | ✅ `src/lib/design/imagensLp.ts` |
+
+### 🐛 Bug real na rota de upload: MIME do cliente não é confiável
+A rota validava só `File.type`. Primeiro upload de teste voltou **502 "tipo não suportado
+(application/octet-stream)" com um PNG perfeitamente válido** — cliente não-browser manda
+`octet-stream`, e o próprio navegador manda string vazia quando o SO não conhece a extensão.
+Trocado por `tipoDaImagem()`, que decide **pela extensão** e usa o tipo declarado só como
+plano B. Coerente com o resto do módulo, já que o casamento com a copy é pelo nome.
+
+### 🐛 O botão existia e ninguém achava
+O `ImagensLP` renderizava certo, mas o mock de celular da `/design` tem **540px fixos** e
+empurrava o bloco para fora da dobra da coluna da direita. Pior: sem HTML gerado o celular
+está vazio ocupando meia tela, enquanto o upload é justamente a ação pendente.
+**Corrigido:** "Imagens da LP" subiu para o topo do painel, e sem `codigo_html` o celular
+vira uma faixa de uma linha.
+
+⚠️ **Lição de método:** eu tinha checado o HTML servido por `curl` e concluído que o
+componente "não aparecia". Era ruído — a `/design` é `"use client"` e busca no `useEffect`,
+então no render do servidor `activeLp` é null e **nem o Technical Health aparece**. Só o
+navegador de verdade responde esse tipo de pergunta.
+
+### 💾 WebP: 8,44 MB → 357 KB
+O gerador devolve PNG de ~2,3 MB a ~1500px. Medido nas 4 imagens: corte de **94–97%** por
+arquivo. `sharp` foi promovido a dependência declarada no `package.json` (`^0.34.5`) —
+estava só transitivo do Next, o que quebraria sem aviso numa atualização.
+
+**Placeholder sem arquivo correspondente é MANTIDO no texto** e reportado em
+`imagens_lp_faltando` na resposta da rota. Erro de digitação no renomear é o caso comum, e
+sumir em silêncio esconderia o problema.
+
+---
+
+## 🏁 LP no modelo low-ticket, dentro do dashboard (29/07/2026)
+
+> 🎯 **O dashboard é o que estamos validando.** Toda atualização precisa aparecer nele para
+> seguir o fluxo normal: preview → Aprovar e Publicar → `/api/deploy` → tracking.
+
+### O que foi feito
+A LP do Método do Corredor foi construída **modelando a `alimento-sagrado/lp/`** (a LP que
+já passou por PageSpeed real), e depois levada para dentro do `workflow_design`.
+
+**Onde o produto mora:** `low-ticket/metodo-do-corredor/lp/` — não neste repo. O Synapse é a
+plataforma; o produto é conteúdo, e o workspace `low-ticket/` tem a regra "um produto = uma
+pasta". Registrado lá no `notes.md` do produto e na tabela do `low-ticket/CLAUDE.md`.
+
+### 🔁 A ponte é um SCRIPT, não uma cópia manual
+`scripts/lp-para-dashboard.mjs` — a pasta do projeto é a fonte da verdade, o dashboard é o
+espelho. Rodar de novo re-espelha.
+
+```bash
+node scripts/lp-para-dashboard.mjs <pasta-do-projeto-lp> <design_id>
+```
+
+Ele: sobe `public/assets/*` para `lp/<campanha_id>/pagina/` · inlina o `script.js` ·
+inlina o favicon como data URI · troca caminho relativo por URL absoluta do Storage ·
+grava em `workflow_design.codigo_html` · espelha em `lp_biblioteca`.
+
+**Por que não copiar o HTML à mão:** o projeto é multi-arquivo e o `/api/deploy` é
+arquivo único. Copiar uma vez faria os dois desandarem em silêncio na primeira edição.
+
+⚠️ **Pasta `pagina/` é separada de `web/` de propósito.** `web/` é das derivadas
+automáticas do `/api/design/imagens` (1200px); `pagina/` é dos assets da LP feita à mão
+(540px). Se dividissem pasta, um upload pelo botão do dashboard clobberia os assets da LP.
+
+### O que o modelo do alimento-sagrado ensina
+| Peça | Decisão |
+|---|---|
+| CSS | **inteiro inline** no `<head>`. Não existe `styles.css` — zero render-block |
+| Fontes | **nenhuma webfont.** Georgia + `system-ui`. Zero requisição, zero FOUT |
+| Imagens | WebP na **largura de exibição** (~540px), não a do arquivo original |
+| Deploy | `wrangler` assets-only. **Nunca** `main =` no `wrangler.toml` |
+| Copy | sem escassez fabricada, sem depoimento inventado, sem preço-âncora falso |
+
+A seção *"Não tenho depoimento para te mostrar"* transforma a ausência de prova social em
+prova de honestidade. Foi adaptada aqui — e resolve a pendência nº 3 do dia 28.
+
+### 🐛 Contraste: os BOTÕES de CTA reprovavam AA — e a referência também reprova
+Medido em todo texto da página: branco sobre o gradiente laranja vibrante dá **3,80:1 na
+ponta escura e 2,70:1 na clara**, contra 4,5 exigido (botão 16px/800 conta como texto
+normal, não grande). Mesma falha na barra do topo, nos eyebrows e no selo de garantia.
+
+É a armadilha do §7 da skill, mas na direção que passa despercebido: **texto branco SOBRE a
+cor vibrante**, não a cor vibrante como texto. A LP do alimento-sagrado tem o mesmo defeito
+(4,44:1, marginalmente abaixo).
+
+**Correção:** separar os usos por token.
+```
+--brand / --brand-2   vibrantes → SÓ decoração (blob, barra de card, borda)
+--brand-ink           escura    → texto laranja sobre creme
+--brand-grad          par escuro → fundo de qualquer coisa com TEXTO BRANCO
+```
+Resultado: 5,81:1 e 4,74:1. **107 elementos com texto, 0 falhas de contraste.**
+
+### Números medidos
+| | |
+|---|---|
+| Primeiro paint (HTML+JS+hero) | **73 KB** (meta da skill: ~150 KB) |
+| Assets somados | 89 KB (referência: 88 KB) |
+| HTML de arquivo único no banco | 41 KB |
+| Console do navegador | 0 erros |
+| Falhas de contraste | 0 de 107 elementos |
+
+⚠️ **Perda conhecida do arquivo único:** o `_headers` (cache `immutable` nos assets) só vale
+no deploy por `wrangler` da pasta do projeto. Publicando pelo dashboard, os assets vêm do
+Storage do Supabase, em outra origem e sem esse header. Aceito por ora — o ganho é o fluxo
+do dashboard fechar.
+
+### 🧪 Armadilha de verificação: screenshot de página inteira mente
+O meio da página saiu **em branco** num `fullPage` do Playwright, parecendo bug do
+`.reveal`. Não era: o Playwright estica o viewport para capturar e a imagem sai antes da
+transição de opacidade terminar. **Verificar rolando de verdade e lendo o `classList`, não
+pela imagem.** (10 blocos `.reveal`, todos com `.in`, nenhum invisível.)
+
+---
+
+## 📡 Tracking FOP — validado em produção e TRAVADO (29/07/2026)
+
+> ✅ **Deduplicação confirmada pelo Meta**: no Gerenciador de Eventos, cada evento vira uma
+> linha-mãe com duas filhas — `Navegador` marcada **Processado** e `Servidor` marcada
+> **Desduplicado**. Provado em PageView, ViewContent e AddToWishlist.
+
+### O sintoma que abriu tudo: "instalei o FOP e o pixel sumiu"
+
+Não tinha sumido — **o dashboard nunca mostrava a versão instrumentada**.
+`/api/tracking/generate` grava só em `workflow_tracking.codigo_html_final`, nunca de volta
+no `codigo_html`. E a `/design` lia só o `codigo_html` no preview, no "Abrir no Navegador"
+e no "Live Link". A `/tracking` não tem preview nenhum. Ou seja: depois de instalar, não
+existia lugar no dashboard para ver o resultado.
+
+**Corrigido:** `htmlPublicavel()` na `/design` **espelha a regra do `/api/deploy`** (usa o
+`codigo_html_final` quando o tracking está instalado) + selo **COM TRACKING / sem tracking**
+no cabeçalho + Realtime na `workflow_tracking`.
+
+⚠️ **Se a regra do `/api/deploy` mudar, mudar a da tela junto.** Preview que diverge do que
+é publicado é pior que não ter preview.
+
+### 🐛 Bug 1 — o CAPI era assado como `localhost` (o pior do dia)
+
+O HTML publicável saía com `CAPI="http://localhost:3000/api/track/capi"`, porque
+`resolveCapiEndpoint()` caía no origin da requisição. **O navegador de cada visitante
+POSTaria para a própria máquina dele.** E o `fetch` do FOP tem `.catch(function(){})`:
+falha em **silêncio total**. Eventos de navegador chegariam, os de servidor não, e a
+deduplicação seria impossível de validar sem nenhum erro em lugar nenhum.
+
+**Corrigido em dois níveis:**
+1. `TRACKING_CAPI_ENDPOINT` no `.env.local` → Edge Function `track-capi` (que já existia
+   ativo e público no Supabase do Synapse, e espelha a rota Next).
+2. A função **nunca mais assa endereço local**: se o origin for local, cai no Edge Function;
+   se nem isso existir, lança erro claro. Melhor não instalar do que instalar quebrado.
+
+> Havia uma linha comentada no `.env.local` prevendo `synapse.alavanca.ai/api/track/capi` —
+> um Synapse publicado que não existe. O Edge Function é o substituto real.
+
+### 🐛 Bug 2 — `fbp` nulo no PageView do servidor
+
+Medido em produção:
+```
+PageView       → servidor: fbp = null      ← espelhado cedo demais
+ViewContent    → servidor: fbp = fb.2.17…  ← dispara no scroll, cookie já existe
+AddToWishlist  → servidor: fbp = fb.2.17…
+```
+O `_fbp` é gravado pelo `fbevents.js` **depois** que ele carrega; o espelho do PageView saía
+no carregamento. Numa LP sem formulário o `fbp` é o identificador mais forte que existe.
+
+**Corrigido:** `comFbp()` no `fop.ts` — fila que espera o cookie (teto ~2s) e dispara em
+seguida. O `fbq('track')` do navegador continua disparando na hora; só o espelho espera.
+
+⚠️ **A causa raiz estava na SKILL, não no código.** O `reference/client-implementation.md`
+da `fop-tracking` mandava espelhar direto. Corrigi lá também — senão o próximo projeto
+nasceria com o mesmo bug.
+
+### 🔒 O travamento (é o que impede tudo isso de voltar)
+
+`validarInstalacaoFop()` roda sobre o HTML final **antes de gravar**. Falhou? HTTP 422, não
+grava, não marca `instalado`, e diz qual regra quebrou.
+
+| # | Regra | De onde veio |
+|---|---|---|
+| 1 | exatamente 1 carregador `fbevents.js` | os dois blocos FOP que coexistiram |
+| 2 | endpoint CAPI presente | — |
+| 3 | **CAPI não é localhost** | bug 1 |
+| 4 | id do PageView compartilhado HEAD↔BODY | é a chave da dedup |
+| 5 | espelho do CAPI espera o `_fbp` | bug 2 |
+| 6 | `pixel_id` real presente | — |
+| 7 | nenhum placeholder sobrevivente | — |
+
+**Provado com teste negativo:** sabotei o `codigo_html` com um `fbevents.js` extra →
+`HTTP 422 · pixel-unico — esperado 1, encontrado 2`. Restaurado num `finally`.
+
+⚠️ **Descontar comentários antes de contar.** A primeira versão pegava menções dentro de
+comentários (3 menções, 1 carregador real) e teria travado instalação boa.
+
+### 🔒 Trava do tipo de funil
+
+Três instalações seguidas da mesma página deram **E, A, E** — o diagnóstico é da IA e não é
+determinístico. Trocar de template muda quais eventos existem e invalida teste em
+andamento. Agora **o primeiro diagnóstico manda**; para trocar, `tipo_funil` no body; para
+a IA redecidir, `rediagnosticar: true`. A resposta traz `origem_funil`.
+
+Para esta LP o certo é **E** (sem formulário, clique direto para checkout). Com o funil A,
+`Contact`/`AddToCart`/`Lead` nunca disparariam — dependem de campos de formulário.
+
+### 📌 Duas coisas sobre o `test_event_code` que custam tempo
+
+1. **Ele expira a cada sessão** da aba Eventos de teste. O banco tinha `TEST67494` e o
+   Gerenciador mostrava `TEST72769`. Código velho = eventos de servidor somem da aba.
+2. **Ele só vale para o CAPI.** O Pixel do navegador não carrega esse parâmetro — não dá
+   para "proteger" tráfego de navegador com ele. Verificado na requisição real:
+   `facebook.com/tr/?...` sai sem `test_event_code`.
+
+### ✅ Não é defeito, não vá atrás
+
+**`PageView` aparece rotulado como "Evento personalizado"** na aba de teste. Conferido:
+`event_name: PageView`, `action_source: website`, resposta do Meta com `messages: []` e
+`events_received: 1`. É rótulo da interface — e a linha vem marcada `Desduplicado`.
+
+### 🌐 CORS do relay CAPI — por que `dominio_permitido` fica VAZIO
+
+> Pergunta que já voltou e vai voltar. A resposta curta: **deixe vazio**.
+
+**CORS é regra que o NAVEGADOR aplica, não cadeado no servidor.** Ele responde só a
+"o JS do site A pode LER a resposta de uma chamada ao site B?". `curl`, script de servidor,
+Postman — nada disso liga para CORS.
+
+**E do jeito que o `track-capi` está implementado, o campo quase não faz nada:**
+
+```js
+let allow = origin || '*';
+if (allowed && allowed !== '*') { allow = origin === allowed ? origin : allowed; }
+return { 'Access-Control-Allow-Origin': allow, ... }
+```
+
+Ele **nunca recusa a requisição**. Processa o evento, manda pro Meta, grava no log — e só
+então monta o cabeçalho. Preencher o campo mudaria apenas o header da resposta; o evento
+**já teria ido pro Meta do mesmo jeito**. Por isso vazio ou preenchido dá no mesmo.
+
+**A exposição real** é outra: o endpoint é público e sem auth (tem que ser — a LP chama do
+navegador de qualquer visitante), e o `pixel_id` está no fonte da página. Alguém poderia
+disparar evento falso com `curl`. O que limita o estrago hoje: só eventos de uma lista fixa
+passam (`EVENTOS_PERMITIDOS`), o token da CAPI nunca sai do servidor, e precisa do
+`pixel_id` certo. Risco baixo — é vandalismo dirigido, sem ganho para quem faz.
+
+**Por que NÃO preencher, além de não proteger:** com subdomínio por oferta, várias LPs em
+domínios diferentes compartilham o mesmo pixel. Um campo que aceita um domínio só quebraria
+essa configuração no dia em que virasse portão de verdade.
+
+**Se um dia valer a pena fechar:** o certo é o Edge Function **recusar com 403** quando o
+`Origin`/`Referer` não estiver numa **lista** de domínios seus. Aí vira proteção. Anotado
+como possibilidade, não como pendência.
+
+### 🎛️ Modo do pixel na UI — `ModoDoPixel.tsx` (29/07/2026)
+
+**O problema que ele resolve:** "estou em teste ou em produção?" é a pergunta que causa
+erro no tracking, e a resposta estava escondida — a palavra `teste` em 11px, dentro do
+painel "Pixels & Tokens", que **nasce fechado**. Dava para rodar uma semana achando que
+estava em produção. Agora é uma faixa colorida na tela principal:
+
+```
+🧪 EM TESTE · Pixel Cavalheiros -01 [TEST72769]     [Trocar código] [Encerrar teste → produção]
+📡 EM PRODUÇÃO · Pixel Cavalheiros -01                          [Colar código de teste]
+```
+
+**Server action `setTestEventCode(id, codigo)`** — `codigo` vazio/null = produção.
+Ação própria de propósito: é a operação MAIS frequente do tracking e estava enterrada
+dentro do formulário de editar pixel.
+
+**A explicação mora dentro do selo**, porque foi ela que custou tempo hoje: *"O Meta troca
+este código a cada sessão da aba — se os eventos sumirem de lá, é ele que envelheceu."*
+E a confirmação de encerrar diz o que importa: **não é preciso republicar a página.**
+
+**Qual pixel o selo mostra:** o `padrao = true` ativo, senão o primeiro ativo com token —
+**a mesma escolha que `/api/tracking/generate` faz**. Assim o que se vê no selo é o pixel
+que a instalação realmente usa. Com múltiplos pixels, os outros seguem em "Pixels & Tokens".
+
+**Testado no navegador, ciclo completo:** trocar → `TEST72769` gravado · encerrar →
+`null` gravado e selo verde · colar de volta → gravado e selo amarelo.
+
+⚠️ **Por que isto NÃO exige republish** (vale repetir, é contraintuitivo): o
+`test_event_code` vive no `tracking_config` e o relay CAPI lê a cada requisição. Ele nunca
+entra no HTML publicado. Então virar teste↔produção é um `UPDATE` de um campo, com efeito
+no evento seguinte.
+
+---
+
+## 🎬 Remotion no monorepo — base instalada, plano escrito (29/07/2026)
+
+> ✅ **A base existe e renderiza.** ❌ **A funcionalidade de variações NÃO foi implementada.**
+> Plano completo em **`PLANO-REMOTION-VARIACOES.md`** (na raiz, temporário — mover para
+> `docs/superpowers/plans/` ao executar).
+
+### O que foi feito
+
+`C:\Users\cerqu\Documents\Projetos_IDE\my-video` foi **movido** (não copiado — 842 MB de
+`node_modules` não foram duplicados) para **`remotion/`** dentro deste repo. O `.git`
+aninhado dele foi removido (tinha 1 commit, sem remote).
+
+| Verificação | Resultado |
+|---|---|
+| `remotion versions` do novo local | 4.0.409 OK |
+| **Render real** | **59,6s para 5s de vídeo** · 5,3 MB |
+| `remotion/node_modules` e `out/` no git | já ignorados (padrões sem barra pegam qualquer profundidade) |
+
+**Composição que já existe:** `Anuncio-Sapatenis`, 1080×1920, 150 frames @30fps.
+⚠️ O `Root.tsx` passa `titleColor`/`priceText` em `defaultProps` que **não existem no
+schema** — erro de tipo real, não impede o render, mas o lint de dentro de `remotion/` acusa.
+
+### 🔑 O número que decide a arquitetura
+
+**59,6s para 5 segundos** = ~12× o tempo real. Anúncio de 30s → ~6 min. **Não cabe em route
+handler** (`maxDuration`). É fila + worker, exatamente como a decisão **D4 da autópsia**
+("a rota nunca processa mídia, só enfileira") e o `scripts/worker-autopsia.py`.
+
+### Decisões tomadas com o Fernando
+
+- **Licença do Remotion:** free até 3 pessoas; 4+ exige Company License paga. Fernando é
+  sempre solo → **fica no gratuito**. Registrado para não virar surpresa se crescer.
+- **Monorepo:** o `CLAUDE.md` proibia subpastas isoladas. Fernando autorizou a exceção, e
+  ela está **nomeada** lá — não virou regra genérica. A regra que sustenta:
+  **`remotion/` NUNCA é importado pelo app Next**; conversa só pela fila no Supabase.
+- **Reaproveitar o `my-video`** em vez de criar projeto novo.
+
+### 🐛 Custo real do monorepo, e como foi pago
+
+O `tsc` do Next passou a checar `remotion/src/**`, e os tipos de **React 19** de lá colidiram
+com os de **React 18** daqui (`'AbsoluteFill' cannot be used as a JSX component`).
+**Corrigido:** `"remotion"` no `exclude` do `tsconfig.json` da raiz. Cada projeto se checa
+com o próprio tsconfig.
+
+### Duas sinergias que já existem (não construir do zero)
+
+1. **Legendas sem custo:** o worker da autópsia já roda `faster-whisper` local. Transcreve
+   com timestamps → `@remotion/captions` consome. ⚠️ Usar `C:\Python313\python.exe`.
+2. **Fonte de vídeo:** a autópsia **já baixa os criativos do concorrente** para o Storage.
+   Há vídeo no sistema hoje — não depende do Video Maker (que é só UI, sem Higgsfield).
+
+---
+
+## 🔐 `.env.local.example` criado — e um quase-vazamento (29/07/2026)
+
+**Não existia arquivo de exemplo.** Criado com as 28 variáveis por seção, **só os nomes**,
+com os avisos que já custaram tempo (env do Windows sobrepondo em silêncio,
+`SCRAPE_CREATORS_API_KEY` com underscore, `DESIGN_PROVIDER` que é pago).
+
+🚨 **O que quase aconteceu:** a chave real da ElevenLabs foi colada no
+**`.env.local.example`** — o arquivo **versionado**. Movida para o `.env.local` (ignorado) e
+o example zerado.
+
+**Não vazou:** `git log --all -S "<prefixo>"` não achou a chave em commit nenhum — nada foi
+commitado ainda, então **não precisou rotacionar**. Se tivesse sido commitado, o certo seria
+rotacionar na ElevenLabs, não só apagar do arquivo (fica no histórico).
+
+**A regra, agora escrita no topo do próprio example:** `.env.local` = valores reais, fora do
+git. `.env.local.example` = só nomes, versionado.
+
+---
+
+## 🌍 Publicação com domínio próprio — subdomínio por oferta (29/07/2026)
+
+> ✅ **Testado com DNS real**, não simulado: subdomínio criado, no ar com HTTPS em ~8s,
+> republicação idempotente, e tudo removido depois.
+
+### O que existe na conta Cloudflare (levantado, não suposto)
+
+| Zona | Uso |
+|---|---|
+| `meuaprendizado.online` | `regradosseis.` — LP do alimento-sagrado, via **Worker** |
+| `planoensino.online` | `armorglas.` — LP do ArmorGlass, via **Pages** |
+| `zedocarro.cloud` | sem uso |
+
+Token: **escrita de DNS confirmada** (testei criando e apagando um TXT) e permissão de Pages
+(os deploys já criam projeto, o que exige a mesma permissão).
+
+### O padrão — já existia, só não era automatizado
+
+```
+armorglas.planoensino.online ──CNAME PROXIED──▶ armorglass-capa-iphone.pages.dev
+                                              + registrado como domínio do projeto Pages
+```
+
+São **duas chamadas de API** depois do deploy que já fazíamos. O CNAME **precisa** estar
+proxied — domínio customizado de Pages não valida por DNS direto.
+
+### Como ficou
+
+| Peça | O quê |
+|---|---|
+| `listarZonas()` / `apontarSubdominio()` | `src/lib/cloudflare.ts` |
+| `GET /api/deploy/dominios` | alimenta o seletor |
+| `POST /api/deploy` | aceita `zone_id` + `subdominio` **opcionais** |
+| Seletor na `/design` | nasce em **"Só teste — .pages.dev"** |
+
+**Decisão do Fernando:** sem domínio padrão (escolher a cada publicação) e subdomínio
+**sugerido e editável**. A sugestão vem do nome da campanha — aqui deu
+`modelagem-saga-adestramento`, e o certo seria `adestramento`. Por isso editável: nome
+interno de campanha quase nunca é bom nome público.
+
+### Três decisões de implementação que valem saber
+
+1. **Falha no subdomínio NÃO desfaz a publicação.** O deploy já deu certo neste ponto — a
+   rota devolve sucesso com `aviso_dominio` + a URL `.pages.dev`, em vez de dizer "falhou"
+   sobre uma página que está no ar.
+2. **CNAME apontando para outro projeto é ATUALIZADO, não duplicado.** Sem isso o
+   subdomínio serviria a página errada em silêncio.
+3. **A `.pages.dev` continua valendo** mesmo com domínio próprio (campo `url_teste`) —
+   serve para isolar se um problema é do subdomínio ou da página.
+
+⚠️ **Subdomínio é quase definitivo.** Depois que o Meta vê o domínio, trocar perde histórico
+de domínio no pixel. Por isso publicar em domínio pede confirmação com a URL exata.
+
+### Verificação
+
+| Teste | Resultado |
+|---|---|
+| Publicar com subdomínio | `dns: criado` · `dominioPages: registrado` |
+| Subdomínio responde | HTTP 200 em ~8s, HTTPS, conteúdo confere |
+| Republicar no mesmo | `dns: ja-correto` · `ja-registrado` — não quebra |
+| Limpeza | domínio + CNAME removidos, `url_recurso` restaurado |
+
+Usado `teste-automacao-synapse.zedocarro.cloud` e apagado depois. Não se entrega automação
+de DNS que nunca rodou.
+
+---
+
+## 🧹 `/design` — 4 elementos removidos por serem mortos ou duplicados (29/07/2026)
+
+A coluna "Mobile & Status" era o gargalo da tela: o bloco "Publicar em" só aparecia rolando.
+Removido o que não fazia falta:
+
+| Item | Por que saiu |
+|---|---|
+| Barra de busca | `<input>` **sem handler** — digitar nunca filtrou nada |
+| "Supabase Sync: Online" | decorativo, verde fixo no código; não lia conexão real |
+| Botão "Editar" | **sem `onClick`** — botão morto |
+| Botão "Live Link" | abria o mesmo blob que "Abrir no Navegador" do cabeçalho |
+
+~120px recuperados, nenhuma função perdida. Saíram junto 5 imports órfãos do `lucide-react`
+(`Search`, `Edit2`, `Eye`, `Download`, `X` — os dois últimos já estavam sem uso).
+
+Lição que vale além desta tela: **três dos quatro eram casca** — UI que parece funcional e
+não faz nada. Vale desconfiar de campo de busca e selo de status ao encontrar outros.
+
+---
+
+## 🐍 Worker da autópsia — use o Python GLOBAL, não o venv (28/07/2026)
+
+> ✅ Corrigido no código: o worker agora falha na largada se faltar dependência.
+
+```
+C:\Python313\python.exe scripts\worker-autopsia.py     ← certo
+python scripts\worker-autopsia.py                       ← ERRADO (resolve pro venv)
+```
+
+**O `venv\Scripts\python.exe` não tem `faster-whisper`.** Está no Python global
+(`faster_whisper 1.2.1`). E como o venv vem primeiro no PATH, digitar `python` pega o
+interpretador errado.
+
+**Por que enganou:** os 20 downloads concluíram normalmente — `job_download` só usa a
+stdlib. A quebra apareceu ~40 min depois, no primeiro job de transcrição
+(`No module named 'faster_whisper'`). Parecia problema na transcrição; era o
+interpretador desde o começo.
+
+**Correção aplicada:** `checar_dependencias()` roda antes do loop e verifica
+`faster_whisper`, `ffmpeg` e `ffprobe`. Falha na hora, dizendo qual Python está em uso e
+como corrigir. O banner do worker agora também imprime `sys.executable`.
+
+**Diagnóstico de "travado × lento"** — a pergunta que sempre volta:
+```sql
+select tipo, status, count(*), max(tentativas) from autopsia_jobs group by tipo, status;
+```
+`pegar_job()` incrementa `tentativas` ao travar o job. `tentativas = 0` e `iniciado_em`
+nulo em todos = **ninguém consumiu a fila** (worker não está rodando). Não é lentidão.
+Foi exatamente esse o caso hoje: 20 jobs parados, nenhum tocado.
+
+**Ordem da fila:** baixa todos primeiro, depois frames/transcrição — os jobs de download
+nascem juntos no clique, os demais nascem depois e entram atrás por `criado_em`. É
+proposital: as URLs do CDN do Facebook expiram, então pegar os arquivos primeiro protege
+a coleta.
+
+**Tempo medido (20 criativos):** download ~28s por arquivo (4s a 91s), serial. Frames +
+Whisper é a parte lenta. O worker faz um job por vez; paralelizar o download (limitado
+por rede, não CPU) cortaria essa fase para ~1/3 — não foi feito.
+
+Detalhes operacionais em `agentes/autopsia/WORKER.md` (não entra em prompt, custo zero).
+
+---
+
+## 💸 Custo zero de LLM — migração para o OpenCode Zen (28/07/2026)
+
+> ✅ **O caminho gratuito está PROVADO** (chamada real ao Zen, HTTP 200, JSON válido —
+> números abaixo). ⏳ **O que ainda NÃO rodou ponta a ponta é uma rota inteira do app**
+> (precisa de `npm run dev` + campanha real). O `chatComZen` é casca fina sobre o que foi
+> testado, então o risco residual é baixo, mas não é zero.
+
+### 🚨 O achado que mudou tudo: não existia caminho gratuito
+O `CLAUDE.md` afirmava que o copywriting rodava no OpenCode Zen. **Era mentira.** O
+arquivo dizia "VERSÃO COM OPENAI (API oficial)" e importava `@/lib/openai`, que aponta
+para `api.openai.com` sem override. O `OPENCODE_API_KEY` estava no `.env.local` e
+**nenhuma linha de código lia ele.** As 10 rotas de IA iam todas para provider pago.
+
+Lição: **a doc do projeto tinha divergido do código.** Sempre conferir o provider real
+antes de assumir o que o `CLAUDE.md` diz.
+
+### Os dois vazamentos que ninguém estava contando
+1. **`design/generate` defaultava para `gpt-4o`** (o completo, não o mini), teto 16k. O
+   comentário dizia "para destravar sem custo novo" — mas era custo novo, na outra fatura.
+2. **Fallback silencioso do `generateWithProvider`:** Anthropic sem crédito → caía em
+   `gpt-4o-mini` pago e seguia. Quando parecia que o gasto tinha parado, tinha só mudado
+   de credor.
+
+### O que mudou no código
+| Arquivo | Antes | Agora |
+|---|---|---|
+| `src/lib/opencode.ts` | **não existia** | client do Zen + piso de `max_tokens` |
+| `src/lib/openai.ts` | retry preso na OpenAI | `chatComRetry` aceita `client` — os dois providers dividem o backoff |
+| `generateWithProvider.ts` | fallback → gpt-4o-mini **pago, calado** | fallback → **Zen grátis**; pago só se o agente pedir `gpt*` por nome |
+| `design/generate` | default `gpt-4o` | default `zen`; `anthropic`/`openai` opt-in |
+| `copywriting/generate` | gpt-4o-mini pago | Zen |
+| `revisor/review` | gpt-4o-mini pago | Zen |
+| `tracking/generate` | gpt-4o-mini pago | Zen |
+
+### 🚨 O código não bastava — o furo estava no BANCO
+`generateWithProvider` usa o Zen **só como fallback de falha**. Com todos os agentes em
+`modelo = 'claude-sonnet-4-6'` na `agentes_config`, ele tentava a Anthropic **primeiro** e
+pagava normalmente. Fechar o código sem mexer no banco não resolveria nada.
+
+`UPDATE` aplicado em 28/07 — `minerador`, `gestor-meta-ads` e `autopsia` foram para
+`deepseek-v4-flash-free`. **Reverter = voltar os três para `claude-sonnet-4-6`.**
+
+Também corrigido um defeito introduzido no mesmo dia: o `usarZen` ignorava o
+`config.modelo`. Agora gravar o nome de um modelo do Zen no banco já basta — sem tocar
+em código.
+
+### ⚠️ A pegadinha dos tokens de raciocínio — agora com número medido
+Teste real no Zen (28/07), pedindo um JSON de avaliação de anúncio:
+```
+HTTP 200 em 11s · finish_reason: stop · content OK
+completion_tokens: 1032   ← total gerado
+reasoning_tokens:   965   ← 93% foi só "pensando"
+```
+**Sobraram ~67 tokens de resposta real.** O `tracking/generate` pedia `max_tokens: 500` —
+teria gasto o orçamento inteiro no raciocínio e devolvido `content` **VAZIO, com HTTP 200
+e sem erro nenhum**. Pareceria bug de parse e custaria horas.
+
+Por isso `chatComZen` aplica `OPENCODE_MIN_MAX_TOKENS` (default 8000) em todo pedido.
+**Nunca chamar o Zen sem esse piso.**
+
+Bônus do teste: JSON válido saiu **sem `response_format`** (JSON mode), então dá para
+confiar no `parseJSONFlexivel`. E o Zen faz prompt caching (`prompt_cache_hit_tokens: 128`).
+
+### O que AINDA é pago (de propósito)
+- `/api/ai/diagnostic` e `/api/ai/deep-diagnostic` — chamam a Anthropic direto, sem
+  caminho gratuito. Rodam em `ANTHROPIC_DIAGNOSTIC_MODEL` (default `claude-sonnet-5`).
+  Decisão consciente: são sob demanda, não rodam em loop, e é auditoria de campanha.
+- `DESIGN_PROVIDER=openai|anthropic` e agente com `modelo` em `gpt*` — só por escolha.
+
+### Código morto encontrado
+`callOptimizationPlan` em `src/lib/anthropic.ts` **não tem nenhum chamador** — o
+`/api/meta/optimize/plan` usa o `generateWithProvider`. Foi "otimizada" no mesmo dia sem
+efeito nenhum. Candidata a remoção.
+
+---
+
+## 💸 Antes disso: Anthropic mais barata — modelo por env + prompt caching (28/07/2026)
+
+### O sintoma
+O crédito da Anthropic sumia rápido demais para o que o app entrega. Não era volume —
+era preço por chamada.
+
+### A causa
+Três chamadas em `src/lib/anthropic.ts` estavam com **`claude-opus-4-8` hardcoded**:
+`callDiagnostic`, `callDeepDiagnostic` e `callOptimizationPlan`. Opus é o topo da linha
+e essas rotas só devolvem um JSON curto com as regras já dadas no prompt.
+
+Preço por 1M tokens (input/output), para não errar a conta de novo:
+
+| Modelo | Input | Output |
+|---|---|---|
+| `claude-opus-4-8` / `claude-opus-5` | $5 | $25 |
+| `claude-sonnet-5` | $3 | $15 |
+| `claude-haiku-4-5` | $1 | $5 |
+
+⚠️ Opus → Sonnet corta **~1,7x**, não 5x. O 5x é Opus → **Haiku**.
+
+### O que mudou
+
+**1. Modelo saiu do hardcode** — novo export em `anthropic.ts`, no mesmo padrão do
+`ANTHROPIC_DESIGN_MODEL` que já existia:
+```ts
+export const ANTHROPIC_DIAGNOSTIC_MODEL =
+  process.env.ANTHROPIC_DIAGNOSTIC_MODEL || 'claude-sonnet-5';
+```
+Default no código, então **não precisa mexer no `.env.local`** para funcionar. Trocar de
+modelo agora é uma linha de env, sem tocar em código.
+
+**2. 🚨 A pegadinha do Sonnet 5 — `thinking` LIGADO por padrão.** Não bastava trocar a
+string do modelo. No Opus 4.8, omitir o parâmetro `thinking` significava **sem thinking**.
+No Sonnet 5 (e no Opus 5), omitir significa **thinking adaptativo ligado**. E `max_tokens`
+é o teto de *thinking + resposta somados* — ou seja, o `callDiagnostic`, que tem
+`max_tokens: 1024`, teria passado a devolver **JSON truncado**, silenciosamente. Por isso
+as três chamadas levaram:
+```ts
+thinking: { type: 'disabled' },
+output_config: { effort: 'low' },   // 'medium' nas duas mais pesadas
+```
+São extrações de JSON com regra pronta no prompt — não precisam raciocinar. **Este ajuste
+segura mais custo que a própria troca de modelo.**
+
+**3. Prompt caching nos agentes** — entrou em `gerarComClaude()`, que é o **funil único**
+por onde passa todo system prompt de agente (`gerarJSONComAgente` e
+`/api/design/generate` chamam ele). O system (SOUL+AGENTS+TOOLS+SKILL concatenados) é
+grande e idêntico entre chamadas; o prompt do usuário é volátil. Então o breakpoint vai
+no system e o usuário fica de fora:
+```ts
+system: [
+  { type: 'text', text: params.system, cache_control: { type: 'ephemeral' } },
+],
+messages: [{ role: 'user', content: params.user }],
+```
+Cobre mineração, autopsia/dossiê, meta/diagnose, meta/optimize/plan e design/generate.
+1ª chamada paga 1.25x; as seguintes pagam ~0.1x nesse trecho.
+
+⚠️ **Duas ressalvas do cache:** TTL de ~5 min, e o prefixo precisa de **no mínimo 1024
+tokens** para entrar — abaixo disso ele **não cacheia e não dá erro**. Para conferir se
+está pegando, olhar `usage.cache_read_input_tokens` na resposta: se vier 0 em chamadas
+repetidas, ou o prompt é curto demais ou algo volátil vazou para dentro do bloco cacheado.
+
+### O que ficou de fora (de propósito)
+- **`ANTHROPIC_DESIGN_MODEL`** continua `claude-sonnet-4-6`. Já era configurável e não é
+  Opus — mudar seria escopo não pedido.
+- **`PLAN_CONTRACT`** (em `callOptimizationPlan`) é grande e estático, ótimo candidato a
+  cache, mas está **no fim** do prompt, depois das métricas voláteis. Cachear exigiria
+  reordenar o prompt inteiro. Fica anotado.
+
+### Próximo passo recomendado
+Rodar o mesmo diagnóstico em `claude-sonnet-5` e em `claude-haiku-4-5` na mesma campanha
+e comparar o JSON. Se o Haiku aguentar a classificação de gargalo, é 5x mais barato que o
+Opus original — e é só trocar `ANTHROPIC_DIAGNOSTIC_MODEL` no `.env.local`.
+
+### Bônus da mesma leva: Havan na lista negra do minerador
+Apareceu anúncio da Havan na mineração (varejão gigante domina keyword genérica e polui o
+funil). Em `src/lib/minerador-blacklist.ts`: `'havan'` em `ANUNCIANTES_LISTA_NEGRA` e
+`'havan.com'` em `DOMINIOS_LISTA_NEGRA` — o domínio ficou específico de propósito, porque
+só `'havan'` pegaria "havana" por substring. Já existe **1 anúncio da Havan no banco**
+(minerado 28/07 00:25, `havan.com.br/golden-waffle-britania...`) — a lista negra só filtra
+mineração nova, esse aí precisa ser excluído na mão pela tela `/mineracao`.
+
+---
+
+## 🔬 Autópsia de Concorrente — COMPLETA (27/07/2026)
+
+> ✅ **As 16 tarefas do plano estão implementadas e o módulo foi validado contra o
+> gabarito.** O registro da validação (os 6 critérios de aceite com os números reais)
+> está na seção "Autópsia de Concorrente — MÓDULO CONSTRUÍDO E VALIDADO", mais abaixo.
+> As decisões e os achados desta seção continuam valendo como contexto histórico.
 
 ### O que é
 A `/mineracao` acha **muitos** anúncios rasos e dá score. A **autópsia** disseca **um**
@@ -55,22 +847,34 @@ executado à mão e validado num concorrente real).
 | 8 | Página `/autopsia/[id]` com 4 abas | `98b9479` | ✅ limpa |
 | 9 | Botão "Autopsiar este anunciante" no modal de `/mineracao` | `34ea3fc` | ⚠️ **não rodou** |
 
-**Estado real do banco agora:** 1 autópsia (`a0bf2707-aac4-4125-a5f7-71d4e03bcfa7`,
-"Alimento Sagrado", 22 anúncios → 8 criativos), 8 jobs de `download` **pendentes**, 33 anúncios
-minerados (3 com imagem no Storage). Bucket `criativos` criado, público, limite 50MB.
+| 10 | `scripts/worker-autopsia.py` + job `download` | (working tree) | rodado na fila real |
+| 11 | Job `frames` — 3 grades 3×3 por vídeo | (working tree) | rodado na fila real |
+| 12 | Job `transcrever` — faster-whisper local | (working tree) | rodado na fila real |
+| 13 | Cérebro do agente `autopsia` + sync | (working tree) | sincronizado, `ativo=true` |
+| 14 | `/api/autopsia/dossie` + `montarMarkdown` | (working tree) | `sucesso:true` contra a autópsia real |
+| 15 | `montarHtml` + `/api/autopsia/publicar` | (working tree) | tsc limpo |
+| 16 | Validação ponta a ponta + documentação | (working tree) | esta seção |
 
-**Já dá para usar hoje:** abrir `/autopsia`, colar um `page_id` (ou clicar em "Autopsiar este
-anunciante" no modal da mineração) → a coleta roda de verdade e a fila enche. O que **ainda não
-acontece** é o processamento (nada baixa, nada transcreve) porque o worker é a Task 10.
+**Estado real do banco:** 1 autópsia (`a0bf2707-aac4-4125-a5f7-71d4e03bcfa7`,
+"Alimento Sagrado", 22 anúncios → 8 criativos), todos os criativos baixados, com 3 grades
+e transcritos. 33 anúncios minerados. Bucket `criativos` público, limite 50MB.
 
-### ⏭️ ONDE RETOMAR — exatamente
+**Como usar:** abrir `/autopsia`, colar um `page_id` (ou clicar em "Autopsiar este
+anunciante" no modal da mineração) → a coleta roda e a fila enche. Depois rodar
+`py -3 scripts/worker-autopsia.py` na raiz e deixar esvaziar (~2–4 min de CPU por vídeo).
+Quando `total_transcritos > 0`, o botão "Gerar dossiê com IA" acende na aba Dossiê.
 
-1. **Rodar a review da Task 5** (foi despachada e a sessão caiu antes do resultado):
-   diff já gerado em `.superpowers/sdd/.../review-e59f7fc..8d8a975.diff`
-2. **Rodar a review da Task 9** (implementada, nunca revisada): gerar o pacote com
-   `scripts/review-package <plano> 98b9479 34ea3fc`
-3. **Task 10** — `scripts/worker-autopsia.py`, job `download`. O código completo está no plano.
-4. Tasks 11 → 16 na ordem do plano.
+### ✅ RETOMADO E FECHADO (mesma data)
+
+1. **Reviews das Tasks 5 e 9** — feitas contra dados reais: as durações batem o gabarito
+   e os 33 `ads_minerados` têm `page_id`, então o botão "Autopsiar" resolve de verdade.
+   Um minor ficou aberto na Task 5: `snap.body?.text ?? snap.body ?? null` grava o
+   **objeto** se `body` vier como objeto sem `text` (o comentário do plano diz que cai em
+   `null` — não cai). Os dados reais não caem nesse caso; fix de 1 linha quando aparecer.
+2. **Tasks 10–12** — worker completo, rodado na fila real (8 downloads, 3 grades/vídeo,
+   8 transcrições).
+3. **Tasks 13–15** — 10º agente + dossiê + publicação.
+4. **Task 16** — validação e esta documentação.
 
 O método de execução era **subagent-driven**: um subagente implementador por tarefa (com o
 brief extraído do plano), depois um revisor por tarefa, ledger atualizado a cada passo. Os
@@ -888,6 +1692,100 @@ reais; página GET 200 e compilando sem erro. ⏳ **Falta o clique do Fernando n
 
 ---
 
+## 🎵 Música de fundo no dashboard (27/07/2026)
+Botão **Play Music** + slider de volume no header da Visão Geral, tocando em loop infinito.
+
+**A decisão que importa:** o `<audio>` vive no **layout** (`MusicProvider`), não na página. No
+App Router, trocar de rota desmonta o componente da página — se o player morasse em
+`src/app/page.tsx`, a música cortaria no instante em que você clicasse em Mineração. O botão
+(`src/components/ui/MusicButton.tsx`) fica na Visão Geral e conversa com o provider por
+contexto, então o controle está onde foi pedido sem acoplar o áudio ao ciclo de vida da página.
+
+- **`loop` é atributo nativo** do `<audio>`: o navegador reinicia sem gap, sem timer nosso.
+- **O arquivo teve que sair de `audio/` para `public/audio/`** — o Next só serve estáticos de
+  `public/`. Na raiz, o mp3 não era acessível pelo navegador de jeito nenhum.
+- Volume padrão **35%** (é cama sonora de fundo) e volume + estado persistem em `localStorage`.
+- Autoplay bloqueado pelo navegador na retomada é tratado com honestidade: mostra
+  "clique p/ liberar" em vez de fingir que está tocando.
+
+**Validado no navegador:** `/` → play → `/mineracao` → `/` com `paused=false` e `currentTime`
+subindo continuamente (10s → 37s → 72s), **1 única instância de `<audio>`** (navegar não
+duplica o player) e o botão voltando como "Pause". `preload="metadata"` para não baixar os
+4,3 MB antes de alguém querer ouvir.
+
+---
+
+## 🔬 Autópsia de Concorrente — MÓDULO CONSTRUÍDO E VALIDADO (27/07/2026)
+10º agente. A mineração acha anúncios; a autópsia disseca **um** anunciante.
+
+**Arquitetura:** a rota só enfileira, um worker Python local consome (`autopsia_jobs`).
+Transcrever leva minutos por vídeo e não cabe em rota (`maxDuration=300` é limite de
+plataforma, não escolha). Trocar por API de transcrição depois = outro consumidor da
+mesma fila, sem reescrever o módulo.
+
+**Fase 0 (consertou bug real):** as URLs do FB CDN expiram em ~5 dias (o `oe=` é a
+validade). Mineração agora salva a imagem no Storage (bucket `criativos`, coluna
+`image_storage_path`); vídeo só baixa sob demanda. O acervo antigo de 30 anúncios
+**foi perdido** (backfill devolveu 0 salvos / 30 HTTP 403) — chegamos ~3 dias tarde.
+
+**Coleta:** ScrapeCreators `company/ads` por `page_id` — 30 anúncios/chamada + cursor,
+1 crédito cada. Substitui Playwright/scroll/parse do método manual. Dedup pela mesma
+`creativeKeyFromSnap()` da mineração (extraída para `minerador-media.ts`).
+
+**Worker** (`scripts/worker-autopsia.py`, só stdlib + REST via urllib): download com
+`Referer: facebook.com` → ffmpeg 3 grades 3×3 (hook/meio/CTA) → faster-whisper `medium`
+CPU. Custo R$ 0. Lock por UPDATE condicionado a `status=pendente`, 3 tentativas.
+
+**Dossiê:** agente `autopsia` devolve JSON por seção; montador determinístico gera `.md`
+e `.html` autocontido (CSS inline, sem CDN, **URLs absolutas do Storage**) publicado no
+Cloudflare. `em_aberto[]` é campo de schema — o dossiê não preenche slot em aberto por
+inferência.
+
+**Validado contra o gabarito** (*Alimento Sagrado*, `page_id 1130979790090955`, cujo
+dossiê manual de 24/07 deu 8 criativos de 31–130s):
+
+| # | Critério de aceite | Resultado real |
+|---|---|---|
+| 1 | Dedup chega a ~8 criativos únicos | ✅ **22 anúncios → 8 criativos** |
+| 2 | Durações entre 31s e 130s | ✅ 31/83/92/105/109/111/111/131s (ffprobe arredonda pra cima o que o gabarito truncava — +1s consistente; são os mesmos 8 vídeos) |
+| 3 | Transcrições batem com o gabarito manual | ✅ **praticamente palavra por palavra** no vídeo de 31s (só "sem leite **e** sem açúcar" → "sem leite, sem açúcar"). 8/8 transcritos, 525–1990 chars, todos com SRT |
+| 4 | 3 grades de frames por vídeo | ✅ 3 grades/vídeo (24 PNGs), servindo publicamente HTTP 200 (~1,6 MB cada) |
+| 5 | Dossiê 9 seções, `modelar_x_rejeitar` preenchida, nada inventado | ✅ 8 chaves JSON + método de coleta determinístico; `em_aberto` com perguntas reais |
+| 6 | HTML abre e mostra os frames | ✅ renderizado local (27 KB): **24 `<img>` com URL absoluta, 0 relativa**, 0 `<script>`/`<link>`, CSS inline, único host externo é o Storage. **Deploy no Cloudflare NÃO executado** — ver abaixo |
+
+**Desvio do plano (Task 16 Step 1):** não apaguei a autópsia de teste para refazer do
+zero — a rodada existente já era do mesmo anunciante-gabarito e completou o ciclo
+inteiro, então refazer só gastaria crédito da ScrapeCreators e ~30 min sem informação
+nova. Os números acima são dessa rodada.
+
+**⚠️ Publicação no Cloudflare NÃO foi disparada.** O código está pronto e o HTML foi
+provado por renderização local, mas o deploy cria um **projeto Pages novo com URL
+pública** contendo o material minerado do concorrente — decidi não disparar sem o
+Fernando confirmar. Para publicar: botão "Publicar dossiê" na aba Dossiê, ou
+`curl -X POST localhost:3000/api/autopsia/publicar -d '{"autopsia_id":"..."}'`.
+
+**⚠️ Anthropic sem crédito:** o dossiê saiu por `gpt-4o-mini (fallback)`, não por
+`claude-sonnet-4-6`. Funciona, mas a **qualidade da análise está limitada pelo modelo
+barato** — e aqui a análise *é* o produto. Pôr crédito na Anthropic é o maior ganho de
+qualidade disponível neste módulo. Sinal concreto: com 4 transcrições o dossiê saiu com
+6777 chars; com as 8 completas, 5869 — o modelo barato ficou *mais* lacônico com *mais*
+material, o que é o oposto do esperado.
+
+**🪤 Pegadinha ao adicionar um agente NOVO (custou uma sessão de debug):** criar a pasta
+`agentes/<slug>/` e sincronizar **não basta** para ele aparecer direito em `/agents`. A página
+tem dois mapas hard-coded que precisam do slug:
+- `ORDEM_AGENTES` — slug ausente cai no **fim da lista** (`ordenarAgentes` manda desconhecido
+  pro fim). O agente *está* lá, mas no rodapé, e parece que "não sincronizou".
+- `PAGINA_DO_AGENTE` — slug ausente mostra "sem página no dashboard" mesmo a rota existindo.
+
+O `autopsia` foi registrado nos dois (posição: logo depois do `minerador`, que é o fluxo real
+— minerar acha o alvo, autopsiar disseca). **O sync em si nunca esteve quebrado**: clicar o
+botão devolve "10 agente(s) sincronizado(s), 0 com erro" e atualiza `ultimo_sync_em` dos 10.
+
+**Pendente:** transcrição por API (Groq) como 2º consumidor da fila; BYOK real.
+
+---
+
 ## 📊 Status por agente
 | Agente | Cérebro (.md) | Mãos (rota) | Status |
 |---|---|---|---|
@@ -899,17 +1797,73 @@ reais; página GET 200 e compilando sem erro. ⏳ **Falta o clique do Fernando n
 | Video-Maker | ⚠️ sync | ❌ falta Higgsfield | Pendente |
 | Gestor-Meta-Ads | ✅ sync | ✅ `/api/meta/sync` + `/api/meta/diagnose` (leitura + diagnóstico IA) | **Dashboard real + AI Diagnostic** (falta detalhe `[id]`; subir campanha de compra) |
 | CEO / CTO | ✅ sync | aprovação/suporte | Camada humana + futura automação |
-| **Autópsia** (10º) | ⏳ Task 13 do plano | ✅ `/api/autopsia/criar` + `/autopsia` + `/autopsia/[id]` | **Fases 0–1 prontas (9/16 tarefas)** — falta worker, transcrição e dossiê. Ver seção no topo |
+| **Autópsia** (10º) | ✅ `agentes/autopsia/` | ✅ `/api/autopsia/{criar,dossie,publicar}` + `scripts/worker-autopsia.py` | **Módulo completo (16/16)** — coleta, worker (download/frames/whisper), dossiê e publicação. Ver seção no topo |
+
+---
+
+## 🧹 Limpar o Storage ao excluir anúncio (PENDENTE)
+
+> **Gatilho: fazer isto QUANDO o Fernando for apagar os anúncios no dashboard.** Combinado em
+> 27/07/2026 — ele vai limpar o acervo e re-minerar do zero, então a exclusão precisa levar o
+> arquivo do Storage embora no mesmo ato. Não é urgente antes disso (é só desperdício de espaço),
+> mas se for esquecido o bucket vira lixão silencioso.
+
+### O problema
+Excluir anúncio hoje **só apaga a linha do banco**. O `.jpg` continua no bucket `criativos`,
+pasta `minerados/`, para sempre — sem nada que o referencie. São dois pontos de exclusão, ambos
+em `src/app/mineracao/page.tsx`:
+- `excluirAnuncio()` (~linha 215) — exclusão individual pelo modal
+- o purge de não-favoritos (`setIsPurging`, ~linha 265) — `delete().eq('favorito', false)`
+
+Baseline medido em 27/07 (`storage.objects`): `minerados/` com **4 arquivos / 1,5 MB** e
+`autopsia/` com **32 arquivos / 132 MB**.
+
+### ⚠️ A restrição que decide a implementação (verificada, não suposta)
+**Não dá para resolver no componente.** As duas exclusões usam o client do **navegador**
+(`src/lib/supabase.ts`, anon key) e `storage.objects` tem **RLS ativo com ZERO policies** —
+conferido em `pg_policies`. Anon key não apaga arquivo, e criar policy de DELETE para anon seria
+pior: qualquer um com a chave pública poderia apagar o bucket inteiro.
+
+**Só o service_role remove objeto.** Logo, a limpeza exige uma **rota server-side**.
+
+### Como implementar
+1. **Criar `src/app/api/mineracao/excluir/route.ts`** (`POST`), usando `getTenantClient()`:
+   - Body: `{ ids: string[] }` ou `{ apenas_nao_favoritos: true }` para cobrir os dois botões.
+   - `select id, image_storage_path` dos alvos **ANTES** de deletar — depois do delete o caminho
+     do arquivo se perde e o órfão fica impossível de achar. Esta é a ordem que importa.
+   - Extrair o caminho do objeto a partir da URL pública: o que vai para
+     `storage.from('criativos').remove([...])` é `minerados/<id>.jpg`, **não** a URL inteira.
+   - `delete()` nas linhas de `ads_minerados`.
+   - Remover os objetos em lote (`remove()` aceita array) — **best-effort**: se a remoção do
+     arquivo falhar, a exclusão do banco continua valendo. Mesma regra do `salvarMidia`:
+     Storage nunca reprova a operação principal.
+   - Devolver `{ excluidos, arquivos_removidos, arquivos_falharam }` — o mesmo padrão de
+     contadores que `mineracao/run` ganhou em 27/07, que é o que dá prova sem ir ao banco.
+2. **Trocar as duas chamadas em `src/app/mineracao/page.tsx`** para `fetch` nessa rota, mantendo
+   a atualização otimista da UI que já existe.
+3. **Limpar os órfãos já existentes** uma vez (script pontual ou a própria rota com os ids
+   antigos), senão os 4 arquivos de hoje ficam lá para sempre.
+
+### Vale estender para a autópsia?
+A mesma lacuna existe lá, e é **onde o peso está**: `autopsia/` tem 132 MB (vídeos + grades de
+frames). `autopsias` tem `on delete cascade` para `autopsia_criativos`, então apagar uma autópsia
+já limpa o banco — mas **não** o Storage. Se a rota acima for escrita genérica o suficiente
+(recebendo bucket + lista de caminhos), atende os dois casos. Decidir na hora; não bloqueia a
+mineração.
 
 ---
 
 ## 🚀 Próximos Passos
-- [ ] 🔬 **RETOMAR A AUTÓPSIA — é o trabalho em curso.** 9 de 16 tarefas feitas. Próximo passo
-      exato na seção "🔬 Autópsia de Concorrente" no topo deste arquivo: rodar as reviews
-      pendentes das Tasks 5 e 9, depois Task 10 (worker Python).
-- [ ] (Autópsia) Aplicar o fix de 1 linha do try/catch em `mineracao/run/route.ts:341-344`.
-- [ ] (Autópsia) Re-minerar as keywords antigas — o acervo de imagens de 21–22/07 expirou e
-      não volta; agora toda mineração salva no Storage.
+- [x] ~~🔬 **RETOMAR A AUTÓPSIA**~~ → **módulo completo (16/16) e validado** em 27/07. Ver a
+      seção "🔬 Autópsia de Concorrente — MÓDULO CONSTRUÍDO E VALIDADO".
+- [x] ~~(Autópsia) Aplicar o fix do try/catch em `mineracao/run/route.ts`~~ → **feito em 27/07**,
+      e provado com mineração real. Ver "🧹 Limpar o Storage ao excluir anúncio" abaixo.
+- [ ] 🧹 **AO EXCLUIR OS ANÚNCIOS NO DASHBOARD: implementar a limpeza do Storage junto.**
+      É a pendência combinada com o Fernando em 27/07 — ele vai apagar o acervo e re-minerar
+      do zero, e a exclusão precisa levar o arquivo embora. **Passo a passo na seção
+      "🧹 Limpar o Storage ao excluir anúncio (PENDENTE)"**, logo antes desta lista.
+- [ ] Re-minerar as keywords antigas — o acervo de imagens de 21–22/07 expirou e não volta;
+      agora toda mineração salva no Storage no ato.
 - [ ] Refinar keywords de dropshipping (e avaliar blacklistar marcas médias tipo Gocase se quiser só desconhecidos).
 - [ ] Ligar as keywords ao Obsidian (nexus.ai) via MCP — listas viram fonte editável.
 - [ ] (Opcional) Dropdown de keywords prontas na tela de mineração.

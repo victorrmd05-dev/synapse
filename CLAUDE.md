@@ -8,6 +8,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## 🛑 REGRA Nº 1 — NUNCA COMMITAR SEM O FERNANDO PEDIR
+
+**Não execute `git commit` nem `git push` por conta própria. Nunca.** Edite arquivos,
+rode as verificações, e **pare**. Diga quais arquivos estão prontos e qual seria a
+mensagem de commit — mas não execute.
+
+Isso vale **inclusive dentro de fluxos automatizados**: execução de plano, subagentes,
+skills que listam "commit" como passo. **Se o plano manda commitar, esta regra ganha** —
+pare no ponto do commit e pergunte. Ao despachar subagentes, repasse esta regra a eles.
+
+**Por quê:** o Fernando é dev solo e quer controlar o que entra no histórico do
+repositório. Commit automático enche o histórico de coisa que ele ainda não revisou.
+
+**Quando ele autorizar:** commit direto na `main` (ver seção abaixo), sem criar branch e
+sem PR, a menos que ele peça.
+
+---
+
 ## 🚨 GIT — Conta e Repositório CORRETOS (LEIA ANTES DE QUALQUER COMMIT/PUSH)
 
 **A conta GitHub correta deste projeto é `victorrmd05-dev` — NUNCA `Thuglife22741`.**
@@ -42,12 +60,30 @@ divergiu em pontos importantes. Onde houver conflito, **o código abaixo manda**
 2. **Não existe `npm run type-check`.** Scripts reais: `dev`, `build`, `start`, `lint`.
    Para checagem de tipos use `npx tsc --noEmit`.
 
-3. **Copywriting NÃO roda na Anthropic.** `src/app/api/copywriting/generate/route.ts`
-   usa o **SDK da OpenAI** apontando para **OpenCode Zen** (`https://opencode.ai/zen/v1`),
-   modelo `deepseek-v4-flash-free`, via `OPENCODE_API_KEY`. O padrão "Anthropic em todo
-   agente" descrito mais abaixo é aspiracional — confira o provider real de cada rota
-   antes de assumir. O `src/lib/anthropic.ts` (usado só no diagnóstico Meta Ads) roda
-   `claude-3-5-sonnet-20241022`, não `claude-sonnet-4-6`.
+3. **💸 POLÍTICA DE CUSTO — o default é GRATUITO (28/07/2026).** O padrão "Anthropic
+   em todo agente" descrito mais abaixo é **aspiracional e obsoleto**. A regra real:
+   - **Provider padrão = OpenCode Zen** (`src/lib/opencode.ts`, `chatComZen`), endpoint
+     compatível com OpenAI em `https://opencode.ai/zen/v1`, modelo
+     `deepseek-v4-flash-free`, via `OPENCODE_API_KEY`. **Não gera fatura.**
+   - **Provider PAGO só por escolha explícita.** Nunca por fallback silencioso. Hoje só
+     dois caminhos cobram: `DESIGN_PROVIDER=openai|anthropic` no `.env.local`, e agente
+     com `modelo` começando em `gpt` na tabela `agentes_config`. Se um modelo `claude*`
+     estiver na config, o `generateWithProvider` tenta a Anthropic **primeiro** e só cai
+     no Zen se falhar — ou seja, com crédito na conta ele **paga**.
+   - **Exceção conhecida:** `/api/ai/diagnostic` e `/api/ai/deep-diagnostic` chamam a
+     Anthropic direto (`callDiagnostic`/`callDeepDiagnostic`), **sem caminho gratuito**.
+     Rodam no `ANTHROPIC_DIAGNOSTIC_MODEL` (default `claude-sonnet-5`). É intencional:
+     são sob demanda, não rodam em loop.
+   - **Julgamento de verdade não roda no app.** Copy final, landing page e dossiê são
+     feitos no Claude Code (skills `copy`, `landing-page-vendas`) e gravados direto no
+     Supabase. As rotas do painel geram rascunho.
+   - ⚠️ **`callOptimizationPlan` em `src/lib/anthropic.ts` é CÓDIGO MORTO** — nenhuma
+     rota chama. O `/api/meta/optimize/plan` usa o `generateWithProvider`.
+   - ⚠️ **Pegadinha do Zen:** `deepseek-v4-flash` é modelo de RACIOCÍNIO. Medido em
+     28/07: de 1032 tokens de saída, **965 foram raciocínio** — sobraram ~67 de resposta.
+     Com `max_tokens` baixo o `content` volta **VAZIO, com HTTP 200 e sem erro**. Por
+     isso `chatComZen` aplica um piso (`OPENCODE_MIN_MAX_TOKENS`, default 8000). Nunca
+     chame o Zen sem esse piso.
 
 4. **Existem DOIS sistemas de configuração de agente paralelos e conflitantes** —
    este é o maior risco de confusão do repo:
@@ -79,6 +115,16 @@ divergiu em pontos importantes. Onde houver conflito, **o código abaixo manda**
    `/agents/[agentRole]/{configuration,instructions,skills}` (link "Agents Config" na
    Sidebar, separado de `/configuracoes`), `/como-funciona`, `/settings`, e APIs em
    `src/app/api/{ai/diagnostic,meta/sync,meta/accounts,simulations}`.
+
+9. **A env do scraper é `SCRAPE_CREATORS_API_KEY`** (com underscore entre SCRAPE e
+   CREATORS) — este documento já documentou errado como `SCRAPECREATORS_API_KEY`.
+   O código (`mineracao/run`, `autopsia/coleta`) usa a primeira.
+
+10. **O sync de agentes que vale é o da pasta local `agentes/`** — server action
+    `syncAgentsFromFolder()` em `src/app/actions/syncAgents.ts`, disparada em `/agents`.
+    Ela varre `agentes/*/` e faz upsert em `agentes_config`, então agente novo é só
+    criar a pasta. A rota `src/app/api/agents/sync/route.ts` (GitHub Contents API +
+    `AGENT_MAP` explícito) é a versão antiga e **não** conhece o agente `autopsia`.
 
 ---
 
@@ -133,7 +179,15 @@ ads_minerados → [CEO aprova] → campanhas_producao → workflow_copywriting
 - **Estilo:** Tailwind CSS — design system dark glassmorphism (tokens na seção Design System)
 - **Banco de Dados:** Supabase (PostgreSQL + Realtime via `postgres_changes`)
 - **IA:** Anthropic API (`claude-sonnet-4-6`) via `src/lib/anthropic.ts`
-- **Monorepo único** — tudo na raiz. NUNCA criar subpastas isoladas como `workspace/` ou `packages/`
+- **Monorepo único** — o app Next mora na raiz. NUNCA criar subpastas isoladas para o
+  código do app, como `workspace/` ou `packages/`.
+  - **Exceção autorizada (29/07/2026): `remotion/`.** É um projeto Node com
+    `package.json` próprio, e tem que ser assim: o `@remotion/renderer` traz binário
+    nativo por plataforma (~48 MB no Windows) e baixa um Chrome headless, coisas que
+    não podem entrar no bundle do Next. Regra: **`remotion/` nunca é importado pelo app
+    Next.** A comunicação entre os dois é pela fila no Supabase, igual ao worker da
+    autópsia. Se um dia aparecer um segundo caso assim, ele também vira exceção
+    nomeada aqui — não uma regra genérica de "pode criar subprojeto".
 
 ### Variáveis de Ambiente obrigatórias (`.env.local`)
 ```
@@ -142,7 +196,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ANTHROPIC_API_KEY=
 META_ADS_API_TOKEN=
-SCRAPECREATORS_API_KEY=
+SCRAPE_CREATORS_API_KEY=
 CLOUDFLARE_API_TOKEN=
 CLOUDFLARE_ACCOUNT_ID=
 GITHUB_TOKEN=
@@ -448,7 +502,7 @@ esperando resolver o bug da Cloudflare.
 
 ### Meta Ads API + Mineração
 - Token: `META_ADS_API_TOKEN`
-- Mineração via ScrapeCreators (Facebook Ad Library): `SCRAPECREATORS_API_KEY`
+- Mineração via ScrapeCreators (Facebook Ad Library): `SCRAPE_CREATORS_API_KEY`
 - Endpoint de sync já existe: `src/app/api/meta/sync/route.ts`
 
 ### Higgsfield API (Video-Maker)

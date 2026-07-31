@@ -25,7 +25,12 @@ Valem para **todas** as tarefas. Copiadas do `CLAUDE.md`, do `NOTES.md` e do spe
 - **Env real do scraper é `SCRAPE_CREATORS_API_KEY`** (o `CLAUDE.md` documenta errado; Task 16 corrige).
 - **Nomes em português** nas tabelas/colunas, seguindo `ads_minerados`. Comentário de cabeçalho em cada arquivo novo explicando o porquê, como o resto do projeto.
 - **Migrations idempotentes** (`IF NOT EXISTS`) em `supabase/migrations/`, aplicadas via MCP do Supabase (`mcp__supabase__apply_migration`).
-- **Git:** commitar direto na `main` (fluxo do projeto), nunca criar branch sem pedir. Conta `victorrmd05-dev`. Mensagens sem acento (o terminal do projeto tem histórico de mojibake). Rodapé `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
+- 🛑 **Git — NÃO COMMITE SEM O FERNANDO PEDIR (regra dada em 27/07/2026, posterior a este plano).**
+  Cada tarefa abaixo termina com um passo "Commit". **Esse passo agora está suspenso:** faça
+  todo o resto da tarefa, deixe as mudanças no working tree, e **pare no commit** — informe os
+  arquivos prontos e a mensagem sugerida, e espere autorização. Quando ele autorizar, use a
+  mensagem que já está escrita na tarefa. As tarefas 1–9 foram commitadas antes desta regra existir.
+- **Git (quando autorizado):** commit direto na `main`, nunca criar branch sem pedir. Conta `victorrmd05-dev`. Mensagens sem acento (o terminal do projeto tem histórico de mojibake). Rodapé `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 - **App de uso pessoal (D8 do spec):** guardar o material completo no Supabase do Fernando. Bucket público é aceitável. **Não** adicionar avisos legais, URLs assinadas ou cautela defensiva no código.
 
 ---

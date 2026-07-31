@@ -1,5 +1,12 @@
 # 🔬 PLANO — Autópsia de Concorrente no Synapse
 
+> ✅ **IMPLEMENTADO em 27/07/2026.** Fases 0–5 construídas e validadas contra o gabarito.
+> Ver o spec em `docs/superpowers/specs/2026-07-26-autopsia-concorrente-design.md`, o plano
+> de execução em `docs/superpowers/plans/2026-07-27-autopsia-concorrente.md` e o registro
+> com os números reais em `NOTES.md`. As decisões §6 (transcrição) e §10.4 (hospedagem)
+> foram resolvidas: worker local com fila, e app de uso pessoal guarda o material
+> completo. §11 (BYOK) segue como fase futura, com `getTenantClient()` no lugar.
+
 > **O que é este arquivo.** Um handoff escrito em **26/07/2026** de dentro do workspace
 > `low-ticket`, onde o método descrito aqui foi **executado à mão e validado** num
 > concorrente real. Não é ideia solta: cada peça abaixo já rodou uma vez e produziu
@@ -84,7 +91,7 @@ Levantado lendo o código em 26/07. **Metade do trabalho está feita.**
 2. `document.body.innerText` → parse por `"Identificação da biblioteca:"` → copy, datas, CTA
 3. `document.querySelectorAll('video')` → `src`; dedup por asset id → **18 anúncios viraram 8 vídeos únicos**
 4. Download em Python + `urllib`, com header `Referer`
-5. **Frames:** `canvas` + `drawImage` na própria página do FB — contorna o taint de CORS, porque o screenshot do Playwright não é afetado
+5. **Frames:** ~~`canvas` + `drawImage` na própria página do FB~~ → **substituído em 27/07 pelo `crv`**, ver §3.1
 6. **Transcrição:** `faster-whisper` local, sem ffmpeg (PyAV embutido)
 
 > 🔴 **A descoberta que justifica o passo 6 e vale ouro no produto:**
@@ -92,6 +99,48 @@ Levantado lendo o código em 26/07. **Metade do trabalho está feita.**
 > Quem tentar OCR nos frames vai extrair `"VOCÊ"`, `"SABIA"`, `"QUE"` em imagens separadas
 > e concluir que não dá. **Tem que transcrever o áudio.** Foi o que separou uma autópsia
 > útil de uma inútil, e é o tipo de coisa que o concorrente que vende curso não conta.
+
+> 🔴 **E a contrapartida, descoberta em 27/07 — o áudio também não basta.**
+> No criativo `v0` do Alimento Sagrado há **duas faixas de legenda simultâneas**: o karaokê
+> da narração deles (que bate 1:1 com a transcrição) e, no rodapé, uma legenda que **não
+> existe no áudio** — *"isso aqui vai elevar o nível do seu sanduíche"*. É a legenda queimada
+> do vídeo de origem que eles pegaram de terceiro e não limparam.
+> **Prova visual de reaproveitamento de material alheio, invisível para a transcrição.**
+> Vale para o produto: é um achado que o dossiê pode entregar e o concorrente não vê,
+> **mas só aparece se os frames forem densos o bastante.** Com 27 frames por vídeo (o que o
+> worker faz hoje) provavelmente passa batido.
+
+### 3.1 Extração de frames — `crv`, adotado no low-ticket em 27/07
+
+`pip install claude-real-video` · MIT · 100% local (ffmpeg + Pillow) · custo zero.
+Detecta mudança de cena + garante um piso de 1 frame/s, deduplica e monta contact sheets.
+
+```
+crv <video>.mp4 -o <saida> --no-transcribe --adaptive --grid --overwrite
+```
+
+**Três restrições que vieram junto com a adoção, e o motivo de cada uma:**
+
+- **`--no-transcribe` sempre.** Ele também transcreve, mas sem `initial_prompt`. A transcrição continua sendo a do `transcrever.py` (replicada aqui em `modelo_whisper()`), que injeta vocabulário do nicho.
+- **Não substitui o download.** Ele usa `yt-dlp`, que não pega asset da Ad Library.
+- **CLI, nunca via `npx skills add`.** Como skill, disputaria autoridade com o agente `autopsia` daqui e com o §09 da skill `copy`.
+
+⚠️ **Expectativa calibrada, medida e não suposta:** em criativo de anúncio com corte rápido a
+dedup quase não corta — o `v0` (31s) saiu com **42 frames de 42 extraídos**, 38 deles pelo piso
+de 1s. Na prática é amostragem a ~1fps com extras de cena, não a seleção inteligente do README.
+Ainda assim é um salto sobre 27 frames em ponto fixo. **Não comprar o "crv Pro"** ($19/$29):
+repo de 4 semanas, 35 releases em 3, `v0.7.x`.
+
+Custo real medido: 8 vídeos → 893 frames, 102 grades, 96 MB, ~2 min de CPU.
+
+> ⚠️ **Impacto direto no código deste projeto, ainda NÃO aplicado.**
+> `scripts/worker-autopsia.py` → `gerar_grade()` / `job_frames()` faz exatamente o método
+> aposentado: 3 grades de 9 frames igualmente espaçados = **27 frames por vídeo, intervalo fixo**.
+> Trocar por `crv` é contido — o `job_frames` já baixa o mp4 num tempdir e sobe PNGs no storage;
+> mudaria a função que gera as imagens e o formato de `frames_paths`.
+> **Decisão do Fernando, não aplicada unilateralmente.** Duas coisas a pesar antes:
+> dependência nova de `pip` no worker, e 893 frames × N criativos no Supabase Storage
+> pesam muito mais que 3 PNGs por vídeo — provavelmente só as grades vão para o storage.
 
 ---
 
@@ -104,7 +153,7 @@ neste projeto** (`grep -i "storage.from|whisper|ffmpeg|transcri" src/` → zero)
 |---|---|---|---|
 | 1 | **Persistir a mídia** | média | hoje só a URL é guardada — ver §4.1, é urgente e já afeta o produto atual |
 | 2 | **Transcrição** | **alta** | é o ponto arquitetural do projeto — ver §6 |
-| 3 | **Extração de frames** | média | `ffmpeg` no servidor, não mais canvas no browser |
+| 3 | **Extração de frames** | média | ✅ feito no worker (`ffmpeg`, 3 grades fixas). ⚠️ **Revisar** — o low-ticket já migrou para `crv`, ver §3.1 |
 | 4 | **Agrupar por anunciante** | baixa | `ads_minerados` é por anúncio; a autópsia é por `page_id` |
 | 5 | **Gerar o dossiê `.md` + `.html`** | média | ver §7 |
 
@@ -495,8 +544,15 @@ saída), o § *Método de coleta* do `notes.md`, e a skill `🔬Skill_Logic_Auto
 7. **`/configuracoes` é casca** (§11.3): inputs sem binding, sem rota de salvar, botão
    escrito ".env". E tem um **Meta App ID real hard-coded** para tirar.
 8. **Leia os originais no low-ticket** antes de reimplementar (§3).
+9. **Extração de frames tem revisão pendente (§3.1).** O low-ticket trocou grade fixa por
+   `crv` em 27/07 e o achado das duas legendas veio disso. O `job_frames` daqui ainda faz
+   o método antigo. Decisão do Fernando — pesar dependência nova e custo de storage.
 
 > **Origem deste documento:** escrito por Claude em 26/07/2026, a partir do trabalho real
 > feito no workspace `low-ticket` (Fase 1 do produto *alimento-sagrado*) somado a uma
-> leitura do código deste projeto — rotas, schema e libs. **Nada foi alterado neste
-> repositório além da criação deste arquivo.**
+> leitura do código deste projeto — rotas, schema e libs.
+>
+> **Atualizado em 27/07/2026:** acrescentados o §3.1 (`crv`), o segundo box 🔴 do §3
+> (as duas faixas de legenda) e a revisão da linha 3 do §4. **Alteração de código neste
+> repositório: apenas um comentário de docstring em `scripts/worker-autopsia.py`
+> (`gerar_grade`), sem mudança de comportamento.** Nada commitado.
