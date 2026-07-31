@@ -77,3 +77,18 @@ prints_gerenciador/*
 
 # Scratch do subagent-driven-development (ledger, briefs, review packages)
 .superpowers/
+
+# Cache do Python (worker da autopsia)
+__pycache__/
+*.pyc
+
+# Snapshots/logs do Playwright MCP (debug de UI)
+.playwright-mcp/
+
+# Config local do Claude Code (permissões com caminhos absolutos desta máquina)
+.claude/
+
+# O gerenciador deste repo é o npm. Dois lockfiles fazem npm e pnpm divergirem
+# em silêncio — se um dia migrar para pnpm, remova o package-lock.json junto.
+pnpm-lock.yaml
+pnpm-workspace.yaml
