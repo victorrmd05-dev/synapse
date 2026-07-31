@@ -40,6 +40,7 @@ export const ANUNCIANTES_LISTA_NEGRA: string[] = [
   'banco inter',
   'picpay',
   'shein',
+  'havan',
 ];
 
 // Bate contra a URL de destino (link_url)
@@ -61,6 +62,7 @@ export const DOMINIOS_LISTA_NEGRA: string[] = [
   'pagseguro',
   'pagbank',
   'nubank',
+  'havan.com',
 ];
 
 /**

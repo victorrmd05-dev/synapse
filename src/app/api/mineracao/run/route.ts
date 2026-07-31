@@ -291,6 +291,10 @@ Responda SOMENTE com o JSON no formato definido na sua SKILL.`;
 
     // 3. Salvar no Supabase
     let inseridos = 0;
+    // Contadores de miniatura: entram na resposta para dar prova imediata de que
+    // o acervo foi persistido, sem precisar ir consultar o banco.
+    let miniaturasSalvas = 0;
+    let miniaturasFalharam = 0;
     if (paraInserir.length > 0) {
       const { data: registrosInseridos, error } = await supabase
         .from('ads_minerados')
@@ -304,25 +308,59 @@ Responda SOMENTE com o JSON no formato definido na sua SKILL.`;
       }
       inseridos = paraInserir.length;
 
-      // Persistir a miniatura no Storage. As URLs do FB CDN expiram em ~5 dias;
-      // sem isso o card fica com imagem quebrada em uma semana.
-      // Best-effort e em paralelo: uma falha aqui NUNCA reprova a mineração.
+      // Persistir a miniatura no Storage. As URLs do FB CDN expiram em ~5 dias
+      // (o parâmetro `oe=` é a validade); sem isso o card fica com imagem
+      // quebrada em uma semana e o acervo é perdido.
+      //
+      // BLINDADO DE PROPÓSITO — cada item tem try/catch próprio e o `error` do
+      // `.update()` é checado. `salvarMidia` nunca lança (best-effort por
+      // design), mas o `.update()` pode: uma rejeição aqui subiria até o catch
+      // da rota e devolveria 500 numa mineração que JÁ inseriu os anúncios com
+      // sucesso. O usuário veria "falha", rodaria de novo, e aí o dedup
+      // responderia "0 inseridos" — parecendo que a mineração quebrou.
+      // Regra: o Storage nunca reprova a mineração.
       if (registrosInseridos && registrosInseridos.length > 0) {
-        await Promise.all(
+        const resultadosMidia = await Promise.all(
           registrosInseridos.map(async (registro: any) => {
-            if (!registro.image_url) return;
-            const publica = await salvarMidia({
-              url: registro.image_url,
-              caminho: `minerados/${registro.id}.jpg`,
-            });
-            if (publica) {
-              await supabase
+            if (!registro.image_url) return 'sem_url';
+            try {
+              const publica = await salvarMidia({
+                url: registro.image_url,
+                caminho: `minerados/${registro.id}.jpg`,
+              });
+              if (!publica) return 'download_falhou';
+
+              const { error: errUpdate } = await supabase
                 .from('ads_minerados')
                 .update({ image_storage_path: publica })
                 .eq('id', registro.id);
+              if (errUpdate) {
+                // O arquivo subiu mas o ponteiro não gravou: sem este log a
+                // miniatura sumiria em silêncio.
+                console.warn(
+                  `[mineracao] miniatura no Storage mas update falhou (${registro.id}): ${errUpdate.message}`
+                );
+                return 'update_falhou';
+              }
+              return 'ok';
+            } catch (e) {
+              console.warn(
+                `[mineracao] miniatura falhou (${registro.id}):`,
+                (e as Error)?.message
+              );
+              return 'excecao';
             }
           })
         );
+
+        miniaturasSalvas = resultadosMidia.filter((r) => r === 'ok').length;
+        miniaturasFalharam = resultadosMidia.length - miniaturasSalvas;
+        if (miniaturasFalharam > 0) {
+          console.warn(
+            `[mineracao] ${miniaturasFalharam} de ${resultadosMidia.length} miniaturas não salvaram:`,
+            resultadosMidia.filter((r) => r !== 'ok').join(', ')
+          );
+        }
       }
     }
 
@@ -335,6 +373,8 @@ Responda SOMENTE com o JSON no formato definido na sua SKILL.`;
       bloqueados_lista_negra: bloqueadosListaNegra,
       duplicatas_criativo: duplicatasCriativo,
       inseridos,
+      miniaturas_salvas: miniaturasSalvas,
+      miniaturas_falharam: miniaturasFalharam,
       usou_ia: !!systemPrompt,
       avaliacoes: avaliacoes.sort((a, b) => b.score_escala - a.score_escala),
     });

@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, User, Clock, FileText, Video, Sparkles, Check, Send, LayoutDashboard, RefreshCw } from 'lucide-react';
+import { Search, Bell, User, Clock, FileText, Video, Sparkles, Check, Send, LayoutDashboard, RefreshCw, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 export default function CopywritingPage() {
   const [fila, setFila] = useState<any[]>([]);
   const [activeItem, setActiveItem] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'legendas' | 'pagina'>('pagina');
+  const [activeTab, setActiveTab] = useState<'legendas' | 'pagina' | 'imagens'>('pagina');
 
   useEffect(() => {
     fetchFila();
@@ -51,7 +51,8 @@ export default function CopywritingPage() {
           copy_cta: ctaMatch ? ctaMatch[1].trim() : 'Clique aqui...',
           atributos_json: item.atributos_json || { nicho: 'Vários', preco: '-' },
           conteudo_texto: item.conteudo_texto || '',
-          meta_ads_copy: item.meta_ads_copy || ''
+          meta_ads_copy: item.meta_ads_copy || '',
+          prompts_imagens: item.prompts_imagens || ''
         };
       });
 
@@ -134,10 +135,15 @@ export default function CopywritingPage() {
               className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'pagina' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
               <LayoutDashboard size={16} /> Página de Vendas
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('legendas')}
               className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'legendas' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
               <FileText size={16} /> Legendas de Ads
+            </button>
+            <button
+              onClick={() => setActiveTab('imagens')}
+              className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'imagens' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
+              <ImageIcon size={16} /> Prompts de Imagem
             </button>
           </div>
 
@@ -149,8 +155,10 @@ export default function CopywritingPage() {
               <div className="flex-1 text-text-primary text-sm leading-relaxed overflow-y-auto custom-scrollbar pr-4 space-y-4 font-inter">
                 {activeItem ? (
                   <div className="whitespace-pre-wrap">
-                    {activeTab === 'legendas' 
-                      ? (activeItem.meta_ads_copy || 'Nenhuma legenda de anúncio gerada ainda.') 
+                    {activeTab === 'legendas'
+                      ? (activeItem.meta_ads_copy || 'Nenhuma legenda de anúncio gerada ainda.')
+                      : activeTab === 'imagens'
+                      ? (activeItem.prompts_imagens || 'Nenhum prompt de imagem gerado ainda.')
                       : (activeItem.conteudo_texto || 'Nenhum conteúdo de página de vendas gerado ainda.')}
                   </div>
                 ) : (

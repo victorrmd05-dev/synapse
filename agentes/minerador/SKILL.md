@@ -20,12 +20,26 @@ Você não coleta nada — os dados chegam prontos. Sua entrega é só o julgame
 
 Se um campo faltar, avalie com o que houver e seja mais conservador.
 
-## Sinal Shopify / low ticket (prioridade do projeto)
-Quando `loja_shopify_detectada = true`, classifique `nicho` como `Dropshipping` (ou
-`E-commerce`) e trate como **evidência forte** na "Clareza da oferta" — é um produto
-físico real com checkout próprio. Combinado com longevidade alta e muitas variações,
-é o perfil de oferta vencedora que queremos modelar. Anúncio sem link de destino e
-sem sinal de loja, vendendo algo vago, deve ser tratado com desconfiança.
+## Destino confirmado — os DOIS perfis que caçamos (prioridade do projeto)
+
+**1. Loja física (dropshipping / e-commerce).** `loja_shopify_detectada = true` →
+`nicho = Dropshipping`. Produto real com checkout próprio.
+
+**2. Infoproduto low ticket.** O `link_destino` aponta para uma plataforma de checkout
+digital — **hotmart, kiwify, monetizze, ticto, braip, cakto, kirvano, perfectpay,
+eduzz, greenn, lastlink, pepper** — ou para página própria cujo texto promete entrega
+digital ("ebook", "acesso imediato", "acesso vitalício", "apostila", "curso online",
+"método"). → `nicho = InfoProduto`. **Vale tanto quanto o sinal Shopify.**
+
+Os dois contam igual na pontuação de "Destino confirmado". Anúncio sem link e sem
+nenhum desses sinais, vendendo algo vago, merece desconfiança.
+
+## Facilidade de produção (critério do Fernando)
+Sempre que der para inferir, diga no `motivo` se a oferta é **fácil de reproduzir**.
+Fácil = receita, lista, guia, apostila, plano de treino, PDF. Difícil = exige
+credencial, laboratório, certificação oficial ou perícia técnica profunda (curso de
+reparo de hardware, formação com certificado de 180h, procedimento clínico).
+Oferta difícil de reproduzir **não é erro** — mas sinalize, porque muda a decisão.
 
 ## Régua de pontuação (score_escala 0–100)
 
@@ -34,7 +48,7 @@ Some os pesos de cada sinal presente. Use o texto/criativo como evidência.
 | Sinal | Peso | Como pontuar |
 |---|---|---|
 | **Longevidade** (`dias_ativo`) | até 30 | <7 = 0 · 7–14 = 18 · 15–30 = 25 · >30 = 30. Anúncio que sobrevive está dando lucro — é o sinal MAIS forte. |
-| **Loja real confirmada** (`loja_shopify_detectada` / e-commerce com produto) | até 15 | Shopify ou loja com produto real e checkout próprio = 15 · e-commerce sem confirmação clara = 7 · sem loja / sem link de destino = 0. |
+| **Destino confirmado** (loja física OU checkout de infoproduto) | até 15 | Shopify/loja com produto real **ou** plataforma de checkout digital = 15 · página própria com promessa de entrega digital, sem checkout visível = 7 · sem link de destino = 0. |
 | **Clareza da oferta** | até 20 | Dá pra entender o produto, pra quem e a promessa em 5s? Claríssimo = 20 · razoável = 12 · confuso = 0. |
 | **Mecanismo / ângulo de venda** | até 15 | Tem um ângulo/benefício nomeável (resolve um problema, transforma algo)? Sim = 15 · vago = 7 · ausente = 0. |
 | **Gatilhos de resposta direta** | até 10 | Urgência, prova social, garantia, preço/condição, CTA forte. ~2 pts por gatilho presente, máx 10. |
@@ -50,6 +64,11 @@ Some os pesos de cada sinal presente. Use o texto/criativo como evidência.
 
 ## Descarte automático (veredito = "descartado", independente da nota)
 - Marca institucional / branding sem oferta de resposta direta (ex: banco, montadora).
+- **Comércio local / serviço presencial** — pizzaria, lavanderia, doceria, academia,
+  clínica, salão, pet shop de bairro. Ficam anos no ar (longevidade alta engana) mas
+  não são oferta escalável nem replicável. Sinais: telefone/WhatsApp local, endereço,
+  "faça seu orçamento", "agende sua avaliação", link para perfil do Instagram.
+  **Esta é a principal fonte de falso positivo da mineração — descarte sem dó.**
 - Anúncio político, notícia, ou conteúdo sem intenção de venda.
 - `dias_ativo < 7` — ainda não provou tração; é cedo.
 - Oferta claramente fora do mercado BR (idioma/segmentação incompatível).

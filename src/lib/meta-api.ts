@@ -469,7 +469,7 @@ export async function createAdCreative(name: string, pageId: string) {
       link_data: {
         message: 'Draft Ad - Finalize no Gerenciador',
         link: 'https://facebook.com', // URL placeholder
-        name: 'Anúncio MetaScale'
+        name: 'Anúncio Alavanca Synapse'
       }
     }),
     access_token: META_ACCESS_TOKEN

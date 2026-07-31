@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, XCircle, AlertTriangle, Save, LayoutDashboard, FileText, Sparkles, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, Save, LayoutDashboard, FileText, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import TipTapEditor from '../../components/TipTapEditor';
 
@@ -11,6 +11,7 @@ type FilaItem = {
   title: string;
   conteudo_texto: string;
   meta_ads_copy: string;
+  prompts_imagens: string;
   status: string;
   revisao_ia_score: number | null;
   revisao_ia_parecer: string | null;
@@ -22,7 +23,7 @@ export default function RevisorPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [editedTextPagina, setEditedTextPagina] = useState('');
   const [editedTextLegendas, setEditedTextLegendas] = useState('');
-  const [activeTab, setActiveTab] = useState<'pagina' | 'legendas'>('pagina');
+  const [activeTab, setActiveTab] = useState<'pagina' | 'legendas' | 'imagens'>('pagina');
   const [feedbackRejeicao, setFeedbackRejeicao] = useState('');
 
   // Guarda os ids cuja revisão pela IA já foi disparada, pra não chamar 2x.
@@ -75,6 +76,7 @@ export default function RevisorPage() {
           title: firstLine,
           conteudo_texto: item.conteudo_texto || '',
           meta_ads_copy: item.meta_ads_copy || '',
+          prompts_imagens: item.prompts_imagens || '',
           status: item.status,
           revisao_ia_score: item.revisao_ia_score ?? null,
           revisao_ia_parecer: item.revisao_ia_parecer ?? null,
@@ -249,10 +251,10 @@ export default function RevisorPage() {
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col animate-in fade-in duration-500 overflow-hidden">
-      <div className="flex-1 flex gap-8 overflow-hidden">
+      <div className="flex-1 flex gap-5 overflow-hidden">
 
         {/* Fila de Revisão */}
-        <div className="w-[340px] flex flex-col shrink-0 overflow-y-auto custom-scrollbar pr-2">
+        <div className="w-[260px] flex flex-col shrink-0 overflow-y-auto custom-scrollbar pr-2">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white font-bold text-lg">Aguardando Revisão</h2>
             <div className="flex items-center gap-2 text-[10px] font-medium text-status-yellow bg-status-yellow/10 px-2 py-1 rounded-full border border-status-yellow/20 uppercase tracking-wider">
@@ -320,7 +322,7 @@ export default function RevisorPage() {
           </div>
 
           {activeItem ? (
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 flex gap-6">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 flex gap-5">
               {/* Main Editor Area */}
               <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F0F13] border border-surface-elevated rounded-xl">
                 <div className="flex items-center gap-6 px-6 pt-4 border-b border-surface-elevated bg-[#0a0a0f] shrink-0">
@@ -334,6 +336,11 @@ export default function RevisorPage() {
                     className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'legendas' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
                     <FileText size={16} /> Legendas de Ads
                   </button>
+                  <button
+                    onClick={() => setActiveTab('imagens')}
+                    className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'imagens' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
+                    <ImageIcon size={16} /> Prompts de Imagem
+                  </button>
                 </div>
                 <div className="flex-1 flex flex-col overflow-hidden">
                   {activeTab === 'pagina' ? (
@@ -342,18 +349,34 @@ export default function RevisorPage() {
                       content={editedTextPagina}
                       onChange={setEditedTextPagina}
                     />
-                  ) : (
+                  ) : activeTab === 'legendas' ? (
                     <TipTapEditor
                       key="editor-legendas"
                       content={editedTextLegendas}
                       onChange={setEditedTextLegendas}
                     />
+                  ) : (
+                    // Prompts são material de produção, não copy: leitura pura, sem
+                    // editor. O Fernando copia o bloco <<< >>> e gera a imagem fora.
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                      {activeItem.prompts_imagens ? (
+                        <pre className="text-sm text-text-primary whitespace-pre-wrap font-mono leading-relaxed">
+                          {activeItem.prompts_imagens}
+                        </pre>
+                      ) : (
+                        <p className="text-secondary text-sm">
+                          Nenhum prompt de imagem gerado para esta copy.
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
 
-              {/* Sidebar de Contexto no Revisor */}
-              <div className="w-[300px] shrink-0 border-l border-surface-elevated pl-6 space-y-6">
+              {/* Sidebar de Contexto no Revisor.
+                  Estreitada de 300px para 260px e com padding menor: o editor é
+                  onde se lê texto longo, e ele estava espremido. */}
+              <div className="w-[260px] shrink-0 border-l border-surface-elevated pl-5 space-y-6">
                 {/* Parecer da IA Revisora */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
