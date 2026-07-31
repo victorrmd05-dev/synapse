@@ -1,0 +1,14 @@
+node_modules
+dist
+.DS_Store
+.env
+
+# Ignore the output video from Git but not videos you import into src/.
+out
+
+# Footage de entrada fica FORA do git — Sapatenis_dois.mp4 sozinho tem 44 MB e o
+# histórico do git é permanente. A fonte de vídeo de verdade são os criativos da
+# autópsia, que já vivem no Storage do Supabase.
+public/*.mp4
+public/*.mov
+public/*.webm
