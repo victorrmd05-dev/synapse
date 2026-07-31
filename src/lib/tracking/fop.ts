@@ -155,6 +155,100 @@ function jsStr(s: string): string {
   return JSON.stringify(s ?? '');
 }
 
+// ---------------------------------------------------------------------------
+// TRAVAMENTO DA INSTALAÇÃO
+//
+// POR QUE EXISTE (29/07/2026): a instalação dizia "tudo ok" e gravava
+// status='instalado' mesmo tendo produzido uma página quebrada. Aconteceu duas
+// vezes no mesmo dia, e as duas falharam em SILÊNCIO — o `fetch` do CAPI tem
+// `.catch(function(){})`, então nada aparece no console, nada aparece na tela,
+// e o defeito só se revela horas depois olhando o Gerenciador de Eventos.
+//
+//   1. CAPI assado como http://localhost:3000 → servidor morto para todo
+//      visitante da página publicada.
+//   2. PageView espelhado antes de o _fbp existir → evento de servidor sem o
+//      identificador mais forte da página.
+//
+// Estas checagens rodam sobre o HTML FINAL, imediatamente antes de gravar.
+// Falhou uma? Não grava, não marca 'instalado', e devolve o motivo.
+// É mais barato recusar a instalação do que descobrir depois de publicar.
+// ---------------------------------------------------------------------------
+
+export interface ProblemaFop {
+  regra: string;
+  detalhe: string;
+}
+
+function contar(hay: string, needle: string): number {
+  return hay.split(needle).length - 1;
+}
+
+/**
+ * Remove comentários HTML e comentários JS de linha.
+ *
+ * Sem isto, um comentário explicando o histórico ("o _fbp é gravado pelo
+ * fbevents.js depois que…") entra na contagem e a checagem acusa carregador
+ * duplicado que não existe. Aconteceu: 3 menções, 1 carregador de verdade.
+ */
+function semComentarios(html: string): string {
+  return html
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/^[ \t]*\/\/.*$/gm, '');
+}
+
+/**
+ * Verifica os invariantes de uma instalação FOP no HTML já injetado.
+ * @returns lista vazia = instalação sadia.
+ */
+export function validarInstalacaoFop(html: string, p: SnippetParams): ProblemaFop[] {
+  const problemas: ProblemaFop[] = [];
+  const add = (regra: string, detalhe: string) => problemas.push({ regra, detalhe });
+
+  // Comentários não contam como código — ver semComentarios().
+  const codigo = semComentarios(html);
+
+  // 1. Um e apenas um carregador do Pixel. Dois blocos = o segundo vira no-op
+  //    (`if(f.fbq)return`) e a página fica com código morto disputando window.FOP.
+  const loaders = contar(codigo, 'connect.facebook.net/en_US/fbevents.js');
+  if (loaders !== 1) {
+    add('pixel-unico', `esperado 1 carregador do fbevents.js, encontrado ${loaders}`);
+  }
+
+  // 2. O relay CAPI não pode ser local — é a falha que mata o lado servidor
+  //    para todo visitante, sem erro visível em lugar nenhum.
+  if (!html.includes(p.capiEndpoint)) {
+    add('capi-ausente', 'a URL do relay CAPI não está no HTML final');
+  }
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(:|\/|$)/i.test(p.capiEndpoint)) {
+    add('capi-local', `relay CAPI aponta para endereço local (${p.capiEndpoint})`);
+  }
+
+  // 3. PageView tem que compartilhar o MESMO event_id entre navegador e servidor —
+  //    é literalmente a chave da deduplicação.
+  if (!html.includes('window.__FOP_PV=') || !html.includes('window.__FOP_PV;')) {
+    add('dedup-pageview', 'o id do PageView não é compartilhado entre HEAD e BODY');
+  }
+
+  // 4. O espelho pro CAPI tem que esperar o _fbp (ver esperaFbp no BODY).
+  if (!html.includes('comFbp(') || !html.includes('esperaFbp')) {
+    add('fbp-sem-espera', 'o espelho do CAPI não espera o cookie _fbp');
+  }
+
+  // 5. O pixel real precisa estar lá, e nenhum placeholder pode sobreviver.
+  if (!html.includes(p.pixelId)) {
+    add('pixel-id-ausente', `o pixel_id ${p.pixelId} não aparece no HTML final`);
+  }
+  for (const ph of ['SEU_PIXEL_ID', 'SEU_ENDPOINT_CAPI', 'PIXEL_ID_AQUI']) {
+    if (codigo.includes(ph)) add('placeholder', `placeholder "${ph}" ainda no código`);
+  }
+
+  if (!codigo.includes("fbq('init'")) {
+    add('init-ausente', "não há fbq('init') no HTML final");
+  }
+
+  return problemas;
+}
+
 export function buildHeadSnippet(p: SnippetParams): string {
   return `<!-- FOP Tracking · HEAD (Pixel + Advanced Matching) -->
 <script>
@@ -207,6 +301,26 @@ export function buildBodySnippet(p: SnippetParams): string {
   function store(k,v){try{localStorage.setItem(k,v);}catch(e){}setCookie(k,v,180);}
   function load(k){try{return localStorage.getItem(k)||getCookie(k);}catch(e){return getCookie(k);}}
 
+  // ── espera o _fbp antes de espelhar pro CAPI ──────────────────────────
+  // MEDIDO EM PRODUÇÃO (29/07/2026): o PageView chegava no servidor com
+  // fbp:null, enquanto ViewContent e AddToWishlist chegavam com fbp. Motivo:
+  // o _fbp é gravado pelo fbevents.js DEPOIS que ele carrega, e o espelho do
+  // PageView saía imediatamente — antes do cookie existir.
+  // Numa LP sem formulário o fbp é o identificador mais forte que temos; sem
+  // ele o evento do servidor chega mais fraco e o EMQ cai.
+  // Espera até 2s e segue de qualquer jeito — evento atrasado é melhor que
+  // evento sem identificador, e nenhum evento é pior que os dois.
+  var fbpFila=[], fbpPronto=false;
+  (function esperaFbp(n){
+    if(getCookie('_fbp')||n>=20){
+      fbpPronto=true; var f=fbpFila.splice(0);
+      for(var i=0;i<f.length;i++)f[i]();
+      return;
+    }
+    setTimeout(function(){esperaFbp(n+1);},100);
+  })(0);
+  function comFbp(fn){if(fbpPronto)fn();else fbpFila.push(fn);}
+
   window.FOP={
     visitorId:function(){var id=load('fop_vid');if(!id){id=(window.crypto&&crypto.randomUUID?
       crypto.randomUUID():'v'+Date.now()+Math.random().toString(36).slice(2));store('fop_vid',id);}return id;},
@@ -224,16 +338,18 @@ export function buildBodySnippet(p: SnippetParams): string {
   function sendEvent(name,custom){
     if(sent[name])return;sent[name]=true;
     var eid=name+'_'+Date.now()+'_'+Math.random().toString(36).substr(2,6);
-    fbq('track',name,custom||{},{eventID:eid});      // browser
-    var L=FOP.loadLead();
-    fetch(CAPI,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
-      body:JSON.stringify({                            // server (CAPI) — mesmo event_id
-        pixel_id:PIXEL_ID, event_name:name, event_id:eid, page_url:location.href,
-        external_id:FOP.visitorId(),
-        user_data:{em:normEmail(L.em),ph:normPhone(L.ph),fn:normName(L.fn),ln:normName(L.ln)},
-        fbp:getCookie('_fbp'), fbc:getCookie('_fbc'),
-        custom_data:Object.assign({content_name:CONTENT_NAME,content_ids:[CONTENT_ID],content_type:'product'},custom||{})
-      })}).catch(function(){});
+    fbq('track',name,custom||{},{eventID:eid});      // browser — dispara já
+    comFbp(function(){                               // server — espera o _fbp
+      var L=FOP.loadLead();
+      fetch(CAPI,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
+        body:JSON.stringify({                          // mesmo event_id → dedup
+          pixel_id:PIXEL_ID, event_name:name, event_id:eid, page_url:location.href,
+          external_id:FOP.visitorId(),
+          user_data:{em:normEmail(L.em),ph:normPhone(L.ph),fn:normName(L.fn),ln:normName(L.ln)},
+          fbp:getCookie('_fbp'), fbc:getCookie('_fbc'),
+          custom_data:Object.assign({content_name:CONTENT_NAME,content_ids:[CONTENT_ID],content_type:'product'},custom||{})
+        })}).catch(function(){});
+    });
   }
   window.FOP.send=sendEvent;
 
@@ -241,15 +357,19 @@ export function buildBodySnippet(p: SnippetParams): string {
   // Aqui só espelhamos pro servidor (CAPI) com o MESMO id → o Meta deduplica.
   (function(){
     var pv=window.__FOP_PV; if(!pv||sent['PageView'])return; sent['PageView']=true;
-    var L=FOP.loadLead();
-    fetch(CAPI,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
-      body:JSON.stringify({
-        pixel_id:PIXEL_ID, event_name:'PageView', event_id:pv, page_url:location.href,
-        external_id:FOP.visitorId(),
-        user_data:{em:normEmail(L.em),ph:normPhone(L.ph),fn:normName(L.fn),ln:normName(L.ln)},
-        fbp:getCookie('_fbp'), fbc:getCookie('_fbc'),
-        custom_data:{}                                 // PageView não carrega dados de produto
-      })}).catch(function(){});
+    // comFbp: era AQUI que o fbp chegava nulo — este espelho sai no carregamento,
+    // antes de o fbevents.js gravar o cookie. Ver a nota em esperaFbp().
+    comFbp(function(){
+      var L=FOP.loadLead();
+      fetch(CAPI,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
+        body:JSON.stringify({
+          pixel_id:PIXEL_ID, event_name:'PageView', event_id:pv, page_url:location.href,
+          external_id:FOP.visitorId(),
+          user_data:{em:normEmail(L.em),ph:normPhone(L.ph),fn:normName(L.fn),ln:normName(L.ln)},
+          fbp:getCookie('_fbp'), fbc:getCookie('_fbc'),
+          custom_data:{}                               // PageView não carrega dados de produto
+        })}).catch(function(){});
+    });
   })();
 ${scrollViewContent || scrollWishlist ? `
   // hierarquia por scroll + tempo

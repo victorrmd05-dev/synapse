@@ -12,6 +12,7 @@ import {
   excluirTracking, limparEventosTracking,
   type TrackingPixelSafe,
 } from '../actions/tracking';
+import ModoDoPixel from '../../components/tracking/ModoDoPixel';
 
 interface DesignRow {
   id: string;
@@ -162,6 +163,12 @@ export default function TrackingPage() {
   const eventosVisiveis = soConversoes ? eventos.filter((e) => e.event_name !== 'PageView') : eventos;
 
   const temPixel = pixels.some((p) => p.ativo && p.tem_token);
+  // O pixel que a instalação de fato usa: o marcado como padrão, senão o
+  // primeiro ativo com token — mesma escolha que /api/tracking/generate faz.
+  const pixelPadrao =
+    pixels.find((p) => p.padrao && p.ativo) ??
+    pixels.find((p) => p.ativo && p.tem_token) ??
+    null;
 
   return (
     <div className="relative min-h-full pb-20 animate-in fade-in duration-500">
@@ -194,6 +201,11 @@ export default function TrackingPage() {
           </div>
         </div>
       )}
+
+      {/* Modo do pixel padrão: teste × produção. Fica na tela principal de
+          propósito — antes isso era a palavra "teste" em 11px dentro do painel
+          "Pixels & Tokens", que nasce fechado. Ver ModoDoPixel.tsx. */}
+      {pixelPadrao && <ModoDoPixel pixel={pixelPadrao} onChange={carregarPixels} />}
 
       {painelPixels && <PainelPixels pixels={pixels} onChange={carregarPixels} />}
 

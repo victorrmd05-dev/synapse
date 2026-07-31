@@ -43,6 +43,35 @@ export async function getTrackingPixels(): Promise<TrackingPixelSafe[]> {
   }));
 }
 
+/**
+ * Liga ou desliga o modo de teste de um pixel.
+ *
+ * POR QUE É UMA AÇÃO PRÓPRIA (29/07/2026): esta é a operação MAIS FREQUENTE do
+ * tracking e estava enterrada dentro do formulário de editar pixel. Dois fatos
+ * que a tornam rotina, não exceção:
+ *
+ *  1. O Meta gera um `test_event_code` NOVO a cada sessão da aba "Eventos de
+ *     teste". Um código guardado aqui fica velho em silêncio e os eventos de
+ *     servidor somem da aba — parece que o tracking quebrou, e não quebrou.
+ *  2. Passar para produção é só limpar este campo. **NÃO precisa republicar** a
+ *     página: o código vive no banco e o relay CAPI lê a cada requisição.
+ *
+ * @param codigo string vazia/null = produção (nenhum test_event_code enviado).
+ */
+export async function setTestEventCode(id: string, codigo: string | null) {
+  const limpo = (codigo ?? '').trim();
+  const { error } = await supabaseServer
+    .from('tracking_config')
+    .update({
+      test_event_code: limpo || null,
+      data_atualizacao: new Date().toISOString(),
+    })
+    .eq('id', id);
+
+  if (error) throw new Error('Falha ao mudar o modo de teste: ' + error.message);
+  return { ok: true, emTeste: !!limpo };
+}
+
 export interface SalvarPixelInput {
   id?: string;
   nome: string;
