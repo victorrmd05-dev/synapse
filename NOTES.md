@@ -1,7 +1,11 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-07-29 — 🎯 **A LP do Método do Corredor está DENTRO do dashboard
+> Última atualização: 2026-07-31 — 📦 **4 dias de trabalho saíram da working tree e entraram
+> no histórico**: 27 commits no ar em `origin/main` (`8acad36`), depois de resolver uma
+> divergência causada por edições feitas pela web do GitHub. Detalhes, o que ficou fora do
+> repo de propósito e por quê, na seção "📦 O acerto do histórico".
+> Antes (2026-07-29) — 🎯 **A LP do Método do Corredor está DENTRO do dashboard
 > e o fluxo `/design` fecha ponta a ponta.** As 3 tarefas de imagem foram concluídas (upload,
 > botão, substituição de `[IMAGEM N]`), a LP foi construída no modelo validado do
 > alimento-sagrado e entrou em `workflow_design.codigo_html` via script repetível. Detalhes na
@@ -22,17 +26,18 @@
 
 ---
 
-## 🔴 ONDE PARAMOS — retomar por aqui (29/07/2026)
+## 🔴 ONDE PARAMOS — retomar por aqui (31/07/2026)
 
 > A LP do Método do Corredor está **no ar**, com FOP instalado e **deduplicação
-> confirmada pelo Meta**. **Continua nada commitado** — a working tree só cresceu.
+> confirmada pelo Meta**. ✅ **Tudo commitado e empurrado** (31/07) — ver a seção
+> "📦 O acerto do histórico" logo abaixo.
 
 **No ar:** https://modelagem-saga-adestramento-8f8e98fd.pages.dev
 
 ### ▶️ Próximo passo
 
 1. **Republicar** — o fix do `fbp` está no `codigo_html_final` mas a página no ar ainda é
-   a versão anterior. `/design` → "Aprovar e Publicar".
+   a versão anterior. `/design` → "Aprovar e Publicar". **É o primeiro item da fila.**
 2. **Conferir o `test_event_code`** no selo da `/tracking` antes de cada rodada — ele expira
    por sessão do Meta. Hoje está em `TEST72769`, batendo com o Gerenciador.
 3. Decidir as pendências de oferta abaixo. A página está no ar com `#CHECKOUT_URL`:
@@ -121,8 +126,67 @@ produto). Aqui fica só o ponteiro — o produto não mora neste repo.
    nunca executado. Boa parte virou realidade por outro caminho (botões diretos em vez
    de skill + view). **Decidir: apagar ou atualizar.**
 7. **Worker rodando em segundo plano** varrendo fila vazia — pode matar.
-8. **Nada commitado.** Sugestão de fatiar em: (a) custo/OpenCode Zen, (b) blacklist
-   Havan, (c) skills e docs dos agentes, (d) esteira autópsia→produção→copy.
+8. ~~**Nada commitado.**~~ ✅ **Resolvido em 31/07** — 27 commits no ar. Ver a seção
+   seguinte.
+
+---
+
+## 📦 O acerto do histórico — 4 dias de trabalho versionados (31/07/2026)
+
+> ✅ `origin/main` = local em `8acad36`. Zero pendente, `tsc` limpo, árvore limpa.
+
+77 arquivos pendentes viraram **12 commits novos** (o plano era 10; a remoção dos 3
+agentes e a limpeza das cópias da skill do Remotion viraram commits próprios em vez
+de contaminar outros). Junto com 15 commits antigos que também nunca tinham sido
+empurrados, foram **27 ao todo**.
+
+### 🚨 O push foi REJEITADO na primeira tentativa — e a lição vale
+
+`main` tinha divergido: dois commits feitos **pela interface web do GitHub**
+(`Delete GUIA_IMPLEMENTACAO.md` em 23/07, `Delete palavras_chave_dropshipping_brasil.md`
+em 31/07) apagavam exatamente **os mesmos dois arquivos** que o commit local de
+limpeza apagava. Mesma intenção, dois caminhos.
+
+**Resolvido com `pull --rebase`**, não merge — histórico linear é o que faz sentido
+para dev solo em `main`. 27 commits replayados, **zero conflitos**, e conferido depois
+que `git diff` entre o pré e o pós-rebase é **vazio**: só os SHAs mudaram, nenhum
+conteúdo. Tag local `antes-do-rebase-31jul` ficou como rede de segurança (pode apagar
+com `git tag -d antes-do-rebase-31jul`).
+
+⚠️ **Editar arquivo pela web do GitHub cria commit que o local não conhece.** Foi o
+que causou isso. Se for mexer pela web, `git pull` antes de voltar a trabalhar aqui.
+
+### 🧹 O que ficou de fora do repo de propósito
+
+| Arquivo | Por quê |
+|---|---|
+| `remotion/public/*.mp4` | `Sapatenis_dois.mp4` sozinho tem **44 MB**, e histórico do git é permanente. É footage de demo do `my-video`; a fonte de vídeo real são os criativos da autópsia, que já vivem no Storage |
+| `pnpm-lock.yaml` + `pnpm-workspace.yaml` | O gerenciador deste repo é o **npm**. Dois lockfiles divergem em silêncio — e o `pnpm-workspace.yaml` ainda estava com o placeholder literal `set this to true or false` |
+| `.claude/` | Permissões com caminhos absolutos desta máquina (`C:/Users/cerqu/...`), sem valor para mais ninguém |
+
+`public/audio/*.mp3` (4,3 MB) **entrou** — é asset da aplicação (a música de fundo do
+dashboard), não material de trabalho.
+
+### 🧹 Cópias triplicadas da skill do Remotion
+
+O `create-video` gera `remotion-best-practices` (34 arquivos) **três vezes**: `.agent/`,
+`.cursor/` e `.windsurf/`. Ficou só a `.agent/`. As outras 68 eram idênticas byte a
+byte, para editores que não são usados aqui — e divergiriam em silêncio na primeira
+edição de uma delas.
+
+### ⚠️ O que o fatiamento NÃO conseguiu separar
+
+Alguns arquivos carregam mais de um tema e foram para o commit do **tema dominante**,
+não fatiados hunk a hunk (53 arquivos assim custaria caro e arriscaria commit
+intermediário quebrado):
+
+- `design/page.tsx` → foi com *domínio próprio*, mas tem também o selo de tracking e a
+  remoção dos 4 elementos mortos
+- `design/generate/route.ts` → foi com *imagens da LP*, mas tem também a migração para
+  o Zen
+- `tracking/generate/route.ts` → foi com *FOP*, mas tem também a migração para o Zen
+
+Está registrado no corpo de cada commit.
 
 ---
 
