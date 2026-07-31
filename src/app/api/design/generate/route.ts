@@ -29,15 +29,22 @@ import { buildBrandReferenceBlock } from '@/lib/design/brandReferences';
 import { scrapeConcorrente } from '@/lib/firecrawl';
 import { gerarComClaude, ANTHROPIC_DESIGN_MODEL } from '@/lib/anthropic';
 import { chatComRetry } from '@/lib/openai';
+import { chatComZen, OPENCODE_MODEL } from '@/lib/opencode';
+import { listarImagensParaPagina, substituirPlaceholders } from '@/lib/design/imagensLp';
 
 interface GenerateBody {
   design_id: string;
 }
 
-// Provider do desenho. Claude é o melhor em frontend, mas exige saldo na conta
-// Anthropic. Default 'openai' (gpt-4o completo) para destravar sem custo novo —
-// troque para 'anthropic' no .env.local quando tiver créditos no Claude.
-const DESIGN_PROVIDER = (process.env.DESIGN_PROVIDER || 'openai').toLowerCase();
+// Provider do desenho. Default 'zen' (OpenCode Zen, GRATUITO) — o botão continua
+// funcionando sem gerar fatura. Os outros dois são PAGOS e só entram se você
+// pedir por nome no .env.local: 'anthropic' (melhor em frontend) ou 'openai'.
+//
+// ⚠️ O default era 'openai' com gpt-4o, que é modelo caro — o comentário antigo
+// dizia "sem custo novo" porque você já tinha crédito lá, mas custo havia.
+// A LP de verdade é feita no Claude Code (skill landing-page-vendas), fora do
+// app; esta rota serve para rascunho rápido dentro do painel.
+const DESIGN_PROVIDER = (process.env.DESIGN_PROVIDER || 'zen').toLowerCase();
 const OPENAI_DESIGN_MODEL = process.env.OPENAI_DESIGN_MODEL || 'gpt-4o';
 // Claude 3.5 tem cap 8192; gpt-4o aceita até 16384. Cada um no seu teto seguro.
 const MAX_TOKENS_ANTHROPIC = Number(process.env.ANTHROPIC_DESIGN_MAX_TOKENS) || 8000;
@@ -128,6 +135,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // 3b. Imagens PRÓPRIAS da LP: a copy marca os pontos com
+    //     `[IMAGEM N · hero.png — descrição]` e a pasta `lp/<campanha_id>/` tem
+    //     os arquivos com esses nomes. Trocamos o placeholder pela tag <img>
+    //     real ANTES de o texto chegar no modelo — assim a URL, o alt e as
+    //     dimensões saem determinísticos em vez de inventados pela IA.
+    const imagensLp = await listarImagensParaPagina(design.campanha_id);
+    const sub = substituirPlaceholders(copy.conteudo_texto, imagensLp);
+    const conteudoCopy = sub.texto;
+
     // 4. Imagens reais já mineradas do anúncio do concorrente
     const imagensMineradas: string[] = [
       produto?.image_url,
@@ -176,12 +192,25 @@ Inspire-se na SEQUÊNCIA de seções e na lógica de oferta, mas reescreva tudo 
 copy aprovada e a estética da marca injetada — não copie o texto do concorrente.`
       : '';
 
+    // As <img> da própria LP já vêm prontas dentro da copy. O modelo tende a
+    // "melhorar" o que recebe — daí a instrução explícita de não tocar.
+    const blocoImagensLp = sub.usadas.length
+      ? `=== IMAGENS PRÓPRIAS DA LANDING PAGE (JÁ INSERIDAS NA COPY) ===
+A copy abaixo já contém ${sub.usadas.length} tag(s) <img> completas, com src, alt,
+width/height e loading corretos. COPIE CADA UMA EXATAMENTE COMO ESTÁ, no mesmo
+ponto do texto. NÃO altere o src, NÃO troque por outra imagem, NÃO remova os
+atributos width/height (eles seguram o layout e evitam CLS).
+Envolva cada <img> no seu container de layout, mas preserve a tag intacta.
+A primeira imagem é o LCP da página — no <head>, adicione:
+<link rel="preload" as="image" href="${imagensLp.find((i) => i.radical === 'hero')?.url ?? sub.usadas[0]}">`
+      : '';
+
     const userPrompt = `${brandRef.block}
 
-${blocoImagens}
+${blocoImagensLp ? blocoImagensLp + '\n\n' : ''}${blocoImagens}
 
 ${blocoConcorrente ? blocoConcorrente + '\n\n' : ''}=== COPY APROVADA (fonte do conteúdo da página de vendas) ===
-${copy.conteudo_texto}
+${conteudoCopy}
 
 ${copy.meta_ads_copy ? `=== COPY DO META ADS (apoio para títulos/CTAs) ===\n${copy.meta_ads_copy}\n\n` : ''}=== TAREFA ===
 Gere a landing page de vendas COMPLETA e DE ALTÍSSIMA CONVERSÃO para este produto,
@@ -200,6 +229,10 @@ Requisitos técnicos OBRIGATÓRIOS:
 - Mobile-first, 100% responsivo, carregamento rápido.
 - Ícones: SVG inline (NUNCA emojis).
 - Use as IMAGENS REAIS listadas acima nos <img>. Nada de placeholder/lorem ipsum.
+- As <img> que já vêm dentro da copy são as imagens oficiais da página: mantenha
+  cada uma intacta e no seu lugar. Se sobrar algum marcador em colchetes do tipo
+  [IMAGEM N · arquivo], significa que o arquivo não existe — NÃO invente uma URL
+  nem deixe o colchete aparecer na página: resolva a seção sem imagem.
 - CTAs em destaque na cor de ação da marca, repetidos ao longo da página.
 - Microinterações de hover suaves e estados de foco acessíveis.
 
@@ -210,34 +243,44 @@ comentários fora do HTML, sem explicações antes ou depois.`;
     let html = '';
     let modeloUsado = '';
     try {
+      const mensagens = [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: userPrompt },
+      ];
+
       if (DESIGN_PROVIDER === 'anthropic') {
         modeloUsado = ANTHROPIC_DESIGN_MODEL;
         html = (
           await gerarComClaude({ max_tokens: MAX_TOKENS_ANTHROPIC, system: systemPrompt, user: userPrompt })
         ).trim();
-      } else {
+      } else if (DESIGN_PROVIDER === 'openai') {
         modeloUsado = OPENAI_DESIGN_MODEL;
         const response = await chatComRetry({
           model: OPENAI_DESIGN_MODEL,
           max_tokens: MAX_TOKENS_OPENAI,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
+          messages: mensagens,
         });
+        html = (response.choices[0]?.message?.content ?? '').trim();
+      } else {
+        modeloUsado = OPENCODE_MODEL;
+        const response = await chatComZen({ max_tokens: MAX_TOKENS_OPENAI, messages: mensagens });
         html = (response.choices[0]?.message?.content ?? '').trim();
       }
     } catch (err) {
       const status = (err as { status?: number })?.status;
       const msg = err instanceof Error ? err.message : 'erro desconhecido';
-      const ehAnthropic = DESIGN_PROVIDER === 'anthropic';
+      const dicaPorProvider: Record<string, string> = {
+        anthropic:
+          'Sem crédito na Anthropic? Rode DESIGN_PROVIDER=zen (gratuito) ou faça a LP no Claude Code com a skill landing-page-vendas.',
+        openai:
+          'Confira OPENAI_API_KEY/saldo (provider PAGO), ou volte para DESIGN_PROVIDER=zen (gratuito).',
+        zen: 'Confira OPENCODE_API_KEY. Para uma LP de verdade, o caminho é o Claude Code com a skill landing-page-vendas.',
+      };
       return Response.json(
         {
           error: `Falha na chamada ao modelo de design "${modeloUsado}" (provider ${DESIGN_PROVIDER}, status ${status ?? '?'}).`,
           detalhe: msg,
-          dica: ehAnthropic
-            ? 'Sem créditos no Claude? Troque DESIGN_PROVIDER=openai no .env.local (usa gpt-4o), ou adicione saldo na Anthropic.'
-            : 'Erro no gpt-4o? Confira OPENAI_API_KEY/saldo, ou troque OPENAI_DESIGN_MODEL no .env.local.',
+          dica: dicaPorProvider[DESIGN_PROVIDER] ?? dicaPorProvider.zen,
         },
         { status: 502 }
       );
@@ -316,6 +359,10 @@ comentários fora do HTML, sem explicações antes ou depois.`;
       provider: DESIGN_PROVIDER,
       modelo: modeloUsado,
       imagens_usadas: todasImagens.length,
+      imagens_lp: sub.usadas,
+      // Nome na copy que não achou arquivo na pasta — quase sempre erro de
+      // digitação no renomear. Sai na resposta para não falhar em silêncio.
+      imagens_lp_faltando: sub.faltando,
       concorrente_scrapeado: !!scrape,
       arquivo,
       registro,
