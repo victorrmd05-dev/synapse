@@ -126,7 +126,7 @@ Vale registrar porque o padrão se repete: o plano estava errado, e a verificaç
 ### 🧹 Pendências pequenas anotadas
 
 - `amostra-voz-sarah.mp3` e `amostra-voz-alice.mp3` na raiz — descartáveis, já no `.gitignore`. Pode apagar.
-- Uma correção da Task 4 estava em voo quando a sessão acabou: **tirar o `^` de 5 entradas** de versão (`@remotion/bundler`, `@remotion/renderer`, `@remotion/player`, `remotion`, `zod`). Hoje os lockfiles resolvem tudo em `4.0.409`, mas um `npm install` num projeto e não no outro pode divergir Player e renderer. Conferir no ledger se fechou.
+- ~~Correção da Task 4 em voo (tirar o `^` das versões)~~ — **fechou** (`b1cc2f4`, re-revisão limpa). Os dois projetos agora travam `remotion`, `@remotion/player`, `@remotion/bundler`, `@remotion/renderer` em `4.0.409` e `zod` em `3.22.3`, sem range. Player e renderer não podem mais divergir num `npm install` futuro.
 - O `ACHADOS.md` usa o termo "o Controlador" sem definir — jargão do processo, trocar por linguagem neutra.
 - `NOTA-REMOTION-BANCADA.md` na raiz virou a spec e o plano; a Task 8 apaga.
 
