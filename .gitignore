@@ -92,3 +92,6 @@ __pycache__/
 # em silêncio — se um dia migrar para pnpm, remova o package-lock.json junto.
 pnpm-lock.yaml
 pnpm-workspace.yaml
+
+# Amostras de voz geradas para audicao (ElevenLabs). Descartaveis, nunca versionadas.
+amostra-voz-*.mp3
