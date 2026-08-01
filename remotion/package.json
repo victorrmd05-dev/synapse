@@ -1,12 +1,14 @@
 {
-  "name": "my-video",
+  "name": "alavanca-video",
   "version": "1.0.0",
-  "description": "My Remotion video",
+  "description": "Render das variacoes de anuncio do Alavanca Synapse",
   "repository": {},
   "license": "UNLICENSED",
   "private": true,
   "dependencies": {
+    "@remotion/bundler": "^4.0.409",
     "@remotion/cli": "4.0.409",
+    "@remotion/renderer": "^4.0.409",
     "@remotion/zod-types": "4.0.409",
     "react": "19.2.3",
     "react-dom": "19.2.3",

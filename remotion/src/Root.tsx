@@ -1,24 +1,41 @@
-import { Composition } from "remotion";
-import { HelloWorld, myCompSchema } from "./HelloWorld";
+import React from 'react';
+import { Composition } from 'remotion';
+import {
+  AnuncioUGC,
+  anuncioUgcSchema,
+  duracaoEmFrames,
+  FPS,
+  LARGURA,
+  ALTURA,
+} from '../../src/video/AnuncioUGC';
 
+// A composicao vem de src/video/ — o app Next e este projeto renderizam
+// EXATAMENTE o mesmo componente. Ver o cabecalho daquele arquivo.
 export const RemotionRoot: React.FC = () => {
   return (
-    <>
-      <Composition
-        id="Anuncio-Sapatenis"
-        component={HelloWorld}
-        durationInFrames={150} // 5 segundos a 30fps
-        fps={30}
-        width={1080}
-        height={1920
-        }
-        schema={myCompSchema}
-        defaultProps={{
-          titleText: "Aproveita Oferta",
-          titleColor: "#ffffff",
-          priceText: "R$ 99,90", // Se você estiver usando a versão com preço
-        }}
-      />
-    </>
+    <Composition
+      id="AnuncioUGC"
+      component={AnuncioUGC}
+      schema={anuncioUgcSchema}
+      width={LARGURA}
+      height={ALTURA}
+      fps={FPS}
+      durationInFrames={FPS * 10}
+      defaultProps={{
+        urlClipe: '',
+        duracaoClipeS: 5,
+        duracaoNarracaoS: 10,
+        gancho: 'O gancho entra aqui',
+        cta: 'Clique e garanta o seu',
+        urlNarracao: '',
+        legendas: [],
+        corFaixa: '#FFFFFF',
+      }}
+      // A narracao manda na duracao. Isto roda tanto no Studio quanto no
+      // selectComposition() do worker, entao os dois chegam no mesmo numero.
+      calculateMetadata={({ props }) => ({
+        durationInFrames: duracaoEmFrames(props.duracaoNarracaoS),
+      })}
+    />
   );
 };

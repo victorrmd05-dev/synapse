@@ -11,5 +11,6 @@
     "forceConsistentCasingInFileNames": true,
     "noUnusedLocals": true
   },
+  "include": ["src", "../src/video"],
   "exclude": ["remotion.config.ts"]
 }
