@@ -191,9 +191,16 @@ IMAGENS — obrigatório:
 2. Em "prompts_imagens", escreva o prompt COMPLETO de cada uma, no formato da sua
    skill (bloco <<< >>> + "salvar como"), incluindo o bloco de estilo-mestre com a
    paleta em hex. O Fernando gera as imagens fora e sobe numa pasta.
+3. Em "prompts_videos", escreva 3 prompts de video para anuncio. Regras:
+   - 5 a 10 segundos cada.
+   - Descreva MOVIMENTO: camera, acao, ritmo. E o que separa video de imagem.
+   - Se o video deve partir de uma imagem ja gerada, cite [IMAGEM N] no inicio.
+   - NUNCA peca texto na tela. Modelo de video escreve texto embolado, e a
+     legenda e queimada depois no Remotion. Pedir texto aqui gasta dinheiro
+     para produzir um defeito que o passo seguinte teria que cobrir.
 
 Retorne em JSON estruturado:
-{ "meta_ads_copy": "...", "pagina_vendas": "...", "prompts_imagens": "..." }`;
+{ "meta_ads_copy": "...", "pagina_vendas": "...", "prompts_imagens": "...", "prompts_videos": "..." }`;
 
     if (notas_revisao) {
       userPrompt += `\n\nATENÇÃO: esta é uma regeração. O Revisor pediu ajustes com a seguinte nota:
@@ -214,11 +221,37 @@ Leve este feedback em conta na nova versão.`;
     });
 
     const textoResposta = response.choices[0]?.message?.content ?? '';
+    const finishReason = response.choices[0]?.finish_reason;
+
+    // 🚨 FALHA SILENCIOSA (medida em 01/08/2026): o modelo do Zen é de
+    // RACIOCÍNIO, e `max_tokens` é o teto do total (raciocínio + resposta).
+    // Numa chamada real com este system prompt (16.791 chars) o raciocínio
+    // consumiu 5.411 dos 8.000 tokens, `finish_reason` voltou `length` e o JSON
+    // saiu cortado no meio. Com o prompt maior ainda (dossiê da autópsia +
+    // Tavily), o raciocínio comeu o orçamento INTEIRO e o `content` veio VAZIO —
+    // HTTP 200, sem erro.
+    //
+    // O que acontecia então: o `JSON.parse` falhava, o catch era mudo, e a rota
+    // gravava uma linha com tudo em branco respondendo `sucesso: true`. A copy
+    // aparecia vazia no /revisor e `prompts_videos` ficava null — sem nenhum
+    // sinal de que algo deu errado.
+    //
+    // Falhar aqui é melhor que gravar vazio: o card fica marcado como erro (o
+    // catch geral cuida disso) e a mensagem diz o que fazer.
+    if (!textoResposta.trim()) {
+      throw new Error(
+        'O modelo devolveu resposta vazia. O orçamento de max_tokens ' +
+          `(${config.max_tokens}) foi consumido pelo raciocínio antes de escrever a ` +
+          'copy. Aumente `max_tokens` do agente "copywriting" em agentes_config.'
+      );
+    }
 
     let metaAdsCopy = '';
     let paginaVendas = textoResposta;
     let promptsImagens = '';
+    let promptsVideos = '';
 
+    let parseOk = false;
     try {
       const jsonMatch = textoResposta.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -226,9 +259,21 @@ Leve este feedback em conta na nova versão.`;
         metaAdsCopy = parsed.meta_ads_copy ?? parsed.copy_text ?? '';
         paginaVendas = parsed.pagina_vendas ?? parsed.copy_text ?? textoResposta;
         promptsImagens = parsed.prompts_imagens ?? '';
+        promptsVideos = parsed.prompts_videos ?? '';
+        parseOk = true;
       }
     } catch {
-      // mantém o texto bruto em paginaVendas
+      // mantém o texto bruto em paginaVendas — tratado logo abaixo
+    }
+
+    // Truncado + JSON quebrado = resposta cortada no meio. O texto bruto que
+    // sobra é um JSON pela metade, que não serve como copy nem como prompt.
+    if (!parseOk && finishReason === 'length') {
+      throw new Error(
+        `A resposta foi cortada por limite de tokens (max_tokens=${config.max_tokens}) ` +
+          'e o JSON ficou incompleto. Aumente `max_tokens` do agente "copywriting" ' +
+          'em agentes_config.'
+      );
     }
 
     // 6. Preencher a copy real. Atualiza o card "Gerando…" criado no passo 2b
@@ -239,6 +284,7 @@ Leve este feedback em conta na nova versão.`;
       conteudo_texto: paginaVendas,
       meta_ads_copy: metaAdsCopy,
       prompts_imagens: promptsImagens || null,
+      prompts_videos: promptsVideos || null,
       revisor_ok: false,
       notas_revisao: null,
       // Copy pronta -> entra na fila do Revisor para a IA revisora analisar.

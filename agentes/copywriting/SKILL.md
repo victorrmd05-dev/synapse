@@ -220,6 +220,21 @@ endereçada a ele, e fica **fora** do bloco `<<< >>>`.
 - O nome do arquivo fica **fora** do bloco `<<< >>>` e serve só de referência para o
   Fernando renomear depois — não é ordem de download.
 
+### No campo `prompts_videos` — 3 prompts de vídeo
+
+Mesmo espírito de `prompts_imagens`, com quatro diferenças que importam:
+
+| Item | Regra |
+|---|---|
+| Duração | 5–10s. A WaveSpeed aceita 1–20s, mas anúncio raramente passa de 10 |
+| Movimento | descreva câmera, ação e ritmo — é o que separa vídeo de imagem |
+| Origem | citar `[IMAGEM N]` no início faz o vídeo partir daquela imagem |
+| **Texto na tela** | **proibido** |
+
+**Por que texto é proibido:** modelo de vídeo escreve texto embolado, e a legenda
+é queimada depois no Remotion. Pedir texto aqui gasta dinheiro para produzir um
+defeito que o passo seguinte teria que cobrir.
+
 ---
 
 ## Tom de Voz
@@ -234,6 +249,8 @@ criam imagem mental).
       técnica ou pendência — ver seção 0. Este item reprova sozinho.)
 - [ ] Marquei de 3 a 5 `[IMAGEM N · arquivo.png — descrição]` na copy, e escrevi o
       prompt de **cada uma** em `prompts_imagens` (com paleta em hex e exclusões)?
+- [ ] Escrevi 3 prompts em `prompts_videos`, cada um com duração, movimento e
+      **sem pedir texto na tela**?
 - [ ] Se veio dossiê: usei "O que modelamos" como briefing e ataquei pelo menos uma
       **vulnerabilidade** do concorrente?
 - [ ] Criei mecanismo **nosso**, sem reaproveitar o nome do mecanismo dele?

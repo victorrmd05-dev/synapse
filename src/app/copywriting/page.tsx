@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase';
 export default function CopywritingPage() {
   const [fila, setFila] = useState<any[]>([]);
   const [activeItem, setActiveItem] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'legendas' | 'pagina' | 'imagens'>('pagina');
+  const [activeTab, setActiveTab] = useState<'legendas' | 'pagina' | 'imagens' | 'videos'>('pagina');
 
   useEffect(() => {
     fetchFila();
@@ -52,7 +52,8 @@ export default function CopywritingPage() {
           atributos_json: item.atributos_json || { nicho: 'Vários', preco: '-' },
           conteudo_texto: item.conteudo_texto || '',
           meta_ads_copy: item.meta_ads_copy || '',
-          prompts_imagens: item.prompts_imagens || ''
+          prompts_imagens: item.prompts_imagens || '',
+          prompts_videos: item.prompts_videos || ''
         };
       });
 
@@ -145,6 +146,11 @@ export default function CopywritingPage() {
               className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'imagens' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
               <ImageIcon size={16} /> Prompts de Imagem
             </button>
+            <button
+              onClick={() => setActiveTab('videos')}
+              className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'videos' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
+              <Video size={16} /> Prompts de Vídeo
+            </button>
           </div>
 
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -159,6 +165,8 @@ export default function CopywritingPage() {
                       ? (activeItem.meta_ads_copy || 'Nenhuma legenda de anúncio gerada ainda.')
                       : activeTab === 'imagens'
                       ? (activeItem.prompts_imagens || 'Nenhum prompt de imagem gerado ainda.')
+                      : activeTab === 'videos'
+                      ? (activeItem.prompts_videos || 'Nenhum prompt de vídeo gerado ainda.')
                       : (activeItem.conteudo_texto || 'Nenhum conteúdo de página de vendas gerado ainda.')}
                   </div>
                 ) : (

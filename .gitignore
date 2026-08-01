@@ -69,7 +69,7 @@ start-standalone.sh
 lps/
 
 # environment variables
-.env
+.env.local
 
 # prints do Gerenciador de Eventos (Meta) — só inspeção local (podem ter dados da conta)
 prints_gerenciador/*

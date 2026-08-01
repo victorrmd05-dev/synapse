@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, XCircle, AlertTriangle, Save, LayoutDashboard, FileText, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, Save, LayoutDashboard, FileText, Sparkles, Loader2, Image as ImageIcon, Video } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import TipTapEditor from '../../components/TipTapEditor';
 
@@ -12,6 +12,7 @@ type FilaItem = {
   conteudo_texto: string;
   meta_ads_copy: string;
   prompts_imagens: string;
+  prompts_videos: string;
   status: string;
   revisao_ia_score: number | null;
   revisao_ia_parecer: string | null;
@@ -23,7 +24,7 @@ export default function RevisorPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [editedTextPagina, setEditedTextPagina] = useState('');
   const [editedTextLegendas, setEditedTextLegendas] = useState('');
-  const [activeTab, setActiveTab] = useState<'pagina' | 'legendas' | 'imagens'>('pagina');
+  const [activeTab, setActiveTab] = useState<'pagina' | 'legendas' | 'imagens' | 'videos'>('pagina');
   const [feedbackRejeicao, setFeedbackRejeicao] = useState('');
 
   // Guarda os ids cuja revisão pela IA já foi disparada, pra não chamar 2x.
@@ -77,6 +78,7 @@ export default function RevisorPage() {
           conteudo_texto: item.conteudo_texto || '',
           meta_ads_copy: item.meta_ads_copy || '',
           prompts_imagens: item.prompts_imagens || '',
+          prompts_videos: item.prompts_videos || '',
           status: item.status,
           revisao_ia_score: item.revisao_ia_score ?? null,
           revisao_ia_parecer: item.revisao_ia_parecer ?? null,
@@ -341,6 +343,11 @@ export default function RevisorPage() {
                     className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'imagens' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
                     <ImageIcon size={16} /> Prompts de Imagem
                   </button>
+                  <button
+                    onClick={() => setActiveTab('videos')}
+                    className={`pb-3 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${activeTab === 'videos' ? 'border-primary text-primary' : 'border-transparent text-secondary hover:text-white'}`}>
+                    <Video size={16} /> Prompts de Vídeo
+                  </button>
                 </div>
                 <div className="flex-1 flex flex-col overflow-hidden">
                   {activeTab === 'pagina' ? (
@@ -355,7 +362,7 @@ export default function RevisorPage() {
                       content={editedTextLegendas}
                       onChange={setEditedTextLegendas}
                     />
-                  ) : (
+                  ) : activeTab === 'imagens' ? (
                     // Prompts são material de produção, não copy: leitura pura, sem
                     // editor. O Fernando copia o bloco <<< >>> e gera a imagem fora.
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
@@ -366,6 +373,19 @@ export default function RevisorPage() {
                       ) : (
                         <p className="text-secondary text-sm">
                           Nenhum prompt de imagem gerado para esta copy.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    // Mesmo padrão dos prompts de imagem: leitura pura, sem editor.
+                    <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+                      {activeItem.prompts_videos ? (
+                        <pre className="text-sm text-text-primary whitespace-pre-wrap font-mono leading-relaxed">
+                          {activeItem.prompts_videos}
+                        </pre>
+                      ) : (
+                        <p className="text-secondary text-sm">
+                          Nenhum prompt de vídeo gerado para esta copy.
                         </p>
                       )}
                     </div>

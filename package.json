@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "agents:pull": "node scripts/agents-pull.mjs",
-    "agents:push": "node scripts/agents-push.mjs"
+    "agents:push": "node scripts/agents-push.mjs",
+    "video:worker": "node --env-file=.env.local scripts/worker-video.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
