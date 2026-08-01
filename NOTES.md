@@ -1,7 +1,18 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-07-31 — 📦 **4 dias de trabalho saíram da working tree e entraram
+> Última atualização: 2026-08-01 (madrugada) — 🎬 **Módulo de vídeo VALIDADO ponta a ponta
+> pela 1ª vez** (job → worker → Storage → player tocando) e **`/video-maker` reconstruída
+> como passo da esteira**: escolhe a oferta, os 3 prompts do Copywriting abrem ao lado com
+> botão "Gerar vídeo" e custo estampado. No caminho, **um bug silencioso real**: a copy
+> voltava VAZIA com `sucesso: true` porque `max_tokens=8000` era consumido pelo raciocínio
+> do modelo. 💸 **Custo do Sora 2 finalmente MEDIDO: US$ 0,10/s.** Detalhes na seção
+> "ONDE PARAMOS". **Nada commitado.**
+> Antes (2026-07-31, fim de tarde) — 🎬 Módulo de geração de vídeo com
+> WaveSpeed CONSTRUÍDO (7/7 tarefas, todas revisadas) mas NUNCA RODADO ponta a ponta.
+> As revisões pegaram **8 defeitos reais, 4 deles
+> silenciosos** — a lista está na seção do módulo e vale ler antes de mexer.
+> Antes (31/07) — 📦 **4 dias de trabalho saíram da working tree e entraram
 > no histórico**: 27 commits no ar em `origin/main` (`8acad36`), depois de resolver uma
 > divergência causada por edições feitas pela web do GitHub. Detalhes, o que ficou fora do
 > repo de propósito e por quê, na seção "📦 O acerto do histórico".
@@ -26,7 +37,518 @@
 
 ---
 
-## 🔴 ONDE PARAMOS — retomar por aqui (31/07/2026)
+## 🔴 ONDE PARAMOS — retomar por aqui (01/08/2026, madrugada)
+
+> ✅ **O módulo de vídeo está PROVADO ponta a ponta.** A esteira inteira rodou:
+> minerou → autopsiou → copy com `prompts_videos` → geração na WaveSpeed → worker baixou →
+> player tocando na tela. Era a única coisa pendente desde 31/07.
+>
+> ✅ **A `/video-maker` foi reconstruída como passo da esteira** (era uma tela solta).
+>
+> ⚠️ **Nada commitado.** ~18 arquivos na working tree. `tsc` limpo.
+
+### ⏸️ FILA DO VÍDEO PARADA (01/08, manhã) — decisão do Fernando
+
+Os 4 itens abaixo **continuam válidos e pendentes**, mas foram deixados de lado a pedido
+dele para abrir a frente do **Remotion no dashboard** (o P3 do desenho maior). Retomar
+esta lista depois — nada aqui foi resolvido, só adiado.
+
+### 🎬 FRENTE ABERTA: bancada de anúncio com Remotion — DESENHO FECHADO, aguardando leitura
+
+> 📄 **`NOTA-REMOTION-BANCADA.md` na raiz** — é por lá que se retoma. Nada implementado.
+
+Brainstorming completo rodado em 01/08. O Fernando saiu no meio para ler com calma, e a
+nota foi escrita para ele responder depois. **Não há pergunta bloqueando** — o desenho é
+implementável como está; a §9 da nota lista o que ele pode mudar se quiser.
+
+**O que ele decidiu:** Player primeiro (Studio depois) · bancada que monta anúncio a partir
+da copy, não só visualização · escopo = bancada **+ render de verdade** · template **C,
+faixa branca estilo UGC** · narração ElevenLabs com a legenda saindo dela · texto vindo do
+`meta_ads_copy` · composição morando no **app Next**, com o `remotion/` importando dela.
+
+**Os três achados que mudaram o desenho:**
+
+1. **A pasta `remotion/` ainda é o scaffold.** `src/` só tem `HelloWorld/`, e
+   `Anuncio-Sapatenis` é ele renomeado — a logo do Remotion girando. Não existe nada do
+   projeto para "visualizar" hoje; a composição real nasce nesta rodada.
+2. **Nada no banco é roteiro falado.** O contrato JSON do Copywriting tem 4 campos, e
+   `prompts_videos` é instrução de **câmera e movimento** para a Sora, não texto para ler
+   em voz alta.
+3. 🚨 **A ElevenLabs cai na MESMA armadilha que a WaveSpeed.** O `pegar_job()` reprocessa
+   job travado — se o worker chamasse a ElevenLabs, um render que morre no meio geraria a
+   narração **de novo**. Mesma frase que decidiu o módulo passado: *retry automático e
+   cobrança não podem morar no mesmo lugar.* Resolvido igual: **a rota paga, o worker só
+   renderiza**, e a trava vai no banco
+   (`check (tipo <> 'compor' or url_narracao is not null)`).
+
+**Dois ganhos de lado:** a legenda sai dos **timestamps da própria ElevenLabs**, o que
+apaga a dependência de `faster-whisper`/Python que o plano de 29/07 previa; e o `check
+(tipo in ('gerar','compor'))` fecha o **minor nº1 do ledger** de 31/07.
+
+⚠️ O `PLANO-REMOTION-VARIACOES.md` (29/07) está **desatualizado** por esta nota — 4 das
+suas decisões em aberto foram resolvidas e o desenho do worker mudou.
+
+### ▶️ Onde continuar amanhã, em ordem
+
+**1. Conferir se os botões da coluna da direita fazem alguma coisa.** "Aprovar Vídeo Final"
+e "Solicitar Ajuste" **não foram verificados**. Suspeita forte de que são decorativos, igual
+o roteiro mockado que foi removido hoje — mesma tela, mesma origem de maquete. Se forem,
+decidir: ligar em `workflow_video.revisor_ok` ou esconder até existir fluxo.
+
+**2. Decidir o modelo padrão de vídeo.** Com o custo agora medido (abaixo), o Sora 2 a
+US$ 0,10/s **não é modelo de trabalho**: gerar os 3 prompts de uma oferta (7+8+6 = 21s)
+custa **US$ 2,10 numa tacada**, e o saldo é US$ 4,80 — dá para duas ofertas e acabou.
+Escolher um modelo barato como padrão e deixar o Sora para o criativo já validado.
+
+**3. Rodar a revisão final do conjunto** (continua pendente de 31/07). Pacote montado em
+`.superpowers/sdd/2026-07-31-video-wavespeed/final-review-package.md` (1901 linhas).
+⚠️ **Ela está desatualizada** — foi montada antes da reconstrução da tela de hoje.
+
+**4. Commitar.** A leva natural: (a) módulo WaveSpeed 7/7, (b) fix do `max_tokens` +
+falha silenciosa do copywriting, (c) reconstrução da `/video-maker`, (d) preço medido.
+
+---
+
+### 💸 O custo do Sora 2, MEDIDO (era a pendência "custo desconhecido")
+
+| | |
+|---|---|
+| Saldo após a chamada da Task 1 (31/07, registrado neste arquivo) | US$ 5,20 |
+| Saldo após 1 clipe de 4s | **US$ 4,80** |
+| **Custo do clipe de 4s** | **US$ 0,40** |
+| **Por segundo** | **US$ 0,10** |
+
+Endpoint de saldo (não estava documentado): `GET /api/v3/balance` com o mesmo Bearer.
+
+`USD_POR_SEGUNDO` em `src/lib/wavespeed/precos.ts` foi preenchida e a tela agora mostra
+**"~US$ 0,70 (estimado)"** no próprio botão, antes do clique — em vez de
+"custo desconhecido".
+
+⚠️ **É UMA amostra, de UMA duração.** Se a WaveSpeed cobrar por chamada + por segundo (e
+não estritamente linear), extrapolar 4s → 10s erra. Continua rotulado "estimado"; a fatura
+é a verdade.
+
+---
+
+### 🐛 O bug do dia: a copy voltava VAZIA com `sucesso: true`
+
+**Sintoma:** a `/video-maker` mostrava só o botão de gerar, sem nenhum prompt. Parecia
+funcionalidade faltando. Não era — `workflow_copywriting.prompts_videos` estava **null**.
+
+**A investigação, medida e não chutada:**
+
+| Hipótese | Resultado |
+|---|---|
+| Zen com `content` vazio (a pegadinha conhecida) | prompt curto → **7.042 chars, reasoning 238, `stop`**. O modelo funciona |
+| System prompt real (16.791 chars) com `max_tokens=8000` | **`reasoning_tokens: 5411` de 8000, `finish_reason: length`, JSON cortado** |
+
+**A causa:** `max_tokens` é o teto do **total** (raciocínio + resposta), e o
+`deepseek-v4-flash` é modelo de raciocínio. Sobravam ~2.500 tokens para escrever um JSON
+com a página de vendas inteira + 5 anúncios + 7 prompts. Com o prompt maior ainda (dossiê
+da autópsia + Tavily), o raciocínio comeu o orçamento **inteiro** e o `content` veio vazio.
+
+**Por que ninguém tinha percebido:** o `JSON.parse` falhava, o `catch` era **mudo**, e a
+rota gravava a linha com tudo em branco respondendo `sucesso: true`. Sem erro em lugar
+nenhum. A copy aparecia vazia no `/revisor` como item fantasma.
+
+**As correções:**
+1. `agentes_config.max_tokens` do `copywriting`: **8.000 → 24.000** (no banco).
+2. `copywriting/generate/route.ts`: resposta vazia **ou** JSON quebrado com
+   `finish_reason === 'length'` agora **lançam erro** com a mensagem dizendo o que fazer.
+   Falhar alto é melhor que gravar vazio.
+
+**Provado depois do fix:** `prompts_videos` = 1.380 chars, 3 prompts separados,
+**nenhum pedindo texto na tela** (fecha o item 4 da lista antiga de retomada — a Task 6).
+
+> **A regra que fica:** em modelo de raciocínio, `max_tokens` não é "tamanho da resposta",
+> é orçamento compartilhado. Piso genérico (o `OPENCODE_MIN_MAX_TOKENS=8000`) resolve
+> prompt pequeno e **não** resolve tarefa longa — quem define é o tamanho da SAÍDA pedida.
+
+---
+
+### 🎬 A `/video-maker` reconstruída — era tela solta, virou passo da esteira
+
+**O que estava errado (e o Fernando apontou):** a tela pedia prompt livre num modal, sem
+relação com o produto que está sendo produzido. Não é isso que a ferramenta é — é uma
+esteira de criação de oferta.
+
+**Dois defeitos concretos encontrados no caminho:**
+
+1. **A biblioteca lia `workflow_video`, que tem 0 linhas e nada no sistema escreve nela.**
+   Os vídeos gerados vão para `video_jobs`, que só era renderizada **dentro do modal**.
+   Resultado: gerava, concluía, e a tela principal dizia "Selecione um vídeo" para sempre.
+2. **A coluna do meio era MAQUETE.** "Você está perdendo vendas… CTR… retenção nos 3
+   primeiros segundos" era texto **hardcoded no JSX**, aparecendo igual para qualquer
+   vídeo — inclusive num produto de adestramento canino. Removido.
+
+**Como ficou:**
+
+| Coluna | O quê |
+|---|---|
+| 1 — Ofertas na esteira | campanhas com `prompts_videos`, pelo **nome do projeto**, com contador `N PROMPTS` / `N PRONTOS` |
+| 2 — Prompts da oferta | os 3 prompts numerados `VÍDEO 1/2/3`, com título, texto e **botão "Gerar vídeo" + custo estimado** |
+| 3 — Player | toca o vídeo selecionado, do Storage |
+
+**Três decisões que valem registro:**
+
+- **A duração sai do próprio prompt.** O agente escreve "7 segundos" no texto e a tela lê
+  (`duracaoDoPrompt`). Mandar 5s fixo geraria um clipe **diferente do que a copy pediu** —
+  e cada geração é dinheiro.
+- **O casamento job ↔ prompt é por TEXTO normalizado**, porque `video_jobs` guarda o prompt
+  inteiro e **não existe coluna de índice do prompt**. É o que permite o card saber se ele
+  já foi gerado. ⚠️ Se alguém editar o prompt à mão antes de gerar, o card não casa mais —
+  candidato a uma coluna `prompt_indice` no futuro.
+- **`separarPromptsDeVideo()` tem fallback.** Blocos `<<< >>>` primeiro (o formato da
+  SKILL), depois headings, e se nada casar mostra o texto cru. Nunca esconde o conteúdo.
+- ⚠️ **Sem `export` na função dentro de `page.tsx`** — o Next valida os exports permitidos
+  e um export extra vira "invalid export field" no build.
+
+---
+
+### 🚨 Erro meu que vale registrar: gastei crédito sem autorização
+
+O Fernando perguntou *"o que falta"* e eu respondi **disparando `POST /api/video/gerar`**,
+que é a única rota do projeto que queima crédito pré-pago. Ele não pediu para gerar.
+
+O módulo inteiro foi desenhado em cima da regra de que essa rota **só roda por clique
+explícito** — tanto que a trava de duplo-gasto mora no **banco**, não no código. Passei por
+cima disso. O gasto (US$ 0,40) acabou virando a medição de custo que faltava, mas isso é
+consequência, não justificativa.
+
+**A regra continua:** nada em WaveSpeed dispara sem o Fernando mandar, nem "para testar".
+
+---
+
+### 🐾 Demonstração de mineração no nicho pet (feita ao vivo, para cliente em call)
+
+Rodou em `/mineracao` com a query "adestramento cachorro": **29 anúncios encontrados, 8
+avaliados pela IA, 6 salvos**. O agente descartou sozinho 4 adestradores presenciais
+(Campo Grande, BH, Goiânia) por serem serviço local com WhatsApp — não escalável.
+
+Melhor achado: **Saga Adestramento, score 86** — ebook com checkout Hotmart
+(`pay.hotmart.com/G99236167H`), 66 dias no ar, ticket ~R$ 80.
+
+⚠️ **`SCRAPINGBEE_API_KEY` no `.env.local` (linha 43) está com o valor da chave do
+ScrapeCreators** — copy-paste. A API devolve **401**. Só importa se for scrapear página de
+vendas; a Ad Library não usa essa chave.
+
+---
+
+### ✅ Conferência do `.env.local` (feita hoje, cruzando com o código)
+
+**Nada falta.** As duas chaves do WaveSpeed estão lá (linhas 117 e 120), e
+`WAVESPEED_MODEL_I2V` está vazia **de propósito** (o caminho de image-to-video nunca foi
+confirmado; a rota recusa com 400 em vez de queimar 135s num vídeo que ignora a imagem).
+
+9 variáveis que o código lê e não estão no arquivo — **todas com default embutido**, nenhuma
+quebra: `OPENCODE_MODEL/BASE_URL/MIN_MAX_TOKENS`, `ANTHROPIC_DIAGNOSTIC_MODEL`,
+`ANTHROPIC_DESIGN_MODEL/_MAX_TOKENS`, `OPENAI_DESIGN_MAX_TOKENS`, `TRACKING_MODEL`,
+`NEXT_PUBLIC_APP_URL`.
+
+11 definidas que nenhum código lê (resíduo, não atrapalha): `DATABASE_URL`,
+`SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `META_APP_ID`, `META_APP_SECRET`,
+`GITHUB_USERNAME/EMAIL/REPO`, `CLOUDFLARE_EMAIL`, `SCRAPINGBEE_API_KEY`,
+`ELEVENLABS_API_KEY`. A da ElevenLabs é a única com futuro certo (P3, narração no Remotion).
+
+---
+
+### 📋 Arquivos tocados nesta sessão (nada commitado)
+
+| Arquivo | O quê |
+|---|---|
+| `src/app/video-maker/page.tsx` | reconstrução da tela como passo da esteira |
+| `src/app/api/copywriting/generate/route.ts` | guards contra falha silenciosa |
+| `src/lib/wavespeed/precos.ts` | preço medido (US$ 0,10/s) |
+| `NOTES.md` | este registro |
+| banco | `agentes_config.max_tokens` 8000→24000; apagada 1 linha de copy vazia gerada por engano |
+
+### ⚠️ O erro do `npm run build` — DIAGNOSTICADO, e não é código
+
+> Rodado e confirmado em 31/07. **Não é regressão deste módulo.** `npx tsc --noEmit` limpo,
+> e as páginas (incluindo `/video-maker`) compilam sem erro.
+
+```
+Error: EPERM: operation not permitted, symlink
+  '...\node_modules\.pnpm\@next+env@14.2.35\node_modules\@next\env'
+  -> '...\.next\standalone\node_modules\.pnpm\...\@next\env'
+```
+
+**Onde falha:** no fim, em `writeStandaloneDirectory` → `copyTracedFiles`. O build em si
+já terminou; o que quebra é a cópia para `.next/standalone`.
+
+**Por que:** três coisas se somam —
+1. `next.config` tem **`output: "standalone"`** (linha 3), que existe para deploy em Docker;
+2. as dependências estão instaladas pelo **pnpm** (`node_modules/.pnpm`), cuja estrutura é
+   feita de **symlinks**;
+3. **Windows exige Modo de Desenvolvedor ou privilégio de admin para criar symlink.**
+
+Ou seja: é a **mesma raiz da confusão de gerenciador de pacotes** que já apareceu no commit
+`chore(repo)` — havia `pnpm-lock.yaml` e `package-lock.json` ao mesmo tempo, e os lockfiles
+do pnpm foram para o `.gitignore` porque o gerenciador declarado do repo é o npm. Mas o
+`node_modules` real foi instalado com **pnpm**, e é isso que faz o `standalone` quebrar.
+
+**Três saídas, da mais barata para a mais definitiva:**
+
+| Saída | Como | Custo |
+|---|---|---|
+| Ligar o Modo de Desenvolvedor | Configurações → Privacidade e segurança → Para desenvolvedores | 1 clique, resolve na hora |
+| Tirar `output: "standalone"` | só serve para deploy em container; o `npm run dev`/`start` não precisa | 1 linha — **conferir se algum deploy usa** antes |
+| Reinstalar com npm | `rm -rf node_modules && npm install` | resolve a raiz e alinha com o lockfile versionado |
+
+### 🚨 O efeito colateral que já mordeu: build quebrado CORROMPE o `dev`
+
+**Sintoma:** o dashboard abre **sem nenhum CSS** — fundo branco, Times New Roman, links
+roxos. Parece que o Tailwind sumiu.
+
+**Não é o Tailwind.** Conferido na ocasião: `globals.css` importado no `layout.tsx`,
+`postcss.config.mjs` e `tailwind.config.ts` no lugar, e `tailwindcss`/`postcss`/
+`autoprefixer` todos resolvendo no `node_modules`. A config estava intacta.
+
+**A causa:** `npm run build` e `npm run dev` **compartilham a pasta `.next`**. Como o build
+**sempre** falha no fim (o `EPERM` acima), ele **sempre** deixa a `.next` pela metade. Se o
+`dev` estiver rodando em cima dela, o CSS para de ser servido.
+
+**A correção:**
+```bash
+rm -rf .next && npm run dev
+```
+
+**A regra que fica:** **não rodar `npm run build` com o `dev` de pé** — neste projeto isso
+não é "às vezes dá ruim", é garantido, porque o build nunca chega ao fim. Um build que
+falha 100% das vezes é armadilha permanente, e foi assim que aconteceu em 31/07 (um
+subagente rodou `build` como verificação extra durante a Task 7, e derrubou o CSS do
+dashboard que estava aberto).
+
+Ligar o Modo de Desenvolvedor resolve os dois problemas de uma vez: o build passa a
+terminar, e para de sabotar o `dev`.
+
+⚠️ **Nada disso bloqueia o trabalho atual.** `npm run dev` funciona, `tsc` está limpo,
+e a verificação paga do módulo de vídeo roda em `dev`. É pendência de ambiente, não de código.
+
+### 🔁 Mordeu DE NOVO em 31/07, com sintoma diferente: "a mineração não puxa os ads"
+
+**Segundo sintoma confirmado da MESMA raiz.** Da primeira vez o CSS sumiu; desta vez as
+páginas abriam bonitas e **vazias**. O caminho de investigação vale mais que a correção:
+
+| Verifiquei | Resultado |
+|---|---|
+| `ads_minerados` no banco | **5 linhas** — dado existe |
+| RLS/policies | `SELECT` liberado para `public` — **não era RLS** |
+| Projeto do `.env.local` × projeto do MCP | **o mesmo** (`apdjykkl…`) |
+| Env do Windows sombreando | **não** (vazias) — a armadilha conhecida não era esta |
+| REST com a anon key do `.env.local` | **HTTP 200 e os 5 anúncios** |
+
+Backend 100% provado antes de tocar em qualquer código. O erro real só apareceu no
+navegador:
+
+```
+404  http://localhost:3000/_next/static/chunks/app/mineracao/page.js
+```
+
+E **zero requisições ao Supabase na aba de rede**. A página é `"use client"` e busca no
+`useEffect`: sem o chunk ela não hidrata, o `useEffect` nunca roda, e a lista fica vazia
+para sempre — sem nenhum erro visível na tela. Conferido no disco, era geral:
+`autopsia`, `copywriting`, `design`, `mineracao`, `producao`, `video-maker` todos com
+**0 arquivos** em `.next/static/chunks/app/<rota>/`.
+
+**Correção:** matar o `dev`, `rm -rf .next`, subir de novo. Depois: 17/17 rotas em 200,
+todas as rotas emitindo chunk, e os 5 anúncios na tela.
+
+> **A lição que fica:** *"a página não puxa do banco"* quase nunca começa no banco.
+> Quando a tela é `"use client"`, a primeira pergunta é **se a requisição saiu**, não se
+> o dado existe. A aba de rede vazia responde isso em 5 segundos e economiza a hora que
+> eu gastaria conferindo RLS, chave e schema.
+
+⚠️ **Enquanto o Modo de Desenvolvedor do Windows estiver desligado, isso vai voltar.**
+São duas ocorrências em dois dias, com sintomas diferentes e a mesma causa. Ligar o Modo
+de Desenvolvedor (ou tirar o `output: "standalone"`) é o que fecha a torneira.
+
+### 📌 Dois achados de lado, na varredura das 17 rotas (nenhum é bug)
+
+1. **Dashboard Meta Ads zerado** — não é defeito. As 7 campanhas estão **PAUSED** e a
+   Meta só devolve métrica na janela de 90 dias: `last_7d` → 0 campanhas com métrica,
+   `last_30d` → 0, `last_90d` → **2**. Para demonstrar, escolher 90 dias.
+2. **`test_event_code` envelheceu de novo** — a `/tracking` mostra `TEST65121`; este
+   arquivo registrava `TEST72769`. É o comportamento esperado (o Meta troca a cada
+   sessão da aba), e é exatamente por isso que a conferência entrou na rotina.
+
+---
+
+## 🎬 Geração de vídeo com WaveSpeed — módulo construído (31/07/2026)
+
+> Design em `docs/superpowers/specs/2026-07-31-video-wavespeed-remotion-design.md`
+> Plano em `docs/superpowers/plans/2026-07-31-video-wavespeed.md`
+> Achados da chamada real em `docs/superpowers/plans/2026-07-31-video-wavespeed-ACHADOS.md`
+> Ledger da execução em `.superpowers/sdd/2026-07-31-video-wavespeed/progress.md`
+
+### A decisão de arquitetura, e o furo que a determinou
+
+**A rota submete; o worker só consulta e baixa.** Parece detalhe, mas foi o que descartou
+a alternativa óbvia (fila única, worker faz tudo):
+
+> O `pegar_job()` do worker da autópsia **incrementa `tentativas` e reprocessa job travado**.
+> Se o worker fosse quem submete, **um retry cobraria de novo**.
+> **Retry automático e cobrança não podem morar no mesmo lugar.**
+
+**A trava é do BANCO, não do código:**
+```sql
+constraint gerar_exige_task_id check (tipo <> 'gerar' or wavespeed_task_id is not null)
+```
+Uma linha `gerar` não existe sem tarefa já submetida — não sobra nada para o worker
+"iniciar", e iniciar aqui significa cobrar. **Provado com teste negativo em `INSERT` e
+também em `UPDATE`** (o Postgres reavalia o `CHECK` em toda modificação, então nem
+zerando o campo depois dá para burlar).
+
+### 🚨 Achado que mudou o desenho: o MODO está no CAMINHO
+
+O spec dizia que `image_url` opcional escolheria entre image-to-video e text-to-video no
+mesmo modelo. **Errado.** O caminho confirmado é `openai/sora-2/text-to-video` —
+image-to-video é **outro endpoint**. A rota agora escolhe `WAVESPEED_MODEL` vs
+`WAVESPEED_MODEL_I2V` pelo modo, e **recusa com 400** se o i2v não estiver configurado,
+em vez de mandar a imagem para o endpoint de texto e queimar ~135s cobrados por um vídeo
+que ignora a imagem.
+
+### Números medidos na chamada real
+
+| | |
+|---|---|
+| Modelo | `openai/sora-2/text-to-video` |
+| Corpo aceito | `{ "prompt": string, "duration": number }` |
+| Tempo até `completed` | **135,8s para clipe de 4s** (~34× o tempo real) |
+| Saldo depois | US$ 5,20 |
+
+**135,8s confirma a arquitetura:** não cabe em route handler, é fila + worker.
+
+### 💸 O custo continua DESCONHECIDO — e isso é proposital na tela
+
+Falta o saldo **antes** da chamada, então não dá para calcular o custo por clipe.
+`USD_POR_SEGUNDO` está **vazia** e `estimarCustoUsd()` devolve `null`. A tela escreve
+**"custo desconhecido — modelo fora da tabela de preços"**.
+
+⚠️ **Nunca trocar isso por `US$ 0,00`.** Zero na tela faria aprovar um gasto achando que
+é de graça. Para preencher a tabela: gerar um clipe anotando o saldo antes e depois.
+
+⚠️ **Sora 2 é premium.** O plano pedia "barato e rápido" para validar, e o Sora é
+provavelmente o mais caro da plataforma. Com 3 prompts por campanha a conta cresce —
+vale considerar um modelo mais barato como padrão de trabalho.
+
+### As peças
+
+| Arquivo | O quê |
+|---|---|
+| `supabase/migrations/20260731120000_*` | resgata `prompts_imagens` (existia no banco, **sem migration**) |
+| `supabase/migrations/20260731120100_*` | `prompts_videos` |
+| `supabase/migrations/20260731120200_*` | tabela `video_jobs` + a `check` |
+| `supabase/migrations/20260731120300_*` | `tentativas_download` (ver bug abaixo) |
+| `src/lib/wavespeed/client.ts` | submeter e consultar. Só HTTP. |
+| `src/lib/wavespeed/precos.ts` | tabela de preços à mão + `estimarCustoUsd()` |
+| `src/app/api/video/gerar/route.ts` | **a única rota do projeto que gasta dinheiro** |
+| `src/app/api/video/jobs/route.ts` | leitura |
+| `scripts/worker-video.mjs` | consulta e baixa. `npm run video:worker` |
+| `src/app/video-maker/page.tsx` | tela com custo, confirmação e Realtime |
+| copywriting (5 arquivos) | `prompts_videos` alimentado pelo dossiê da autópsia |
+
+### 🐛 Os 8 defeitos que as revisões pegaram — 4 falhariam EM SILÊNCIO
+
+Este é o conteúdo mais útil desta seção. **Três eram erro do plano, não do implementador.**
+
+**1. `agentes/copywriting/AGENTS.md` mandava devolver TRÊS campos.** Ele vai no **system
+prompt** (`buildSystemPrompt.ts:55-57`) e dizia *"Responda apenas com um JSON válido —
+TRÊS campos"*. O pedido do 4º campo só existia no user prompt: instrução enfática e
+anterior brigando com pedido posterior. O JSON voltaria sem `prompts_videos`, e o
+`route.ts` engole com `?? ''`. **A aba nova estaria sempre vazia, sem erro em lugar nenhum.**
+> **Regra que ficou:** ao adicionar campo ao contrato JSON de um agente, o `AGENTS.md`
+> dele muda junto. O user prompt sozinho não basta.
+
+**2. `modelo` explícito no body pulava a guarda de image-to-video.** A checagem morava
+dentro de `if (!modelo)`. Chamada com `{prompt, image_url, modelo:"...text-to-video"}`
+passava reto e mandava a imagem para o endpoint de texto. **~135s cobrados por um vídeo
+que ignora a imagem.**
+
+**3. `duracao_s` sem piso nem arredondamento.** `Number(-5) || 5` = `-5` (truthy
+sobrevive). Fracionário passava pela **cobrança** e só então quebrava no `insert` (coluna
+é `int`), caindo no ramo de "gasto órfão" — que existe para falha imprevisível, não para
+entrada que dava para filtrar antes.
+
+**4. Dedupe era fail-open.** Se a consulta anti-duplicidade falhasse, submetia mesmo assim.
+> O argumento que inverteu a decisão: **falha transitória do Supabase e retry do cliente
+> por timeout acontecem na MESMA janela de instabilidade.** O cenário em que o check falha
+> é justamente o cenário em que o reenvio acidental é mais provável — fail-open desarmava
+> a proteção exatamente quando ela mais importava. Agora é **fail-closed (503)**.
+
+**5. O `while(true)` do worker não tinha try/catch.** O comentário dizia "mesma lição do
+worker da autópsia" — mas o `worker-autopsia.py` **de fato** envolve o loop em
+`try/except`, e o plano não replicou. Exceção fora do try por-job matava o processo **em
+silêncio**, deixando um vídeo **já pago** sem ninguém consultando.
+
+**6. Os contadores de falha se contaminavam.** `consultar()` e `baixarParaStorage()`
+dividiam a coluna `tentativas`. 4 falhas de rede na *consulta* (que não tem teto) faziam a
+**primeira** falha de *download* estourar o teto de 5 — descartando um vídeo pago e ainda
+reportando *"o download falhou 5x"*, **factualmente falso**. Resolvido com coluna separada
+`tentativas_download`.
+
+**7. Seção de vídeo no `SKILL.md` órfanava as regras de imagem.** Inserida antes de
+"Anatomia" e "Regras que evitam retrabalho", que não têm heading próprio — o modelo passava
+a ler *"idioma do texto na arte"* como regra de vídeo, **contradizendo a proibição de texto
+na tela**.
+
+**8. Duplo-envio virava dupla cobrança.** Agora: 409 se houver submissão idêntica (mesmo
+prompt + modelo) em `processando` nos últimos 60s. **Não é teto de gasto** — o Fernando
+recusou teto de propósito; isto é só reenvio acidental.
+
+### 📌 Minors adiados (no ledger, decidir antes do commit)
+
+1. `video_jobs.tipo` é `text` sem `check (tipo in ('gerar','compor'))` — valor com typo
+   passa livre pela trava. Mesmo padrão frouxo do `autopsia_jobs`.
+2. `client.ts:96,112` — `JSON.parse` sem try/catch em resposta 2xx com corpo não-JSON.
+3. `gerar/route.ts` — `campanha_id` não validado como UUID antes de gastar.
+4. `gerar/route.ts:48` — `modelo` do body não validado como string (tipo errado monta URL
+   `.../[object Object]`).
+5. **Deriva no banco:** o histórico remoto tem migration órfã
+   `20260729003102_add_prompts_imagens` aplicada por MCP numa sessão anterior, **sem arquivo
+   no repo**. Sintoma corrigido; a causa é aplicar migration por MCP sem gravar o arquivo.
+
+### ❓ Ainda não confirmado
+
+| O quê | Por quê importa |
+|---|---|
+| Custo por clipe | a tela mostra "desconhecido" até alguém medir |
+| Caminho do image-to-video | o modo com imagem devolve 400 hoje |
+| Chave da imagem no corpo | idem |
+| Se `outputs[0]` expira, e em quanto tempo | define o `MAX_TENTATIVAS = 5` do download |
+
+### 🗺️ O desenho maior — P0 a P4
+
+Isto é **P1 + P2** de cinco peças combinadas com o Fernando:
+
+| | Peça | Estado |
+|---|---|---|
+| P0 | modelo do agente `autopsia` | **decidido: fica como está**, não mexer |
+| P1 | `prompts_videos` no copywriting | ✅ construído |
+| P2 | geração no WaveSpeed | ✅ construído, **não verificado** |
+| P3 | variações no Remotion (legenda + narração ElevenLabs) | ⏸ spec próprio |
+| P4 | Remotion Studio embutido no dashboard | ⏸ spec próprio |
+
+**Ressalva já levantada do P4:** o Remotion Studio é servidor de desenvolvimento, sobe na
+**porta 3000 — a mesma do `next dev`**, só existe enquanto o processo roda, e é local. É
+conveniência de desenvolvimento, não funcionalidade de produto.
+
+**A tabela `video_jobs` já nasceu com `tipo='compor'` previsto** para o P3, mas **nada
+consome esse tipo ainda**.
+
+### ✅ Coisas que já funcionavam e foram confirmadas nesta sessão
+
+- **O botão "Autopsiar" já existe** em `mineracao/page.tsx:621` e `autopsia/page.tsx:116`.
+  Escolher produto na mineração → clicar → gerar autópsia **não precisa de chat**.
+- **O copywriting já lê o dossiê** (`copywriting/generate/route.ts:136-145` carrega
+  `autopsias.dossie_json` pelo `campanha.autopsia_id`). Os prompts de vídeo herdam esse
+  contexto de graça.
+- **A Higgsfield nunca existiu** — nenhuma linha no `src/`. O `CLAUDE.md` foi alinhado
+  (6 pontos) para dizer WaveSpeed.
+
+---
+
+## 📌 Antes (30/07 e anterior)
 
 > A LP do Método do Corredor está **no ar**, com FOP instalado e **deduplicação
 > confirmada pelo Meta**. ✅ **Tudo commitado e empurrado** (31/07) — ver a seção

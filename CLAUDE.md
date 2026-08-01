@@ -160,7 +160,7 @@ O nome "Synapse" reflete a arquitetura real: os 8 agentes funcionam como neurôn
 | 04 | Copywriting | Copy de anúncios e páginas de vendas | `workflow_copywriting` |
 | 05 | Revisor | QA das copies geradas — aprova ou pede revisão | `workflow_copywriting` (revisor_ok) |
 | 06 | Designer-Webmaster | Criação e deploy de landing pages | `workflow_design` |
-| 07 | Video-Maker | Criação de vídeos criativos via Higgsfield API | `workflow_video` |
+| 07 | Video-Maker | Criação de vídeos criativos via WaveSpeed AI + Remotion | `workflow_video`, `video_jobs` |
 | 08 | Gestor-Meta-Ads | Gestão e otimização de campanhas de tráfego pago | `campanhas_meta_ads` (ver Meta Ads abaixo) |
 
 **Pipeline de produção:**
@@ -200,7 +200,8 @@ SCRAPE_CREATORS_API_KEY=
 CLOUDFLARE_API_TOKEN=
 CLOUDFLARE_ACCOUNT_ID=
 GITHUB_TOKEN=
-HIGGSFIELD_API_KEY=
+WAVESPEED_API_KEY=
+WAVESPEED_MODEL=
 TELEGRAM_BOT_TOKEN=
 ```
 **NUNCA hardcode chaves no código.** Sempre via `process.env`. Nunca commitar `.env.local`.
@@ -385,7 +386,7 @@ animate-pulse           → indicadores de status ao vivo
 | `/copywriting` | ⚠️ UI pronta, motor ausente | Lê `workflow_copywriting`, parseia gancho/mecanismo/CTA, exibe fila | **Não existe geração via IA.** Falta botão "Gerar Copy com IA" chamando `/api/copywriting/generate` |
 | `/revisor` | ⚠️ UI pronta, lógica parcial | Lê itens com `revisor_ok = true` e `data_aprovacao = null`, editor TipTap funcional | Falta: fluxo de aprovação real (update no Supabase), acionar agente Revisor IA, botão "pedir revisão" que regenera copy |
 | `/design` | ⚠️ UI pronta, deploy ausente | Lê `workflow_design`, preview, botão "Aprovar para Tráfego" (Rocket) | **Não existe deploy real.** Botão não chama nenhuma API de deploy. Falta geração de HTML via agente Designer + deploy Cloudflare/GitHub |
-| `/video-maker` | ⚠️ UI pronta, API ausente | Lê `workflow_video`, fila com tabs roteiro/etc | Falta integração real com Higgsfield API |
+| `/video-maker` | ⚠️ Casca — só UI | Lê `workflow_video` com Realtime. **346 linhas e nenhum caminho de geração**: não existe rota de API de vídeo | Tudo. Ver o spec de 31/07 (WaveSpeed + Remotion) |
 | `/meta-ads/dashboard` | ✅ Completo | Dashboard com Anthropic audit (`ClaudeAdsHealth.tsx`) | — |
 | `/meta-ads/campanhas` | ✅ Completo | Lista campanhas Meta | — |
 | `/meta-ads/simulador` | ✅ Completo | Simulador ROAS/CPA | — |
@@ -505,10 +506,33 @@ esperando resolver o bug da Cloudflare.
 - Mineração via ScrapeCreators (Facebook Ad Library): `SCRAPE_CREATORS_API_KEY`
 - Endpoint de sync já existe: `src/app/api/meta/sync/route.ts`
 
-### Higgsfield API (Video-Maker)
-- Chave: `HIGGSFIELD_API_KEY`
-- Endpoint: `https://api.higgsfield.ai/v1/generation`
-- Salvar resultado em `workflow_video.url_video_download`
+### WaveSpeed AI (Video-Maker) — substitui a Higgsfield
+> ⚠️ **A Higgsfield foi abandonada (31/07/2026) e NUNCA foi integrada.** Não existe
+> uma linha dela no `src/`. Se este documento ou o `.env.local` ainda mencionarem
+> `HIGGSFIELD_API_KEY` em algum canto, é resíduo — ignore.
+
+- Chave: `WAVESPEED_API_KEY` · modelo padrão em `WAVESPEED_MODEL` (`owner/nome/versao`)
+- Base: `https://api.wavespeed.ai/api/v3` · auth `Authorization: Bearer <key>`
+- Submeter: `POST /{owner}/{modelo}/{versao}` → devolve `data.id`
+- Consultar: `GET /predictions/{id}/result` → `status` + `outputs[]`
+- Status: `created` · `processing` · `completed` · `failed` · `cancelled` · `timeout`
+
+**💸 É PAGO E NÃO TEM CAMADA GRATUITA.** Crédito pré-pago, não reembolsável, e a
+chave só funciona depois de um top-up. É a primeira coisa do projeto que queima
+dinheiro a cada clique — nada aqui pode disparar sozinho, em loop ou como fallback.
+
+**A divisão com o Remotion (não confundir):** a WaveSpeed gera o **clipe cru**; o
+Remotion faz as **variações** em cima dele (legenda queimada, narração, formatos).
+O caro e remoto se faz uma vez; o barato e local se repete. Variação nunca é
+trabalho da WaveSpeed.
+
+**A trava contra duplo-gasto é do BANCO, não do código:** a tabela `video_jobs` tem
+`check (tipo <> 'gerar' or wavespeed_task_id is not null)`. Uma linha de geração
+não existe sem tarefa já submetida, então não sobra nada para um worker "iniciar" —
+e iniciar, aqui, significaria cobrar de novo. Motivo: o `pegar_job()` da autópsia
+reprocessa job travado, e retry automático não pode conviver com cobrança.
+
+Design completo em `docs/superpowers/specs/2026-07-31-video-wavespeed-remotion-design.md`.
 
 ### Telegram Bot (Notificações CTO)
 - Bot: HermesClipBot
@@ -548,7 +572,9 @@ esperando resolver o bug da Cloudflare.
 - Visualização somente-leitura do conteúdo sincronizado (agents_md, soul_md, etc.) — edição de conteúdo deve ser feita no GitHub, não aqui
 
 ### PRIORIDADE 5 — Video-Maker e Gestor-Meta-Ads
-- Integração real Higgsfield em `/video-maker`
+- Geração de vídeo em `/video-maker` via **WaveSpeed + Remotion** (não Higgsfield —
+  ver a seção de integrações). Design em
+  `docs/superpowers/specs/2026-07-31-video-wavespeed-remotion-design.md`
 - Lógica de sugestão de estrutura de campanha no Gestor-Meta-Ads (pode reaproveitar `ClaudeAdsHealth.tsx` como referência de padrão)
 
 ---
@@ -557,7 +583,7 @@ esperando resolver o bug da Cloudflare.
 
 1. **NUNCA** commitar `.env.local` ou qualquer chave de API
 2. **NUNCA** expor `ANTHROPIC_API_KEY` ou qualquer chave no client — sempre via Route Handler (`/api/`)
-3. Toda chamada externa (Anthropic, Cloudflare, GitHub, Higgsfield, Meta) deve ter `try/catch` com erro tratado e logado
+3. Toda chamada externa (Anthropic, Cloudflare, GitHub, WaveSpeed, Meta) deve ter `try/catch` com erro tratado e logado
 4. Supabase queries sempre com verificação de `error` antes de usar `data` (padrão já seguido no projeto)
 5. Sanitizar inputs do usuário antes de enviar à IA (evitar prompt injection vindo de copy de concorrentes minerada)
 
