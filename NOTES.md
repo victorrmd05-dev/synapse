@@ -1,7 +1,14 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-08-01 (madrugada) — 🎬 **Módulo de vídeo VALIDADO ponta a ponta
+> Última atualização: 2026-08-01 (noite) — 🎬 **Bancada de anúncio com Remotion: 4 de 8
+> tarefas fechadas**, todas revisadas e aprovadas. Contrato da ElevenLabs **medido** (usar
+> `alignment`, não `normalized_alignment`), voz **decidida de ouvido** (Sarah — não existe
+> voz pt-BR no plano gratuito, dá 402), campo `roteiros_video` no contrato do Copywriting
+> (exigiu `max_tokens=32000`), travas do `compor` provadas no banco, e a composição
+> `AnuncioUGC` compartilhada entre Player e render. **14 commits LOCAIS, nada empurrado.**
+> Faltam as Tasks 5 a 8 — metade, e é a da integração. Detalhes em "ONDE PARAMOS".
+> Antes (2026-08-01, madrugada) — 🎬 **Módulo de vídeo VALIDADO ponta a ponta
 > pela 1ª vez** (job → worker → Storage → player tocando) e **`/video-maker` reconstruída
 > como passo da esteira**: escolhe a oferta, os 3 prompts do Copywriting abrem ao lado com
 > botão "Gerar vídeo" e custo estampado. No caminho, **um bug silencioso real**: a copy
@@ -37,7 +44,95 @@
 
 ---
 
-## 🔴 ONDE PARAMOS — retomar por aqui (01/08/2026, madrugada)
+## 🔴 ONDE PARAMOS — retomar por aqui (01/08/2026, noite)
+
+> 🎬 **Bancada de anúncio com Remotion: 4 das 8 tarefas fechadas, todas revisadas e aprovadas.**
+> As quatro que faltam (5, 6, 7, 8) são as que costuram tudo. **Não falta pouco — falta metade**,
+> e é a metade da integração. Mas os desconhecidos acabaram: o contrato da ElevenLabs foi medido,
+> a voz está escolhida e aprovada de ouvido, e as travas do banco foram provadas.
+>
+> ⚠️ **14 commits LOCAIS, nada empurrado.** `origin/main` segue em `3b881e6`.
+
+### Como retomar em uma linha
+
+1. **Plano:** `docs/superpowers/plans/2026-08-01-remotion-bancada-anuncio.md` — 8 tarefas, código completo em cada passo.
+2. **Spec:** `docs/superpowers/specs/2026-08-01-remotion-bancada-anuncio-design.md`
+3. **O que já foi feito, tarefa por tarefa:** `.superpowers/sdd/2026-08-01-remotion-bancada-anuncio/progress.md` (git-ignored). **Este arquivo é o mapa de recuperação** — ele diz qual tarefa fechou, com qual commit, e o que ficou adiado.
+4. **Próximo passo:** Task 5 (rota de narração). Nada a bloqueia.
+
+### O que ficou pronto
+
+| Tarefa | Estado | Commit |
+|---|---|---|
+| 1 — medir a ElevenLabs | ✅ revisão limpa (1 rodada de correção) | `de466a8`, `82c1dc5` |
+| 2 — campo `roteiros_video` | ✅ revisão aprovada | `e104175` |
+| 3 — travas do `compor` | ✅ revisão aprovada | `1b754e5` |
+| 4 — composição `AnuncioUGC` | ✅ revisão aprovada, 1 correção em voo | `0d4c87c` |
+| 5 a 8 | ⬜ não começadas | — |
+
+### 📏 Fatos MEDIDOS nesta sessão (não repetir a medição)
+
+**ElevenLabs** — detalhes em `docs/superpowers/plans/2026-08-01-remotion-bancada-ACHADOS.md`:
+
+- `POST /v1/text-to-speech/{voice_id}/with-timestamps` → `{ audio_base64, alignment, normalized_alignment }`.
+- 🚨 **Usar `alignment`, NÃO `normalized_alignment`.** O normalizado vem com um espaço a mais no início **e** no fim (23 chars contra 21 no texto enviado); esses dois caracteres entrariam na primeira e na última legenda. O plano supunha o contrário — foi corrigido depois de medir.
+- **A geração NÃO é determinística** (~8% de variação de tamanho entre chamadas idênticas). Isso reforça o cache: sem ele, "Renderizar" produziria uma narração diferente da que foi aprovada no Player.
+- 💸 **Não existe voz pt-BR utilizável no plano gratuito.** A única feminina brasileira da conta (Keren, `33B4UnXyTNbgLmdEDh5P`) é `category: professional` e devolve **HTTP 402** — *"Free users cannot use library voices via the API"*. Confirmado duas vezes, inclusive com o ID posto à mão no `.env.local`. É o **plano** que recusa, não a chave.
+- ✅ **Voz decidida: Sarah, `EXAVITQu4vr4xnSDxMaL`** — o Fernando ouviu duas amostras lendo um roteiro real e escolheu ("sarah ficou legal pode deixar ela"). É voz **inglesa** falando português via `eleven_multilingual_v2`.
+- ⚠️ **Em aberto:** a restrição de uso comercial e a exigência de atribuição do plano gratuito. Não trava nada agora; **conferir antes de o áudio subir num anúncio pago no Meta**. O Starter (~US$5) resolveria isso e liberaria a Keren de quebra.
+- ⚠️ A chave anterior foi **revogada** — um subagente imprimiu o valor dela no terminal durante a investigação. A chave atual é nova e tem os escopos certos.
+
+**Agente de Copywriting:**
+
+- 🚨 **`max_tokens=16000` NÃO basta** com os 5 campos — o JSON sai cortado no meio. Com **32000** a geração passa inteira (medido: página 4618 · anúncio 1063 · imagens 2557 · vídeos 1320 · roteiros 491 caracteres).
+- 🚨 **O `max_tokens` mora em `agentes/copywriting/_agente.json`, NUNCA em SQL.** O sync grava o valor do arquivo por cima do banco (`syncAgents.ts:115`). Um `update agentes_config set max_tokens` é revertido no próximo sync, em silêncio.
+- 🚨 **Editar `AGENTS.md`/`SKILL.md` não faz NADA até rodar o sync.** A rota lê o markdown da tabela `agentes_config`, não do disco. Sem sincronizar, a geração sai sem o campo novo — e o sintoma é **idêntico** ao de `max_tokens` baixo. Foi o defeito de plano mais caro que apareceu; checar o sync **antes** de mexer no `max_tokens`.
+
+**Dependências:**
+
+- O `@remotion/zod-types@4.0.409` declara peer `zod: "3.22.3"` **exato**, não range. O `@anthropic-ai/sdk` e o `openai` pedem `zod ^3.25 || ^4.0`. **Nenhuma versão satisfaz os dois** — o `--legacy-peer-deps` na raiz é inevitável, não gambiarra. Conferido: os dois SDKs carregam e o cliente do Zen instancia normal, porque o projeto não usa os helpers de zod deles.
+
+### ⚠️ O `npm run build` — a armadilha mudou de estado, e ninguém sabe por quê
+
+O defeito documentado na seção "O erro do `npm run build`" (mais abaixo) **não disparou** na Task 4: o build passou inteiro, sem `EPERM`.
+
+**A explicação que o subagente deu estava errada** — ele disse que o `node_modules` deixou de ser árvore pnpm, mas `node_modules/.pnpm` continua existindo. O que é verdade, e foi medido: **não há nenhum symlink no primeiro nível do `node_modules`** (`find node_modules -maxdepth 1 -type l` → zero).
+
+**Ou seja: o build funcionar hoje é um fato observado sem causa diagnosticada.** Não construir nada em cima disso. O portão padrão do plano continua sendo `npx tsc --noEmit`, e a regra de não rodar `build` com o `dev` de pé continua valendo.
+
+### 🔧 Quatro defeitos do plano achados ANTES de custarem depuração
+
+Vale registrar porque o padrão se repete: o plano estava errado, e a verificação pegou.
+
+1. **Faltava o passo de sincronizar o agente** (Task 2). Sem ele, a geração sairia sem `roteiros_video` com sintoma idêntico ao de outro bug.
+2. **`max_tokens` ia por SQL** — o sync teria revertido em silêncio.
+3. **`npm run build` aparecia em 5 tarefas**, uma delas logo depois de abrir a tela no `dev`. Como o build morre no fim, ele deixa a `.next` pela metade e derruba o CSS — o efeito que já mordeu em 31/07.
+4. **O plano preferia `normalized_alignment`**, com um comentário confiante explicando por quê. A medição mostrou o contrário.
+
+### 🧱 O que a Task 3 travou no banco (e por que importa)
+
+`video_jobs` ganhou `job_fonte_id`, `url_narracao`, `params_json`, `duracao_render_s` e duas constraints **provadas com insert real**:
+
+- `compor_exige_narracao` — **não existe job de composição sem narração já paga**. É isso que torna o retry do worker seguro: renderizar é grátis, mas regerar narração gastaria cota. Mesma lição da WaveSpeed: *retry automático e cobrança não podem morar no mesmo lugar.*
+- `video_jobs_tipo_valido` — fecha o buraco em que `tipo='compour'` com typo escapava da trava de custo.
+
+### 📌 O que falta (Tasks 5 a 8)
+
+- **5 — rota de narração:** `src/lib/elevenlabs/{client,legendas}.ts` + `POST /api/video/narracao`. Cache por hash de texto+voz+modelo no Storage. **Gasta cota.**
+- **6 — a bancada:** `src/app/video-maker/Bancada.tsx` (Player via `next/dynamic` com `ssr:false`) + `POST /api/video/compor`. **Aqui se repete o `grep` sobre a `.next`** — só agora ele prova algo, porque é quando o `@remotion/player` entra na árvore de imports do Next.
+- **7 — worker:** `remotion/worker.mjs` + script `video:compor`. Primeiro render baixa um Chrome headless (~150-300 MB).
+- **8 — ponta a ponta** + atualizar este arquivo e o segundo cérebro.
+
+### 🧹 Pendências pequenas anotadas
+
+- `amostra-voz-sarah.mp3` e `amostra-voz-alice.mp3` na raiz — descartáveis, já no `.gitignore`. Pode apagar.
+- Uma correção da Task 4 estava em voo quando a sessão acabou: **tirar o `^` de 5 entradas** de versão (`@remotion/bundler`, `@remotion/renderer`, `@remotion/player`, `remotion`, `zod`). Hoje os lockfiles resolvem tudo em `4.0.409`, mas um `npm install` num projeto e não no outro pode divergir Player e renderer. Conferir no ledger se fechou.
+- O `ACHADOS.md` usa o termo "o Controlador" sem definir — jargão do processo, trocar por linguagem neutra.
+- `NOTA-REMOTION-BANCADA.md` na raiz virou a spec e o plano; a Task 8 apaga.
+
+---
+
+## 📌 Antes — 01/08/2026, madrugada
 
 > ✅ **O módulo de vídeo está PROVADO ponta a ponta.** A esteira inteira rodou:
 > minerou → autopsiou → copy com `prompts_videos` → geração na WaveSpeed → worker baixou →
