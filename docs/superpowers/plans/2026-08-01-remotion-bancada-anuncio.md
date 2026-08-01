@@ -1049,7 +1049,12 @@ Mensagem sugerida: `feat(video): composicao AnuncioUGC compartilhada entre Playe
 
 - [ ] **Step 1: Reler o ACHADOS.md da Task 1**
 
-Abrir `docs/superpowers/plans/2026-08-01-remotion-bancada-ACHADOS.md` e conferir o nome real dos campos. O código abaixo usa `audio_base64`, `alignment` / `normalized_alignment`, `characters`, `character_start_times_seconds`, `character_end_times_seconds`. **Se o ACHADOS disser outra coisa, o ACHADOS ganha** — ajuste em `client.ts` e só ali.
+Abrir `docs/superpowers/plans/2026-08-01-remotion-bancada-ACHADOS.md` e conferir o nome real dos campos. O código abaixo usa `audio_base64`, `alignment`, `characters`, `character_start_times_seconds`, `character_end_times_seconds`. **Se o ACHADOS disser outra coisa, o ACHADOS ganha** — ajuste em `client.ts` e só ali.
+
+⚠️ **Duas coisas já medidas que contrariam o palpite original deste plano:**
+
+1. **Use `alignment`, não `normalized_alignment`.** O normalizado vem com um espaço a mais no início e no fim (23 chars contra 21 no teste real), e esses dois caracteres entrariam na primeira e na última legenda.
+2. **A geração não é determinística** — duas chamadas com o mesmo texto e a mesma voz produzem áudios diferentes (~8% de variação de tamanho). Isso **não quebra o cache** do §4.4, ao contrário: reforça por que ele existe. O cache guarda o primeiro resultado e o reaproveita, então o que você ouviu na bancada é exatamente o que vai para o MP4. Sem cache, "renderizar" produziria uma narração diferente da que você aprovou.
 
 - [ ] **Step 2: Escrever o agrupador de legendas**
 
@@ -1196,10 +1201,16 @@ export async function narrarComTimestamps(texto: string): Promise<NarracaoBruta>
 
   const json = JSON.parse(bruto);
 
-  // `normalized_alignment` e o alinhamento do texto ja normalizado pelo TTS
-  // (numeros virando palavras, abreviacao expandida) — e o que casa com o que
-  // a voz REALMENTE diz. Cai no `alignment` se ele nao vier.
-  const alinhamento = json.normalized_alignment ?? json.alignment;
+  // 🚨 `alignment`, NAO `normalized_alignment` — e o contrario do que este
+  // plano supunha antes de medir.
+  //
+  // MEDIDO em 01/08/2026 com o texto "Você treina há meses." (21 chars):
+  //   alignment            -> 21 chars, identico ao enviado
+  //   normalized_alignment -> 23 chars, com um espaco no inicio E no fim
+  //
+  // Os dois caracteres de padding do `normalized` entrariam na primeira e na
+  // ultima legenda, deslocando o agrupamento. Ver o ACHADOS.md desta rodada.
+  const alinhamento = json.alignment ?? json.normalized_alignment;
   if (!alinhamento) {
     throw new Error(
       `resposta da ElevenLabs sem alignment. Chaves recebidas: ${Object.keys(json).join(', ')}`,
