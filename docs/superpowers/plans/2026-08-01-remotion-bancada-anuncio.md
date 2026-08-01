@@ -1876,13 +1876,27 @@ E, logo abaixo do bloco `{workerParado && (…)}` (linhas 449-457), o bloco irm�
 
 ⚠️ Confira que a query de `jobs` traz a coluna `tipo` (o `select('*')` da `fetchJobs` traz). Sem ela o filtro nunca casa e o aviso nunca aparece — falha silenciosa exatamente do tipo que este aviso existe para evitar.
 
-- [ ] **Step 6: Verificar tipos**
+- [ ] **Step 6: Verificar tipos e provar de verdade que o binário não vazou**
 
 ```bash
 npx tsc --noEmit
 ```
 
-Esperado: sem saída. **Não rode `npm run build`** (Global Constraints) — o Step 7 abre a tela no `dev`, e um build agora derrubaria justamente ela.
+Esperado: sem saída.
+
+🚨 **Agora sim a checagem de bundle vale alguma coisa — e é aqui, não na Task 4.** Lá o `grep` sobre a `.next` passou limpo, mas provava pouco: **nada em `src/app/` importava a composição ainda**. Só nesta tarefa o `@remotion/player` entra de verdade na árvore de imports do Next, e é só agora que dá para provar a afirmação que interessa: *o Player sozinho não arrasta o `@remotion/renderer` junto*.
+
+Siga o procedimento seguro das Global Constraints — derrube o `dev`, `rm -rf .next`, `npm run build` —, e então:
+
+```bash
+grep -rl "@remotion/renderer" .next/ | head
+```
+
+Esperado: **nenhuma saída**. Se aparecer algo agora, o `@remotion/player` está puxando o renderer por dependência transitiva, e a separação inteira dos dois projetos foi por água abaixo — pare e reporte, não tente contornar.
+
+Depois `rm -rf .next` de novo e siga para o Step 7, que abre a tela no `dev`.
+
+⚠️ Se o build falhar em `writeStandaloneDirectory`/`copyTracedFiles` com `EPERM`, é o defeito de ambiente do `NOTES.md`, não seu — a compilação já terminou e o `grep` continua válido. Qualquer falha **antes** disso é sua.
 
 O risco que o build pegaria aqui é `window is not defined` / `document is not defined`, vindo de `@remotion/player` renderizado no servidor. **O Step 7 pega o mesmo erro**: se o `ssr: false` do Step 4 não foi aplicado, a página quebra ao abrir, com esse erro no console do `npm run dev`.
 
