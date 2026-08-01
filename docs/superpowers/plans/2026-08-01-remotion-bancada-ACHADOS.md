@@ -1,12 +1,13 @@
 # Achados — ElevenLabs (medido em 01/08/2026)
 
-> Task 1 do plano `2026-08-01-remotion-bancada-anuncio.md`. **RESULTADO: OK, com uma
-> decisão de voz que precisa de confirmação humana e um achado de plano/permissão
-> que afeta qual voz pode ser usada em produção.**
+> Task 1 do plano `2026-08-01-remotion-bancada-anuncio.md`. **RESULTADO: OK. Voz
+> confirmada de ouvido pelo Fernando e achado de plano/permissão reconfirmado de
+> forma independente.**
 >
 > Substitui a versão anterior deste arquivo, que registrava apenas `401
 > missing_permissions` — a chave foi corrigida e a sonda rodou de ponta a ponta
-> três vezes contra a API real.
+> três vezes contra a API real. Atualizado em seguida com a confirmação de
+> áudio do Fernando (ver seção "Voz escolhida").
 
 ## O que foi medido
 
@@ -40,6 +41,13 @@ Body: { "text": "...", "model_id": "eleven_multilingual_v2" }
 Confirmado: existe, responde `200`, `content-type: application/json`. Não é `404`
 nem `401` com a chave corrigida — o endpoint é real e funciona como documentado
 publicamente.
+
+Nenhuma chamada desta sonda enviou `output_format` no corpo do request — o
+`body` sempre foi só `{ text, model_id }`. Ou seja, o formato de áudio descrito
+abaixo (MP3, ~130kbps) é o **default da API sem parâmetro explícito**, não um
+valor escolhido. Se a Task 7 precisar de outro bitrate/formato (ex.: `pcm` para
+processamento local, ou um MP3 de bitrate maior), isso é um parâmetro a testar
+depois — não foi medido aqui.
 
 ## Resposta (chaves reais, medidas)
 
@@ -93,16 +101,19 @@ descobrir e descartar o padding antes de reindexar, sem ganho conhecido.
 - Formato: base64, campo `audio_base64` (string).
 - Decodificado começa com `49 44 33` (`"ID3"`) — é um MP3 real com tag ID3v2, não
   lixo nem outro formato disfarçado.
-- Tamanhos observados para o mesmo texto de 66 caracteres, vozes diferentes:
+- Tamanhos observados para o mesmo texto de 66 caracteres, `model_id=eleven_multilingual_v2`
+  em todas as chamadas, vozes diferentes:
   - Roger (premade, en): 59.812 bytes, base64 de 79.752 chars.
   - Sarah (premade, en): 67.753–73.186 bytes entre duas chamadas idênticas
     (variação de ~8% entre gerações do mesmo texto/voz — não é determinístico
     byte a byte).
 - Duração real (do último `character_end_times_seconds` do alignment): **4,18s**
-  para o texto de 66 caracteres com a voz Sarah — ~15,8 caracteres/segundo de
-  fala. Plausível para narração em ritmo normal.
-- Taxa de bits aproximada: 67.753 bytes / 4,18s ≈ 16,2 KB/s ≈ ~130 kbps — condiz
-  com o padrão de saída da ElevenLabs (mp3 44100Hz ~128kbps).
+  para o texto de 66 caracteres com a voz Sarah, `model_id=eleven_multilingual_v2`
+  — ~15,8 caracteres/segundo de fala. Plausível para narração em ritmo normal.
+- Taxa de bits aproximada: 67.753 bytes / 4,18s ≈ 16,2 KB/s ≈ ~130 kbps (Sarah,
+  `eleven_multilingual_v2`) — condiz com o padrão de saída da ElevenLabs (mp3
+  44100Hz ~128kbps). Ver nota acima: nenhum `output_format` foi enviado, esse é
+  o default da API.
 
 ## 🚨 Achado que muda a escolha de voz: vozes "pt-BR" da conta são bloqueadas por plano
 
@@ -141,47 +152,52 @@ para `Lax` (masculina) quanto para `Keren` (feminina) — ambas são `profession
 pt-BR utilizável via API.** As únicas vozes chamáveis são as 21 `premade`
 en-only.
 
+**Reconfirmado de forma independente, no mesmo dia:** o Fernando colocou
+`ELEVENLABS_VOICE_ID=33B4UnXyTNbgLmdEDh5P` (Keren) de propósito no `.env.local`
+e pediu um novo teste (feito pelo Controlador, não por esta sonda). Resultado:
+**`HTTP 402` de novo, mesma mensagem** ("Free users cannot use library voices
+via the API"). Isso fecha a dúvida "será que era config errada da minha
+sessão?" — não era. É a mesma trava de plano, reproduzida em uma chamada
+separada, em outro momento. O `.env.local` foi então revertido para
+`EXAVITQu4vr4xnSDxMaL` (Sarah) e reconfirmado `HTTP 200`.
+
 ## Voz escolhida
 
 **`ELEVENLABS_VOICE_ID=EXAVITQu4vr4xnSDxMaL`** — "Sarah - Mature, Reassuring,
 Confident" (`premade`, `gender:female`, `language:en`, `accent:american`,
-`use_case:entertainment_tv`).
+`use_case:entertainment_tv`). **Confirmada de ouvido pelo Fernando em
+01/08/2026 — não é mais inferência por metadado, é fato verificado.**
 
-**Por quê esta e não uma das outras 20 vozes premade femininas** (Alice, Bella,
-Jessica, Laura, Lily, Matilda também disponíveis): nenhuma critério objetivo
-extra foi medido entre elas — todas são igualmente "en premade, não pt-BR". Sarah
-foi escolhida pelo texto do label (`"Mature, Reassuring, Confident"`) parecer o
-tom mais adequado para VSL/anúncio de tráfego direto, mas isso é uma leitura de
-metadado, não uma audição.
+**Como chegou nisso: não há voz pt-BR premade disponível nesta conta/plano** — a
+voz feminina pt-BR que existe (`Keren`) está bloqueada por plano (`HTTP 402`,
+ver seção acima, reconfirmado duas vezes de forma independente). O fallback
+técnico foi "voz multilíngue feminina" rodando com
+`model_id=eleven_multilingual_v2`, que aceita texto em português e gera áudio
+válido — voz nativamente rotulada como inglês falando português, não uma voz
+pt-BR nativa.
 
-**Situação encontrada, conforme antecipado nas resoluções desta tarefa:** não há
-voz pt-BR premade disponível nesta conta/plano; a voz feminina pt-BR que existe
-(`Keren`) está bloqueada por plano (402). Portanto o fallback aplicado foi "voz
-multilíngue feminina" rodando com `model_id=eleven_multilingual_v2`, que aceita
-texto em português e gera áudio válido (confirmado: HTTP 200, MP3 válido, 4,18s
-de fala coerente com o texto) — mas com voz nativamente rotulada como inglês, não
-como pt-BR nativa. O modelo `eleven_multilingual_v2` fala o texto em português;
-o timbre/sotaque da voz em si não foi rotulado pt-BR pela ElevenLabs.
+**A confirmação real:** o Controlador gerou duas amostras com um roteiro real do
+agente Copywriting — *"Cansado de ser arrastado no passeio? Dá pra reverter
+isso em poucos minutos por dia. Método Elo-Leve: seu cão andando na guia
+solta."* — nas vozes `EXAVITQu4vr4xnSDxMaL` (Sarah) e `Xb7hH8MSUJpSbSDYk0k2`
+(Alice). **O Fernando ouviu as duas e escolheu a Sarah**, textualmente: *"sarah
+ficou legal pode deixar ela"*. Isso substitui a leitura de metadado ("tom
+confiante, reassuring" no label) que orientou a escolha inicial desta sonda —
+a escolha final foi por audição real, com texto de anúncio real, não com a
+frase de teste genérica desta task.
 
-**⚠️ Nenhum humano ouviu o áudio ainda.** Este agente não consegue ouvir. O que
-foi verificado objetivamente:
-- o arquivo é um MP3 válido (assinatura `ID3` nos primeiros bytes);
-- o tamanho é plausível para a duração e o texto (~130 kbps, ~15,8 char/s);
-- o `alignment` bate 1:1 com o texto de entrada.
-O que **não** foi verificado: se o sotaque em português soa natural, se a
-prosódia está adequada para um anúncio, se "Sarah" é de fato a melhor entre as 6
-vozes femininas premade disponíveis. **Isso precisa da audição do Fernando antes
-de qualquer narração gerada por esta voz ir ao ar.** Alternativas premade
-femininas na mesma conta, para comparação: `hpp4J3VqNfWAUOO0d1Us` (Bella),
-`cgSgspJ2msm6clMCkdW9` (Jessica), `XrExE9yKIg1WjnnlVkGX` (Matilda),
-`Xb7hH8MSUJpSbSDYk0k2` (Alice), `FGY2WhTYpPnrIDTdsKH5` (Laura),
-`pFZP5JQG7iQjIQuC4Bku` (Lily).
+Alternativas premade femininas na mesma conta, testadas ou não, para referência
+futura: `hpp4J3VqNfWAUOO0d1Us` (Bella), `cgSgspJ2msm6clMCkdW9` (Jessica),
+`XrExE9yKIg1WjnnlVkGX` (Matilda), `Xb7hH8MSUJpSbSDYk0k2` (Alice — ouvida e
+preterida), `FGY2WhTYpPnrIDTdsKH5` (Laura), `pFZP5JQG7iQjIQuC4Bku` (Lily).
 
-**Decisão em aberto para o Fernando:** se a voz "sotaque inglês falando
-português" não for aceitável para o anúncio, as saídas são (a) fazer upgrade do
-plano ElevenLabs para liberar `Keren`/`Lax` (vozes de biblioteca), ou (b) clonar
-uma voz própria (Instant/Professional Voice Cloning), ou (c) aceitar uma das
-premade en como está. Isso não foi decidido nesta tarefa.
+**Em aberto, sem editorializar — spec §4.6
+(`docs/superpowers/specs/2026-08-01-remotion-bancada-anuncio-design.md`):** o
+plano gratuito da ElevenLabs pede atribuição e restringe uso comercial. Isso
+não trava desenvolvimento nem teste, mas precisa ser conferido **antes de
+qualquer áudio gerado por esta voz subir num anúncio pago no Meta**. Não foi
+resolvido nesta tarefa nem nesta correção — é decisão do Fernando, fora do
+escopo técnico.
 
 ## Limites observados
 
@@ -201,8 +217,11 @@ premade en como está. Isso não foi decidido nesta tarefa.
 
 ## Ainda NÃO confirmado
 
-- Se o sotaque/prosódia da voz Sarah falando português soa aceitável para um
-  anúncio — **nenhum humano ouviu o áudio** gerado nesta sessão.
+- ~~Se o sotaque/prosódia da voz Sarah falando português soa aceitável~~ —
+  **confirmado em 01/08/2026:** o Fernando ouviu Sarah e Alice narrando um
+  roteiro real de anúncio e escolheu Sarah (ver "Voz escolhida" acima). O que
+  continua em aberto é só a licença de uso comercial (spec §4.6), não a
+  qualidade da voz.
 - Máximo de caracteres por request e comportamento de rate limit/cota mensal.
 - Se `Lax`/`Keren` (as únicas vozes com label pt-BR) ficariam utilizáveis com um
   upgrade de plano — não testado, exigiria mudar o plano de fato.
@@ -221,11 +240,11 @@ premade en como está. Isso não foi decidido nesta tarefa.
 
 ## Próximo passo
 
-1. Fernando ouve `EXAVITQu4vr4xnSDxMaL` (Sarah) narrando um texto real de
-   anúncio (a sonda já foi apagada — as Tasks 5/7 podem gerar um teste rápido
-   reusando o endpoint documentado acima) e decide se serve, ou se prefere
-   upgrade de plano / voice cloning para ter pt-BR nativo.
+1. Antes de qualquer áudio gerado por esta voz subir num anúncio pago no Meta,
+   conferir os termos de atribuição/uso comercial do plano gratuito da
+   ElevenLabs (spec §4.6). Voz já está decidida — falta só essa checagem de
+   licença.
 2. Tasks 5 e 7 usam os nomes de campo confirmados acima
    (`alignment.characters` / `character_start_times_seconds` /
-   `character_end_times_seconds`, `audio_base64`) sem precisar chamar a API de
-   novo para descobrir o shape.
+   `character_end_times_seconds`, `audio_base64`) e `ELEVENLABS_VOICE_ID=EXAVITQu4vr4xnSDxMaL`
+   sem precisar chamar a API de novo para descobrir o shape ou re-testar a voz.
