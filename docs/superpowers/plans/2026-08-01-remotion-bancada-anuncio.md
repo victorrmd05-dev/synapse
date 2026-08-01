@@ -252,6 +252,7 @@ O contrato passa de 4 para 5 campos. Os três lugares — banco, cérebro do age
 - Create: `supabase/migrations/20260801120000_add_roteiros_video_workflow_copywriting.sql`
 - Modify: `agentes/copywriting/AGENTS.md` (linhas 21-31, 33-52, 88-91, 100-104)
 - Modify: `agentes/copywriting/SKILL.md` (após a seção `### No campo prompts_videos`, e o Checklist de Finalização)
+- Modify: `agentes/copywriting/_agente.json` (`max_tokens`)
 - Modify: `src/app/api/copywriting/generate/route.ts` (linhas 184-203, 249-262, 281-294)
 - Modify: `src/app/copywriting/page.tsx` (linhas 53-56, 166-170)
 - Modify: `src/app/revisor/page.tsx` (linhas 12-15, 78-81, 379-388)
@@ -440,20 +441,43 @@ npx tsc --noEmit
 
 Esperado: sem saída (sucesso). Qualquer erro apontando para `route.ts` é regressão desta tarefa.
 
-- [ ] **Step 10: Subir o `max_tokens` do agente**
+- [ ] **Step 10: Subir o `max_tokens` — no `_agente.json`, NÃO por SQL**
 
 ⚠️ **Este passo não é opcional e não é "ajuste depois".** Um 5º campo aumenta a saída, e a rota já tem [o histórico documentado de resposta vazia](../../../src/app/api/copywriting/generate/route.ts#L226-L247): o modelo do Zen é de raciocínio, `max_tokens` é o teto do **total**, e numa medição real o raciocínio consumiu 5.411 dos 8.000 tokens.
 
-Ler o valor atual e dobrar:
+🚨 **`update agentes_config set max_tokens = …` seria desfeito no Step 11.** O sync lê `agentes/<agente>/_agente.json` e **grava `max_tokens` por cima** do banco ([`syncAgents.ts:115`](../../../src/app/actions/syncAgents.ts#L115)). O arquivo é a fonte da verdade; a tabela é cache.
 
-```sql
-select slug, max_tokens from agentes_config where slug = 'copywriting';
-update agentes_config set max_tokens = <atual * 2> where slug = 'copywriting';
+Em `agentes/copywriting/_agente.json`, trocar `"max_tokens": 8000` por:
+
+```json
+  "max_tokens": 16000,
 ```
 
-Registrar no reporte final qual era o valor e qual ficou.
+- [ ] **Step 11: Sincronizar o agente — sem isto, os Steps 3 a 6 não existem**
 
-- [ ] **Step 11: Gerar uma copy de verdade e conferir de olho**
+🚨 **A rota lê o markdown da tabela `agentes_config`, não do disco.** `getAgentConfig('copywriting')` busca `agents_md` e `skill_md` no banco. Editar os `.md` não muda nada até o sync rodar — e o sintoma seria a geração do Step 12 saindo **sem `roteiros_video`**, o que parece exatamente igual a `max_tokens` baixo. É uma caçada a fantasma de meia hora se este passo for pulado.
+
+O sync é uma server action (`syncAgentsFromFolder()`), então roda pela tela:
+
+```bash
+npm run dev
+```
+
+Abrir `/agents` e disparar a sincronização. Depois conferir que o banco recebeu:
+
+```sql
+select slug, max_tokens,
+       position('roteiros_video' in agents_md) > 0 as agents_ok,
+       position('roteiros_video' in skill_md)  > 0 as skill_ok,
+       ultimo_sync_em
+  from agentes_config where slug = 'copywriting';
+```
+
+Esperado: `max_tokens = 16000`, `agents_ok = true`, `skill_ok = true`, e `ultimo_sync_em` de agora.
+
+Se `agents_ok` vier `false`, o sync não pegou o arquivo — **pare aqui**. Seguir para o Step 12 sem isto só produz um diagnóstico errado.
+
+- [ ] **Step 12: Gerar uma copy de verdade e conferir de olho**
 
 ```bash
 npm run dev
@@ -482,9 +506,14 @@ select id,
 
 Esperado: as cinco colunas com tamanho > 0.
 
-Se `roteiros` vier `null` ou a rota devolver "resposta vazia"/"cortada por limite de tokens", **o `max_tokens` do Step 10 ainda está baixo** — dobre de novo e repita. Não siga para a Task 3 com esse sintoma aberto: ele volta como bug fantasma na bancada.
+Se `roteiros` vier `null`, o diagnóstico tem **duas** causas possíveis e a ordem de checagem importa:
 
-- [ ] **Step 12: Mostrar o campo nas duas telas de leitura**
+1. **O sync não pegou** — confira a query do Step 11 antes de qualquer outra coisa. É a causa mais provável e a mais fácil de confundir com a outra.
+2. **`max_tokens` ainda baixo** — só se o Step 11 estiver verde. Sintoma próprio: a rota devolve "resposta vazia" ou "cortada por limite de tokens". Dobre no `_agente.json`, **sincronize de novo**, e repita.
+
+Não siga para a Task 3 com esse sintoma aberto: ele volta como bug fantasma na bancada.
+
+- [ ] **Step 13: Mostrar o campo nas duas telas de leitura**
 
 Em `src/app/copywriting/page.tsx`, no objeto do map (depois da linha 56):
 
@@ -527,7 +556,7 @@ e, dentro do bloco da aba de vídeos, logo abaixo do `<pre>` que já existe (dep
                       )}
 ```
 
-- [ ] **Step 13: Verificar as telas**
+- [ ] **Step 14: Verificar as telas**
 
 Com o `npm run dev` rodando, abrir `/copywriting` e `/revisor`, selecionar a copy gerada no Step 11, ir na aba de vídeos.
 
@@ -539,10 +568,10 @@ npx tsc --noEmit && npm run build
 
 Esperado: ambos sem erro.
 
-- [ ] **Step 14: Parar e reportar**
+- [ ] **Step 15: Parar e reportar**
 
-Arquivos prontos: a migration, `AGENTS.md`, `SKILL.md`, `route.ts`, `copywriting/page.tsx`, `revisor/page.tsx`.
-Reportar também: o `max_tokens` antes e depois, e o resultado da query do Step 11.
+Arquivos prontos: a migration, `AGENTS.md`, `SKILL.md`, `_agente.json`, `route.ts`, `copywriting/page.tsx`, `revisor/page.tsx`.
+Reportar também: o `max_tokens` antes e depois, a query do Step 11 (prova de que o sync pegou), e a do Step 12.
 Mensagem sugerida: `feat(copywriting): campo roteiros_video no contrato do agente`
 **Não commitar.**
 
