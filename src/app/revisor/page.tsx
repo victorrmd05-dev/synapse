@@ -13,6 +13,7 @@ type FilaItem = {
   meta_ads_copy: string;
   prompts_imagens: string;
   prompts_videos: string;
+  roteiros_video: string;
   status: string;
   revisao_ia_score: number | null;
   revisao_ia_parecer: string | null;
@@ -79,6 +80,7 @@ export default function RevisorPage() {
           meta_ads_copy: item.meta_ads_copy || '',
           prompts_imagens: item.prompts_imagens || '',
           prompts_videos: item.prompts_videos || '',
+          roteiros_video: item.roteiros_video || '',
           status: item.status,
           revisao_ia_score: item.revisao_ia_score ?? null,
           revisao_ia_parecer: item.revisao_ia_parecer ?? null,
@@ -387,6 +389,16 @@ export default function RevisorPage() {
                         <p className="text-secondary text-sm">
                           Nenhum prompt de vídeo gerado para esta copy.
                         </p>
+                      )}
+                      {activeItem.roteiros_video && (
+                        <>
+                          <h3 className="text-white font-bold text-xs uppercase tracking-wider mt-6 mb-2">
+                            Roteiros (narração)
+                          </h3>
+                          <pre className="text-sm text-text-primary whitespace-pre-wrap font-mono leading-relaxed">
+                            {activeItem.roteiros_video}
+                          </pre>
+                        </>
                       )}
                     </div>
                   )}

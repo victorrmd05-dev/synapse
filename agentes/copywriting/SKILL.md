@@ -235,6 +235,34 @@ Mesmo espírito de `prompts_imagens`, com quatro diferenças que importam:
 é queimada depois no Remotion. Pedir texto aqui gasta dinheiro para produzir um
 defeito que o passo seguinte teria que cobrir.
 
+### No campo `roteiros_video` — 3 roteiros falados
+
+O irmão do `prompts_videos`, pareado por índice: **roteiro 1 é a narração do vídeo 1**.
+Enquanto o prompt descreve o que a câmera vê, o roteiro é o que a voz diz por cima.
+
+| Item | Regra |
+|---|---|
+| Quantidade | exatamente 3, na mesma ordem dos prompts |
+| Tamanho | do tamanho da duração do vídeo par: 5–10s → ~12 a 25 palavras |
+| Formato | cada roteiro entre `<<<` e `>>>`, com um título fora do bloco |
+| Proibido | emoji, hashtag, "clique no link abaixo", "arrasta pra cima", instrução de câmera |
+
+**Por que o tamanho importa:** a narração é quem manda na duração do anúncio montado.
+Se o roteiro passar do clipe, o clipe entra em loop — funciona, mas é remendo. Roteiro
+do tamanho certo é anúncio limpo.
+
+**O teste que reprova sozinho:** se der para copiar do `meta_ads_copy` e colar aqui sem
+mudar nada, está errado. Aquele texto é escrito para ser **lido** numa tela; este é
+escrito para ser **ouvido**. São ritmos diferentes.
+
+```
+### ROTEIRO 1 — o gancho da dor
+<<<
+Você treina há meses e o joelho ainda dói toda vez que desce a escada.
+Não é falta de esforço. É o tênis errado.
+>>>
+```
+
 ---
 
 ## Tom de Voz
@@ -251,6 +279,8 @@ criam imagem mental).
       prompt de **cada uma** em `prompts_imagens` (com paleta em hex e exclusões)?
 - [ ] Escrevi 3 prompts em `prompts_videos`, cada um com duração, movimento e
       **sem pedir texto na tela**?
+- [ ] Escrevi 3 roteiros em `roteiros_video`, um por prompt de vídeo, na mesma
+      ordem, e nenhum deles é o `meta_ads_copy` copiado?
 - [ ] Se veio dossiê: usei "O que modelamos" como briefing e ataquei pelo menos uma
       **vulnerabilidade** do concorrente?
 - [ ] Criei mecanismo **nosso**, sem reaproveitar o nome do mecanismo dele?

@@ -198,9 +198,16 @@ IMAGENS — obrigatório:
    - NUNCA peca texto na tela. Modelo de video escreve texto embolado, e a
      legenda e queimada depois no Remotion. Pedir texto aqui gasta dinheiro
      para produzir um defeito que o passo seguinte teria que cobrir.
+4. Em "roteiros_video", escreva 3 roteiros FALADOS, um para cada prompt de
+   video do item 3, na MESMA ordem. Regras:
+   - E o texto que uma narradora vai LER EM VOZ ALTA por cima do video.
+   - Do tamanho da duracao do video par: 5-10s = ~12 a 25 palavras.
+   - Sem emoji, sem hashtag, sem "clique no link abaixo", sem instrucao de camera.
+   - NAO copie o meta_ads_copy. Aquele e escrito para LER, este para OUVIR.
+   - Mesmo formato dos outros: cada roteiro entre <<< e >>>.
 
 Retorne em JSON estruturado:
-{ "meta_ads_copy": "...", "pagina_vendas": "...", "prompts_imagens": "...", "prompts_videos": "..." }`;
+{ "meta_ads_copy": "...", "pagina_vendas": "...", "prompts_imagens": "...", "prompts_videos": "...", "roteiros_video": "..." }`;
 
     if (notas_revisao) {
       userPrompt += `\n\nATENÇÃO: esta é uma regeração. O Revisor pediu ajustes com a seguinte nota:
@@ -250,6 +257,7 @@ Leve este feedback em conta na nova versão.`;
     let paginaVendas = textoResposta;
     let promptsImagens = '';
     let promptsVideos = '';
+    let roteirosVideo = '';
 
     let parseOk = false;
     try {
@@ -260,6 +268,7 @@ Leve este feedback em conta na nova versão.`;
         paginaVendas = parsed.pagina_vendas ?? parsed.copy_text ?? textoResposta;
         promptsImagens = parsed.prompts_imagens ?? '';
         promptsVideos = parsed.prompts_videos ?? '';
+        roteirosVideo = parsed.roteiros_video ?? '';
         parseOk = true;
       }
     } catch {
@@ -285,6 +294,7 @@ Leve este feedback em conta na nova versão.`;
       meta_ads_copy: metaAdsCopy,
       prompts_imagens: promptsImagens || null,
       prompts_videos: promptsVideos || null,
+      roteiros_video: roteirosVideo || null,
       revisor_ok: false,
       notas_revisao: null,
       // Copy pronta -> entra na fila do Revisor para a IA revisora analisar.

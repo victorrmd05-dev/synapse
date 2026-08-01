@@ -53,7 +53,8 @@ export default function CopywritingPage() {
           conteudo_texto: item.conteudo_texto || '',
           meta_ads_copy: item.meta_ads_copy || '',
           prompts_imagens: item.prompts_imagens || '',
-          prompts_videos: item.prompts_videos || ''
+          prompts_videos: item.prompts_videos || '',
+          roteiros_video: item.roteiros_video || ''
         };
       });
 
@@ -166,7 +167,9 @@ export default function CopywritingPage() {
                       : activeTab === 'imagens'
                       ? (activeItem.prompts_imagens || 'Nenhum prompt de imagem gerado ainda.')
                       : activeTab === 'videos'
-                      ? (activeItem.prompts_videos || 'Nenhum prompt de vídeo gerado ainda.')
+                      ? [activeItem.prompts_videos, activeItem.roteiros_video]
+                          .filter(Boolean)
+                          .join('\n\n---\n\n') || 'Nenhum prompt de vídeo gerado ainda.'
                       : (activeItem.conteudo_texto || 'Nenhum conteúdo de página de vendas gerado ainda.')}
                   </div>
                 ) : (
