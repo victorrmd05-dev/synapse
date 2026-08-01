@@ -521,8 +521,15 @@ A ordem importa: nada de código de render antes do formato da ElevenLabs estar 
 - [ ] Um `insert` de `tipo='compor'` sem `url_narracao` é **rejeitado pelo banco**.
 - [ ] O worker produz um MP4 1080×1920 no Storage, e **o MP4 é visualmente igual ao que o
       Player mostrou** — mesma quebra de linha do gancho, mesma legenda no mesmo tempo.
-- [ ] `npm run build` e `npx tsc --noEmit` passam na raiz; `npm run lint` passa no `remotion/`.
+- [ ] `npx tsc --noEmit` passa na raiz; `npm run lint` passa no `remotion/`.
 - [ ] O bundle do Next **não** contém `@remotion/renderer`.
+
+⚠️ **`npm run build` não entra como critério.** Ele falha sempre nesta máquina, por um
+defeito de ambiente pré-existente e já diagnosticado no `NOTES.md` (`output: "standalone"`
++ pnpm + Windows sem Modo de Desenvolvedor). A compilação termina; o que quebra é a cópia
+para `.next/standalone`. Pior: como ele morre no fim, deixa a `.next` pela metade e derruba
+o CSS do `npm run dev`. Enquanto o ambiente não for corrigido — as três saídas estão no
+`NOTES.md` —, o portão é o `tsc`.
 
 ---
 

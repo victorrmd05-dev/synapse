@@ -17,8 +17,13 @@
 Valem para **todas** as tarefas. Não repetidas em cada uma.
 
 - 🛑 **NUNCA rodar `git commit` nem `git push`.** Regra nº 1 do `CLAUDE.md`, e ela ganha deste plano. Onde o template de plano pediria "Commit", este plano pede **"Parar e reportar"**: liste os arquivos prontos e a mensagem de commit sugerida, e **pare**. O Fernando commita.
-- **Não existe suíte de testes.** Não há `npm test`. Verificação = `npx tsc --noEmit`, `npm run build`, `npm run dev` + olhar a tela, e chamada real com saída registrada. Todo passo de verificação abaixo traz o comando exato e a saída esperada.
+- **Não existe suíte de testes.** Não há `npm test`. Verificação = `npx tsc --noEmit`, `npm run dev` + olhar a tela, e chamada real com saída registrada. Todo passo de verificação abaixo traz o comando exato e a saída esperada.
 - **Não existe `npm run type-check`.** É `npx tsc --noEmit`.
+- 🚨 **`npm run build` FALHA SEMPRE nesta máquina, e não é bug seu.** Está diagnosticado no `NOTES.md` (seção "O erro do `npm run build`"): `output: "standalone"` no `next.config` + dependências instaladas com pnpm (estrutura de symlinks) + Windows exigindo Modo de Desenvolvedor para criar symlink. **A compilação termina com sucesso**; o que quebra é a cópia final para `.next/standalone` (`EPERM: operation not permitted, symlink`).
+
+  **A consequência que já mordeu:** como o build sempre morre no fim, ele **sempre** deixa a `.next` pela metade — e `build` e `dev` compartilham essa pasta. Rodar `build` com o `dev` de pé derruba o CSS do dashboard (fundo branco, Times New Roman). Não é "às vezes"; é garantido. Já aconteceu em 31/07, com um subagente rodando `build` como verificação extra.
+
+  **A regra:** o portão padrão deste plano é `npx tsc --noEmit`, não o build. Só a Task 4 precisa de um build de verdade, e ela traz o procedimento seguro completo. Se você rodar o build por qualquer outro motivo: derrube o `dev` antes, e `rm -rf .next` depois.
 - **Remotion fixado em `4.0.409`** em todo lugar (raiz e `remotion/`). Versão divergente entre os dois é bug silencioso.
 - **`remotion/` nunca é importado pelo app Next.** A seta é sempre `remotion/` → `src/video/`. Nunca o contrário.
 - **Nada de API específica de versão do React** dentro de `src/video/` — esse código é compilado pelo React 18 (app) e pelo React 19 (`remotion/`).
@@ -563,10 +568,10 @@ Com o `npm run dev` rodando, abrir `/copywriting` e `/revisor`, selecionar a cop
 Esperado: os 3 prompts **e** os 3 roteiros visíveis, separados. Se aparecer `[object Object]` ou vazio, o campo não chegou no map.
 
 ```bash
-npx tsc --noEmit && npm run build
+npx tsc --noEmit
 ```
 
-Esperado: ambos sem erro.
+Esperado: sem saída. **Não rode `npm run build`** — ver as Global Constraints: ele falha sempre e derruba o `dev` que você acabou de usar.
 
 - [ ] **Step 15: Parar e reportar**
 
@@ -982,17 +987,33 @@ Esperado: sem erro. Se reclamar que não encontra `../../src/video/AnuncioUGC`, 
 
 - [ ] **Step 9: Verificar que o binário nativo NÃO entrou no bundle do Next**
 
+Este é o único passo do plano que precisa de um build de verdade, e ele exige cuidado — ver as Global Constraints. **Siga a ordem exata:**
+
 ```bash
+# 1. Derrube QUALQUER `next dev` que esteja de pé. Build com dev rodando
+#    corrompe a .next e derruba o CSS do dashboard — garantido, ja aconteceu.
+# 2. Comece de uma .next limpa:
+rm -rf .next
+# 3. Rode o build:
 npm run build
 ```
 
-Esperado: build sucesso. Depois:
+**Esperado: o build compila e depois MORRE com `EPERM: operation not permitted, symlink` ao copiar para `.next/standalone`.** Isso é o defeito pré-existente do `NOTES.md`, não é seu. O que importa é o que veio antes: se você vir as páginas listadas e `Compiled successfully`, a compilação terminou e a `.next/server` está escrita.
+
+⚠️ **Se o build falhar ANTES disso** — erro de tipo, `window is not defined`, módulo não encontrado — aí é seu, e tem que ser corrigido.
+
+Agora a verificação que importa:
 
 ```bash
 grep -rl "@remotion/renderer" .next/ | head
 ```
 
 Esperado: **nenhuma saída**. Se aparecer qualquer arquivo, alguma coisa importou `remotion/` a partir do app — é a regra do `CLAUDE.md` quebrada, e tem que ser corrigido antes de seguir.
+
+```bash
+# 4. Limpe a .next pela metade, senao o proximo `npm run dev` sobe sem CSS:
+rm -rf .next
+```
 
 - [ ] **Step 10: Parar e reportar**
 
@@ -1371,13 +1392,13 @@ fetch('http://localhost:3000/api/video/narracao', {
 
 Esperado: `{"error":"texto tem 1600 caracteres, acima do teto de 1200. Corte o roteiro."}` — e **nenhuma** linha `[video/narracao] gerou …` no log do `npm run dev`, provando que não gastou.
 
-- [ ] **Step 9: Verificar tipos e build**
+- [ ] **Step 9: Verificar tipos**
 
 ```bash
-npx tsc --noEmit && npm run build
+npx tsc --noEmit
 ```
 
-Esperado: ambos sem erro.
+Esperado: sem saída. **Não rode `npm run build`** (Global Constraints).
 
 - [ ] **Step 10: Parar e reportar**
 
@@ -1836,13 +1857,15 @@ E, logo abaixo do bloco `{workerParado && (…)}` (linhas 449-457), o bloco irm�
 
 ⚠️ Confira que a query de `jobs` traz a coluna `tipo` (o `select('*')` da `fetchJobs` traz). Sem ela o filtro nunca casa e o aviso nunca aparece — falha silenciosa exatamente do tipo que este aviso existe para evitar.
 
-- [ ] **Step 6: Verificar tipos e build**
+- [ ] **Step 6: Verificar tipos**
 
 ```bash
-npx tsc --noEmit && npm run build
+npx tsc --noEmit
 ```
 
-Esperado: ambos sem erro. Se o build reclamar de `window is not defined` ou `document is not defined`, o `ssr: false` do Step 4 não foi aplicado.
+Esperado: sem saída. **Não rode `npm run build`** (Global Constraints) — o Step 7 abre a tela no `dev`, e um build agora derrubaria justamente ela.
+
+O risco que o build pegaria aqui é `window is not defined` / `document is not defined`, vindo de `@remotion/player` renderizado no servidor. **O Step 7 pega o mesmo erro**: se o `ssr: false` do Step 4 não foi aplicado, a página quebra ao abrir, com esse erro no console do `npm run dev`.
 
 - [ ] **Step 7: Abrir a bancada e olhar**
 
@@ -2185,14 +2208,17 @@ Com `npm run dev` e `npm run video:compor` rodando:
 
 Percorrer a lista da §13 da spec, um a um, e marcar o que passou. Qualquer item que não passar entra no reporte — **não silenciar**.
 
-Incluindo os dois de build:
+Incluindo os portões de compilação:
 
 ```bash
-npx tsc --noEmit && npm run build && npm --prefix remotion run lint
-grep -rl "@remotion/renderer" .next/ | head
+npx tsc --noEmit && npm --prefix remotion run lint
 ```
 
-Esperado: os três comandos sem erro; o `grep` sem saída nenhuma.
+Esperado: os dois sem erro.
+
+O critério "o bundle do Next não contém `@remotion/renderer`" já foi verificado no Step 9 da Task 4, com o procedimento seguro de build. **Não repita o build aqui** — o Step 1 desta tarefa acabou de rodar o fluxo inteiro no `dev`, e um build agora derruba a `.next` embaixo dele. Cite o resultado da Task 4.
+
+⚠️ O critério da spec §13 que diz *"`npm run build` passa na raiz"* **não é atingível nesta máquina** enquanto o `output: "standalone"` + pnpm + Windows sem Modo de Desenvolvedor continuarem como estão (`NOTES.md`). Marque-o como não-atingível, cite o `NOTES.md`, e reporte — não tente consertar o ambiente por conta própria: as três saídas possíveis estão no `NOTES.md` e a escolha é do Fernando.
 
 - [ ] **Step 3: Atualizar o `NOTES.md`**
 
