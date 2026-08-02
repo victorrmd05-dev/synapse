@@ -16,117 +16,589 @@
 
 ---
 
-**Alavanca Synapse** é a plataforma de orquestração de agentes da **Alavanca AI** (agência de marketing digital): **8 agentes de IA especializados** operando em sincronia para transformar um anúncio vencedor em uma campanha completa, com mínima intervenção manual.
+## 👋 Comece por aqui
 
-A filosofia é a mesma de uma "empresa de agentes" — mas rodando **no código e no banco de dados do próprio time**, sem depender de plataforma externa engessada. O nome **Synapse** reflete a arquitetura: os agentes funcionam como neurônios de um mesmo organismo, disparando em sequência (e às vezes em paralelo) através do **Supabase como sinapse central**.
+Este README é um **manual de instalação do zero**, escrito para quem nunca abriu um
+terminal na vida. Seguindo os passos na ordem, o projeto roda.
+
+**Como usar este documento:**
+
+- **Vá em ordem.** Cada parte assume que a anterior deu certo.
+- Todo bloco cinza é um **comando**: copie, cole no terminal, aperte Enter.
+- Quando algo der errado, procure o seu sintoma em **[🚑 Quando der errado](#-quando-der-errado)**.
+  Tudo que está lá **já aconteceu de verdade neste projeto**, com a causa real anotada.
+- Onde estiver 💸, aquilo **gasta dinheiro**. Leia antes de clicar.
+
+**Você não precisa instalar tudo.** Para ver o painel rodando na tela bastam as
+**Partes 1, 2, 3 e 5**. As Partes 4, 6 e 7 entram quando você for criar um banco novo,
+usar autópsia de concorrente, renderizar vídeo ou desenvolver com IA.
 
 ---
 
-## 🤖 Os 8 Agentes
+## 📚 Índice
 
-| # | Agente | Responsabilidade | Tabela Supabase |
-|---|--------|------------------|-----------------|
-| 01 | **CEO** | Aprovações de alto nível (representa o usuário) | — |
-| 02 | **CTO** | Infraestrutura, chaves de API, suporte técnico | `agentes_config` |
-| 03 | **Minerador** | Scraping de anúncios validados (Meta Ad Library) | `ads_minerados` |
-| 04 | **Copywriting** | Copy de anúncios e páginas de vendas | `workflow_copywriting` |
-| 05 | **Revisor** | QA das copies — aprova ou pede revisão | `workflow_copywriting` |
-| 06 | **Designer-Webmaster** | Criação e deploy de landing pages | `workflow_design` |
-| 07 | **Video-Maker** | Criação de vídeos criativos (Higgsfield) | `workflow_video` |
-| 08 | **Gestor-Meta-Ads** | Gestão e otimização de tráfego pago | `campanhas_meta_ads` |
+1. [O que é este projeto](#-o-que-é-este-projeto)
+2. [Parte 1 — Instalar os programas de base](#️-parte-1--instalar-os-programas-de-base)
+3. [Parte 2 — Baixar o projeto e instalar dependências](#-parte-2--baixar-o-projeto-e-instalar-as-dependências)
+4. [Parte 3 — Configurar as chaves (`.env.local`)](#-parte-3--configurar-as-chaves-envlocal)
+5. [Parte 4 — Banco de dados (Supabase)](#️-parte-4--banco-de-dados-supabase)
+6. [Parte 5 — Rodar o projeto](#️-parte-5--rodar-o-projeto)
+7. [Parte 6 — Os workers (vídeo e autópsia)](#️-parte-6--os-workers-vídeo-e-autópsia)
+8. [Parte 7 — Ferramentas de IA para desenvolver](#-parte-7--ferramentas-de-ia-para-desenvolver)
+9. [🚑 Quando der errado](#-quando-der-errado)
+10. [Mapa do projeto](#️-mapa-do-projeto)
+
+---
+
+## 🧠 O que é este projeto
+
+**Alavanca Synapse** é a plataforma de orquestração de agentes da **Alavanca AI**
+(agência de marketing digital). Agentes de IA especializados operam em sincronia para
+transformar um anúncio vencedor de concorrente numa campanha completa: minerar →
+autopsiar → escrever copy → revisar → montar landing page → gerar vídeo → subir tráfego.
+
+A filosofia é a de uma "empresa de agentes", mas rodando **no código e no banco do
+próprio time**, sem depender de plataforma externa engessada. O nome **Synapse** vem da
+arquitetura: cada agente é um neurônio, e o **Supabase é a sinapse central** por onde
+todos se comunicam.
+
+| # | Agente | O que faz | Tabela principal |
+|---|--------|-----------|------------------|
+| 01 | **CEO** | Aprovações de alto nível (é você, nas telas de aprovar) | — |
+| 02 | **CTO** | Infraestrutura, chaves de API, suporte aos outros | `agentes_config` |
+| 03 | **Minerador** | Coleta anúncios validados da Meta Ad Library | `ads_minerados` |
+| 04 | **Autópsia** | Disseca o criativo do concorrente (frames + transcrição) | `autopsias` |
+| 05 | **Copywriting** | Copy de anúncio, página de vendas e roteiros de vídeo | `workflow_copywriting` |
+| 06 | **Revisor** | QA das copies — aprova ou devolve | `workflow_copywriting` |
+| 07 | **Designer-Webmaster** | Cria e publica landing pages | `workflow_design` |
+| 08 | **Tracking** | Pixel + CAPI (framework FOP) | `tracking_*` |
+| 09 | **Video-Maker** | Gera o clipe e monta o anúncio final | `video_jobs` |
+| 10 | **Gestor-Meta-Ads** | Gestão e otimização do tráfego pago | `meta_campaigns` |
 
 ### Pipeline de produção
 
 ```
 ads_minerados → [CEO aprova] → campanhas_producao → workflow_copywriting
-  → [Revisor aprova] → workflow_design → [Designer gera HTML + deploy]
-  → workflow_video → [Video-Maker gera criativo] → Gestor-Meta-Ads sobe campanha
+  → [Revisor aprova] → workflow_design → [Designer gera HTML + publica]
+  → video_jobs → [Video-Maker monta o anúncio] → Gestor-Meta-Ads sobe a campanha
 ```
 
----
+### 🧩 Conceito-chave: Cérebro vs Mãos
 
-## 🧩 Conceito-chave: Cérebro vs Mãos
+Cada "agente" são **duas coisas separadas** — entender isso evita muita confusão:
 
-Cada "agente" são **duas coisas separadas**:
+- **🧠 Cérebro** — os arquivos `AGENTS.md` + `SKILL.md` (na pasta `agentes/`) que viram o
+  *system prompt* da IA. São **réguas de decisão**: critérios, rubricas de pontuação,
+  formato de saída em JSON. Não são tutoriais.
+- **✋ Mãos** — as rotas TypeScript em `src/app/api/…` que fazem as chamadas externas
+  reais (ScrapeCreators, Meta, ElevenLabs…) e gravam no Supabase.
 
-- **🧠 Cérebro** — os arquivos `AGENTS.md` + `SKILL.md` que viram o *system prompt* da IA. São **réguas de decisão** (critérios, rubrica de pontuação, formato de saída JSON), não tutoriais.
-- **✋ Mãos** — as rotas TypeScript em `src/app/api/...` que fazem as chamadas externas reais (ScrapeCreators, Meta, Higgsfield…) e gravam no Supabase. A IA **não executa ferramentas**: ela avalia/gera e devolve JSON; a rota faz o resto.
+**A IA não executa ferramentas.** Ela avalia ou gera e devolve JSON; a rota faz o resto.
 
----
-
-## ✨ Destaques já funcionando
-
-- **⛏️ Minerador validado ponta a ponta** — busca na Meta Ad Library via ScrapeCreators, pontua cada anúncio com IA (rubrica 0–100) e salva os validados. Inclui **lista negra** que descarta marketplaces/gateways antes de gastar crédito.
-- **🔍 Análise de IA visível no card** — score, categoria/nicho e notas da IA direto no modal do anúncio em `/mineracao`.
-- **⭐ Curadoria por favoritos** — favorite os melhores anúncios, filtre por favoritos e exclua em massa os não favoritados.
-- **📊 Diagnóstico de Meta Ads** — auditoria de campanhas com IA no dashboard de tráfego.
-- **🔄 Realtime** — todas as telas sincronizam via Supabase `postgres_changes`.
+> 📖 A documentação técnica profunda está no **[`CLAUDE.md`](CLAUDE.md)** (arquitetura e
+> regras da casa) e no **[`NOTES.md`](NOTES.md)** (diário de bordo: o que foi feito, o que
+> quebrou e por quê). Este README cobre só **instalar e rodar**.
 
 ---
 
-## 🏗️ Stack
+## 🧰 Parte 1 — Instalar os programas de base
 
-- **Framework:** Next.js 14 (App Router) + TypeScript strict
-- **Estilo:** Tailwind CSS — design system *dark glassmorphism*
-- **Banco:** Supabase (PostgreSQL + Realtime)
-- **IA (agentes):** OpenCode Zen — `deepseek-v4-flash-free` (via SDK OpenAI)
-- **IA (diagnóstico Meta Ads):** Anthropic Claude
-- **Integrações:** Meta Ads API · ScrapeCreators · Higgsfield · Cloudflare · Telegram
+> **Onde eu digito os comandos?** No Windows: aperte `Win`, digite `powershell`, abra o
+> **Windows PowerShell** — é uma janela onde você digita comandos e aperta Enter. No Mac:
+> abra o **Terminal**.
 
----
+### 1.1 Node.js — obrigatório
 
-## 🚀 Como rodar
+É o motor que roda o projeto. Sem ele, nada funciona.
+
+- Baixe em **<https://nodejs.org/>** — pegue a versão **LTS** (o botão da esquerda).
+- Instale clicando "Next" em tudo, aceitando o padrão.
+- **Feche e reabra o terminal.** Ele só enxerga programas novos depois de reiniciar.
+
+Confira:
 
 ```bash
-npm install          # instala dependências
-npm run dev          # servidor local (http://localhost:3000)
-npm run build        # build de produção
-npm run start        # serve o build
-npm run lint         # ESLint
-npx tsc --noEmit     # checagem de tipos
+node -v
+npm -v
 ```
 
-### Variáveis de ambiente (`.env.local`)
+Devem aparecer dois números de versão. Se aparecer *"não é reconhecido como um comando"*,
+ou o Node não instalou, ou você não reabriu o terminal.
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-ANTHROPIC_API_KEY=
-OPENCODE_API_KEY=
-META_ACCESS_TOKEN=
-SCRAPE_CREATORS_API_KEY=
-CLOUDFLARE_API_TOKEN=
-CLOUDFLARE_ACCOUNT_ID=
-GITHUB_TOKEN=
-HIGGSFIELD_API_KEY=
-TELEGRAM_BOT_TOKEN=
+> **Versões testadas neste projeto:** Node **24.16.0**, npm **11.13.0**.
+
+### 1.2 Git — obrigatório
+
+É o que baixa o código do GitHub e guarda o histórico de alterações.
+
+- Baixe em **<https://git-scm.com/downloads>** e instale aceitando o padrão.
+  (No Windows isso também instala o **Git Bash**, um terminal alternativo.)
+
+```bash
+git --version
 ```
 
-> ⚠️ **Nunca** commite o `.env.local` nem qualquer chave de API. Toda chamada externa passa por um Route Handler (`/api/`), nunca pelo client.
+### 1.3 Um editor de código — recomendado
+
+Você vai precisar editar um arquivo de texto com as chaves do projeto. Dá para usar o
+Bloco de Notas, mas o **VS Code** é grátis e muito melhor:
+
+- **<https://code.visualstudio.com/>**
+
+### 1.4 FFmpeg — só para autópsia e vídeo
+
+Programa que corta e converte vídeo. **Pule se você só quer ver o painel rodando.**
+
+- **Windows:** baixe em **<https://www.gyan.dev/ffmpeg/builds/>** (o
+  `ffmpeg-release-full.7z`), extraia em `C:\ffmpeg`, e adicione `C:\ffmpeg\bin` ao
+  **PATH** do Windows.
+  - **Como mexer no PATH:** aperte `Win` → digite "variáveis de ambiente" → abra *"Editar
+    as variáveis de ambiente do sistema"* → botão **Variáveis de Ambiente** → em
+    "Variáveis do sistema", selecione **Path** → **Editar** → **Novo** → cole
+    `C:\ffmpeg\bin` → OK em tudo → **reabra o terminal**.
+- **Mac:** `brew install ffmpeg`
+
+```bash
+ffmpeg -version
+```
+
+### 1.5 Python — só para a autópsia
+
+O worker que transcreve o áudio dos vídeos de concorrente é escrito em Python.
+
+- Baixe em **<https://www.python.org/downloads/>**.
+- ⚠️ **No instalador do Windows, marque a caixinha "Add Python to PATH"** antes de clicar
+  em Install. É o erro nº 1 de quem instala Python.
+
+```bash
+python --version
+python -m pip install faster-whisper
+```
+
+> **Versão testada:** Python **3.13.3**. A biblioteca `faster-whisper` é a única
+> dependência externa — o resto do worker usa só a biblioteca padrão.
 
 ---
 
-## 📁 Estrutura
+## 📦 Parte 2 — Baixar o projeto e instalar as dependências
+
+### 2.1 Baixar o código
+
+O repositório é **privado**: você precisa ter sido convidado para a conta
+`victorrmd05-dev` no GitHub.
+
+```bash
+git clone https://github.com/victorrmd05-dev/synapse.git
+cd synapse
+```
+
+Se pedir usuário e senha: o usuário é seu login do GitHub, e a "senha" é um **Personal
+Access Token** — o GitHub não aceita mais senha comum. Crie um em
+<https://github.com/settings/tokens> → *Generate new token (classic)* → marque a
+permissão **`repo`**.
+
+### 2.2 Instalar as dependências
+
+```bash
+npm install --legacy-peer-deps
+```
+
+Demora alguns minutos e baixa centenas de MB. É normal.
+
+> ⚠️ **O `--legacy-peer-deps` não é gambiarra e não dá para tirar.** O
+> `@remotion/zod-types` exige `zod@3.22.3` **exato**, enquanto os SDKs da Anthropic e da
+> OpenAI pedem `zod ^3.25 || ^4.0`. **Nenhuma versão do zod satisfaz os dois.** Sem a
+> flag, o `npm install` falha. Já foi conferido que os dois SDKs carregam normalmente
+> assim, porque o projeto não usa os helpers de zod deles.
+
+### 2.3 Dependências do renderizador de vídeo — opcional
+
+Só se você for **renderizar** anúncio (Parte 6). A pasta `remotion/` é um projeto
+separado **de propósito**: ela traz um binário nativo de ~48 MB e baixa um Chrome
+próprio, coisas que não podem entrar no site.
+
+```bash
+cd remotion
+npm install
+cd ..
+```
+
+---
+
+## 🔑 Parte 3 — Configurar as chaves (`.env.local`)
+
+É **o passo onde as pessoas mais travam**. Leia com calma.
+
+O projeto conversa com vários serviços externos (banco, IAs, Meta Ads…) e cada um exige
+uma chave. Elas ficam num arquivo chamado **`.env.local`**, na pasta raiz do projeto.
+
+### 3.1 Criar o arquivo
+
+Já existe um modelo pronto com todas as variáveis documentadas:
+
+```bash
+cp .env.local.example .env.local
+```
+
+No PowerShell do Windows, se `cp` não funcionar:
+
+```powershell
+Copy-Item .env.local.example .env.local
+```
+
+Agora abra o `.env.local` no VS Code e preencha os valores depois do `=`.
+
+### 3.2 O mínimo para o projeto abrir
+
+Você **não precisa de todas** as chaves. Para o painel subir, só estas três:
+
+| Variável | Onde pegar |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Painel do Supabase → Project Settings → API → *Project URL* |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Mesma tela → *anon public* |
+| `SUPABASE_SERVICE_ROLE_KEY` | Mesma tela → *service_role* (⚠️ **segredo total**) |
+
+Sem a `SUPABASE_SERVICE_ROLE_KEY` o projeto **nem inicia** — ele para na hora, com uma
+mensagem dizendo exatamente isso.
+
+### 3.3 As demais, por funcionalidade
+
+Preencha só o que for usar. O [`.env.local.example`](.env.local.example) explica cada uma
+em detalhe, com os avisos de custo.
+
+| Para usar… | Precisa de | Onde pegar |
+|---|---|---|
+| Gerar copy, dossiê, diagnóstico (**grátis**) | `OPENCODE_API_KEY` | <https://opencode.ai/> |
+| Minerar anúncios | `SCRAPE_CREATORS_API_KEY` | <https://scrapecreators.com/> |
+| Meta Ads (dashboard, campanhas) | `META_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID` | <https://developers.facebook.com/> |
+| Publicar landing page | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | <https://dash.cloudflare.com/> |
+| Sincronizar o cérebro dos agentes | `GITHUB_TOKEN` | <https://github.com/settings/tokens> |
+| Narração dos vídeos | `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` | <https://elevenlabs.io/> |
+| 💸 Gerar clipe de vídeo | `WAVESPEED_API_KEY`, `WAVESPEED_MODEL` | <https://wavespeed.ai/accesskey> |
+
+> 💸 **Sobre custo de IA:** o provider **padrão é gratuito** (OpenCode Zen). Anthropic e
+> OpenAI só entram por escolha explícita, nunca como fallback silencioso. A única coisa
+> que queima dinheiro a cada clique é a **WaveSpeed** (geração de clipe), que é pré-paga
+> e não reembolsável. Nada nela dispara sozinho, em loop ou como fallback.
+
+### 3.4 Três regras que evitam dor de cabeça
+
+1. 🔒 **NUNCA commite o `.env.local`.** Ele já está no `.gitignore` e o Git o ignora
+   sozinho — não force. Se uma chave vazar para o GitHub, ela tem que ser trocada.
+2. ⚠️ **Variável de ambiente do Windows sobrepõe o `.env.local`, em silêncio.** Se existir
+   uma variável de sistema com o mesmo nome, ela ganha e o arquivo é ignorado — **sem
+   nenhum aviso**. Isso já custou uma sessão inteira de depuração aqui. Se um valor "não
+   pega", é o primeiro lugar para olhar (a Parte 1.4 mostra onde ficam).
+3. 📝 **Ao adicionar variável nova, ponha o NOME no `.env.local.example` também** (sem o
+   valor). É esse arquivo que conta para a próxima pessoa o que o projeto precisa.
+
+---
+
+## 🗄️ Parte 4 — Banco de dados (Supabase)
+
+O projeto usa **Supabase** — um PostgreSQL hospedado, com plano gratuito.
+
+### 4.1 Se você vai usar o banco que já existe
+
+**Nada a fazer.** Basta ter preenchido as três chaves do passo 3.2. Pule para a Parte 5.
+
+### 4.2 Se você vai criar um banco novo do zero
+
+1. Crie conta em <https://supabase.com/> e um projeto novo (plano gratuito serve).
+2. Copie as três chaves (Project Settings → API) para o `.env.local`.
+3. **Aplique as migrations.** Elas estão em [`supabase/migrations/`](supabase/migrations/),
+   com nome numerado por data — **rode na ordem do nome do arquivo, da mais antiga para a
+   mais nova**.
+
+   O jeito simples, sem instalar nada: abra o **SQL Editor** no painel do Supabase e cole
+   o conteúdo de cada arquivo `.sql`, um por vez, em ordem.
+
+   O jeito profissional é pela CLI: <https://supabase.com/docs/guides/local-development>
+
+4. **Crie o bucket de arquivos:** painel → **Storage** → *New bucket* → nome
+   **`criativos`** → marque **Public**.
+
+---
+
+## ▶️ Parte 5 — Rodar o projeto
+
+```bash
+npm run dev
+```
+
+Espere aparecer `✓ Ready` e abra **<http://localhost:3000>** no navegador.
+
+Para desligar: volte ao terminal e aperte `Ctrl + C`.
+
+### Todos os comandos
+
+| Comando | O que faz |
+|---|---|
+| `npm run dev` | Liga o site em modo desenvolvimento — é o que você usa 99% do tempo |
+| `npm run build` | Compila a versão de produção — ⚠️ **leia a seção de problemas antes** |
+| `npm run start` | Serve a versão já compilada |
+| `npm run lint` | Confere estilo de código |
+| `npx tsc --noEmit` | **Confere erros de tipo — é a verificação oficial do projeto** |
+| `npm run video:worker` | Worker que busca o clipe pronto na WaveSpeed |
+| `npm run agents:pull` / `agents:push` | Sincroniza o "cérebro" dos agentes |
+
+> ⚠️ **Não existe `npm test`** — o projeto não tem suíte de testes automatizados.
+> "Testar" aqui significa rodar `npx tsc --noEmit` **e abrir a tela no navegador para
+> olhar**. Os dois bugs mais recentes da bancada de vídeo passavam pelo `tsc` e pelo
+> `build` sem um pio; só apareceram abrindo a página.
+>
+> ⚠️ **Não existe `npm run type-check`.** É `npx tsc --noEmit`.
+
+---
+
+## ⚙️ Parte 6 — Os workers (vídeo e autópsia)
+
+**Worker** é um programa que fica rodando em segundo plano, num terminal separado,
+pegando tarefas de uma fila no banco. O site cria a tarefa; o worker executa.
+
+Cada worker precisa do **seu próprio terminal**, com o site (`npm run dev`) rodando em
+outro.
+
+### 6.1 Worker de vídeo (WaveSpeed)
+
+Busca na WaveSpeed o clipe encomendado e salva no Storage.
+
+```bash
+npm run video:worker
+```
+
+> 💸 **Sobre custo:** a geração do clipe **já foi cobrada** quando você clicou em "Gerar
+> vídeo" no painel. O worker só **busca o resultado** — ele nunca encomenda nada sozinho.
+> Isso é proposital: worker reprocessa tarefa travada, e **retry automático não pode
+> conviver com cobrança**.
+
+### 6.2 Worker da autópsia (Python)
+
+Baixa o vídeo do concorrente, extrai grades de frames e transcreve o áudio. Precisa de
+**Python + ffmpeg + faster-whisper** (Partes 1.4 e 1.5).
+
+```bash
+python scripts/worker-autopsia.py
+```
+
+Na primeira execução ele baixa o modelo de transcrição — leva uns 30 segundos.
+
+### 6.3 Worker de composição do anúncio (Remotion)
+
+> 🚧 **Ainda não existe.** Está planejado na Task 7 de
+> `docs/superpowers/plans/2026-08-01-remotion-bancada-anuncio.md`. Quando existir será
+> `npm run video:compor`, e no primeiro uso vai baixar um Chrome próprio (~150–300 MB).
+
+---
+
+## 🤖 Parte 7 — Ferramentas de IA para desenvolver
+
+Esta parte é para quem vai **mexer no código com ajuda de IA** — inclusive para outra
+pessoa (ou outro agente, em outro terminal) conseguir dar suporte remoto neste projeto.
+**Nada aqui é necessário para o projeto simplesmente rodar.**
+
+### 7.1 Claude Code
+
+O agente de terminal que desenvolve neste repositório.
+
+- Site: **<https://claude.com/claude-code>**
+- Documentação: **<https://docs.claude.com/en/docs/claude-code/overview>**
+
+Instalação (precisa do Node da Parte 1.1):
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+Depois, **dentro da pasta do projeto**:
+
+```bash
+claude
+```
+
+Na primeira vez ele pede login na conta Anthropic pelo navegador.
+
+> 📌 **Ao abrir neste projeto, o Claude Code lê sozinho o [`CLAUDE.md`](CLAUDE.md)** — é
+> lá que estão as regras da casa, inclusive a regra nº 1: **não commitar sem pedir.**
+
+### 7.2 Superpowers — o pacote de habilidades
+
+Conjunto de *skills* que ensinam o agente a trabalhar com método: planejar antes de
+codar, depurar de forma sistemática, revisar o próprio trabalho, verificar antes de dizer
+que terminou. Este projeto usa intensamente — os planos em `docs/superpowers/` saíram
+dele.
+
+- **Repositório:** <https://github.com/obra/superpowers>
+- **Marketplace** (é por onde se instala): <https://github.com/obra/superpowers-marketplace>
+
+Dentro do Claude Code, digite:
 
 ```
-src/
- ├─ app/                 # páginas (App Router) + rotas de API
- │   ├─ mineracao/       # mineração e curadoria de anúncios
- │   ├─ producao/        # kanban de campanhas
- │   ├─ copywriting/     # geração de copy
- │   ├─ meta-ads/        # dashboard, campanhas e simulador
- │   └─ api/             # "mãos" dos agentes (route handlers)
- ├─ lib/                 # supabase clients, agentes, helpers
- └─ components/          # UI compartilhada
-supabase/migrations/     # schema versionado do banco
-agentes/                 # "cérebro" dos agentes (.md) — sync via Supabase
+/plugin marketplace add obra/superpowers-marketplace
+/plugin install superpowers@superpowers-marketplace
 ```
+
+> **Versão em uso aqui:** `superpowers@superpowers-marketplace` **6.2.0**.
+
+### 7.3 Playwright MCP — dar olhos ao agente
+
+Permite que o agente **abra o navegador, clique, digite e tire print**. Foi assim que os
+bugs visuais da bancada de vídeo foram encontrados — coisas que nenhum `tsc` ou `build`
+pega.
+
+- **Repositório:** <https://github.com/microsoft/playwright-mcp>
+
+Instalação (Mac/Linux):
+
+```bash
+claude mcp add playwright -- npx @playwright/mcp@latest
+```
+
+**No Windows**, precisa passar pelo `cmd` — é assim que está configurado nesta máquina:
+
+```bash
+claude mcp add playwright -- cmd /c npx @playwright/mcp@latest
+```
+
+Na primeira execução ele baixa os navegadores sozinho. Se falhar, force com:
+
+```bash
+npx playwright install
+```
+
+### 7.4 Supabase MCP — dar acesso ao banco
+
+**Já vem configurado** neste repositório, no arquivo [`.mcp.json`](.mcp.json) — ele aponta
+para o projeto Supabase por HTTP. Você só precisa autorizar quando o Claude Code pedir.
+
+- Documentação: <https://supabase.com/docs/guides/getting-started/mcp>
+
+---
+
+## 🚑 Quando der errado
+
+Tudo abaixo **já aconteceu neste projeto**, com a causa real anotada. Procure o seu
+sintoma antes de investigar do zero.
+
+### `npm install` falha com erro de *peer dependency*
+
+Use `npm install --legacy-peer-deps`. Não é opcional — explicação na Parte 2.2.
+
+### `npm run build` falha com `EPERM: operation not permitted, symlink`
+
+**É um defeito conhecido desta máquina, não do seu código.** A combinação
+`output: "standalone"` + dependências instaladas com pnpm + Windows sem Modo de
+Desenvolvedor faz a cópia final quebrar. **A compilação em si termina com sucesso** — só
+o último passo falha.
+
+🚨 **A consequência que morde:** como o build morre no fim, ele deixa a pasta `.next` pela
+metade. E `build` e `dev` **compartilham essa pasta**. Rodar o build com o site ligado
+**derruba o CSS do painel** — a tela fica branca, com fonte Times New Roman, e parece que
+tudo explodiu. Não é "às vezes"; é garantido.
+
+**A regra:** use `npx tsc --noEmit` como verificação, não o build. Se precisar mesmo do
+build, **desligue o `npm run dev` antes** e apague a `.next` depois.
+
+### `npm run build` falha com `PageNotFoundError: Cannot find module for page: /_document`
+
+Falha **transitória, sem causa diagnosticada**. Já falhou uma vez e passou na segunda
+tentativa **com o código exatamente igual**. **Rode de novo antes de investigar.**
+
+### A página abre vazia, sem estilo, ou com fonte estranha
+
+Quase sempre é a `.next` corrompida pelo problema acima:
+
+```bash
+# 1) desligue o npm run dev com Ctrl + C
+rm -rf .next
+npm run dev
+```
+
+No PowerShell: `Remove-Item -Recurse -Force .next`
+
+### Configurei a chave no `.env.local` mas o projeto ignora
+
+Você provavelmente tem **uma variável de ambiente do Windows com o mesmo nome**. Ela
+sobrepõe o arquivo **em silêncio** (Parte 3.4, regra 2). Para confirmar:
+
+```bash
+node -e "console.log(process.env.NOME_DA_VARIAVEL ? 'existe no sistema' : 'nao existe no sistema')"
+```
+
+Se disser *"existe no sistema"* e você não colocou lá, achou a causa.
+
+### O painel está vazio, mas eu sei que tem dados no banco
+
+Provável falta de **policy de RLS** na tabela. O Supabase bloqueia leitura por padrão;
+sem uma policy que libere, o painel enxerga zero linhas — **sem erro nenhum**, só vazio.
+Confira as policies da tabela no painel do Supabase.
+
+### Acentos viram `?` ou um losango preto com interrogação quando eu testo uma rota
+
+**Não use `curl` do Git Bash no Windows para mandar texto em português.** Ele envia o
+corpo em cp1252, e o acento chega no servidor como *replacement character* (`U+FFFD`,
+aquele losango) — que então vai assim para a API externa e é gravado no banco.
+
+Medido aqui: a palavra `Você` chegou com o `ê` substituído, e o áudio gerado saiu com o
+texto corrompido. **O código estava certo** — era o terminal. Use Node para testar:
+
+```bash
+node --env-file=.env.local meu-script.mjs
+```
+
+### O worker não pega a minha tarefa
+
+Confira se ele está mesmo rodando, **num terminal separado**, e que o terminal não foi
+fechado. O painel avisa na tela quando há tarefa parada esperando tempo demais.
+
+### Não consigo clonar o repositório
+
+Ele é **privado**. Você precisa (a) ter sido convidado para a conta `victorrmd05-dev` e
+(b) usar um **Personal Access Token** como senha, não a senha da conta. Veja a Parte 2.1.
+
+---
+
+## 🗺️ Mapa do projeto
+
+```
+.
+├── src/
+│   ├── app/              # Páginas e rotas de API (Next.js App Router)
+│   │   ├── api/          # As "mãos": rotas que chamam IA, banco e serviços externos
+│   │   ├── mineracao/    # Cada pasta aqui é uma tela do painel
+│   │   ├── video-maker/  #   ...
+│   │   └── ...
+│   ├── components/       # Peças de interface reutilizáveis
+│   ├── lib/              # Clientes externos (Supabase, IAs, Meta, Storage)
+│   └── video/            # A composição do anúncio — lida pelo site E pelo renderizador
+├── remotion/             # Renderizador de vídeo — projeto SEPARADO, nunca importado pelo site
+├── scripts/              # Workers e utilitários de linha de comando
+├── supabase/migrations/  # Histórico do banco, em ordem cronológica
+├── agentes/              # O "cérebro" de cada agente, em markdown
+├── docs/superpowers/     # Especificações e planos de implementação
+├── .env.local.example    # Modelo das variáveis de ambiente (documentação viva)
+├── CLAUDE.md             # Regras e arquitetura — leitura obrigatória para desenvolver
+└── NOTES.md              # Diário de bordo: o que foi feito, o que quebrou e por quê
+```
+
+### Três regras de ouro do código
+
+1. **`supabase` vs `supabaseServer` — nunca troque.** O `src/lib/supabase.ts` usa a chave
+   pública e respeita as permissões do banco: é para o **navegador**. O
+   `src/lib/supabase-server.ts` usa a `service_role`, que **ignora todas as permissões**:
+   é **só** para servidor. Importar o segundo no navegador expõe o banco inteiro.
+2. **A pasta `remotion/` nunca é importada pelo site.** A seta aponta ao contrário:
+   `remotion/` importa de `src/video/`. É isso que mantém 48 MB de binário nativo fora
+   do site.
+3. **Nenhuma chave no código.** Sempre `process.env`, sempre por rota de API — nunca no
+   navegador.
 
 ---
 
 <div align="center">
 
 **Alavanca AI** · plataforma proprietária · uso interno
+
+*"Métricas certas, escala garantida."*
 
 </div>
