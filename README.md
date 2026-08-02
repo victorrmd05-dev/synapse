@@ -385,9 +385,25 @@ Na primeira execução ele baixa o modelo de transcrição — leva uns 30 segun
 
 ### 6.3 Worker de composição do anúncio (Remotion)
 
-> 🚧 **Ainda não existe.** Está planejado na Task 7 de
-> `docs/superpowers/plans/2026-08-01-remotion-bancada-anuncio.md`. Quando existir será
-> `npm run video:compor`, e no primeiro uso vai baixar um Chrome próprio (~150–300 MB).
+Pega os anúncios que você montou na bancada (`/video-maker`) e renderiza o MP4 final —
+faixa do gancho, clipe, legenda queimada e CTA, tudo junto.
+
+```bash
+npm run video:compor
+```
+
+Na primeira execução ele baixa um Chrome próprio (**102 MB**), só uma vez. Referência de
+tempo medida: **45 segundos para um anúncio de 5,7s** (~8× a duração do vídeo).
+
+> 💡 **Este worker não gasta nada.** A narração já foi paga quando você clicou em "Gerar
+> voz", e o banco recusa job de composição sem narração. Renderizar é de graça — por isso
+> ele **insiste sozinho** até 3 vezes se falhar, ao contrário do worker de vídeo.
+>
+> ⚠️ **Rode sempre pelo `npm run video:compor`, nunca chamando o arquivo direto da raiz.**
+> O script entra na pasta `remotion/` antes de rodar, e isso não é frescura: o Remotion
+> procura o Chrome na pasta em que você está, não onde ele está instalado. Rodando da
+> raiz, ele baixa uma segunda cópia de 107 MB e trava na extração — o job fica preso em
+> "processando" para sempre, sem nenhuma mensagem de erro.
 
 ---
 

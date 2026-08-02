@@ -47,7 +47,7 @@
 
 ## 🔴 ONDE PARAMOS — retomar por aqui (01/08/2026, noite)
 
-> 🎬 **Bancada de anúncio com Remotion: 6 das 8 tarefas fechadas.** A rota de narração
+> 🎬 **Bancada de anúncio com Remotion: 7 das 8 tarefas fechadas.** A rota de narração
 > (Task 5) rodou contra a API real e devolveu áudio + legendas sincronizadas. Faltam 6, 7 e 8 —
 > a bancada, o worker e o ponta a ponta. Os desconhecidos acabaram: o contrato da ElevenLabs foi
 > medido, a voz está escolhida e aprovada de ouvido, as travas do banco foram provadas, e agora
@@ -62,7 +62,7 @@
 1. **Plano:** `docs/superpowers/plans/2026-08-01-remotion-bancada-anuncio.md` — 8 tarefas, código completo em cada passo.
 2. **Spec:** `docs/superpowers/specs/2026-08-01-remotion-bancada-anuncio-design.md`
 3. **O que já foi feito, tarefa por tarefa:** `.superpowers/sdd/2026-08-01-remotion-bancada-anuncio/progress.md` (git-ignored). **Este arquivo é o mapa de recuperação** — ele diz qual tarefa fechou, com qual commit, e o que ficou adiado.
-4. **Próximo passo:** Task 7 (o worker de render). Nada a bloqueia — há um job `compor` pendente esperando.
+4. **Próximo passo:** Task 8 (ponta a ponta + documentação). Nada a bloqueia — o MP4 já existe.
 
 ### O que ficou pronto
 
@@ -74,7 +74,8 @@
 | 4 — composição `AnuncioUGC` | ✅ revisão aprovada, 1 correção em voo | `0d4c87c` |
 | 5 — rota de narração | ✅ rodou contra a API real, áudio ouvido e aprovado | `b21744b` |
 | 6 — a bancada | ✅ ponta a ponta na tela; 2 bugs achados e corrigidos | ver seção abaixo |
-| 7 e 8 | ⬜ não começadas | — |
+| 7 — worker de render | ✅ MP4 renderizado em 45s e conferido contra o Player | ver seção abaixo |
+| 8 | ⬜ não começada | — |
 
 ### 📏 Fatos MEDIDOS nesta sessão (não repetir a medição)
 
@@ -135,6 +136,39 @@
   mesmo código.** Some com a lista de armadilhas conhecidas: não é o `EPERM` do standalone, é outra
   coisa, transitória, sem causa diagnosticada. Se acontecer, **repita antes de investigar**.
 
+**O worker de render (Task 7) — o MP4 existe e bate com a bancada:**
+
+- ✅ **Render em 45s** para um anúncio de 5,67s (**~8× a duração**). O plano estimava ~12×; a
+  medida real é mais rápida. MP4 de 4,1 MB, **1080×1920**, 30 fps, h264 + AAC, sem barra preta.
+- ✅ **A duração do vídeo é 5,666667s — exatamente o `duracao_narracao_s`.** A narração manda na
+  duração, ponta a ponta, do Player até o arquivo final.
+- ✅ **A bancada não mente.** Frame a frame contra o print do Player: o gancho quebra a linha no
+  **mesmo lugar** (`…arrasta no` / `passeio?`), a legenda troca **nas mesmas janelas** (conferido
+  em 0,8s e 3,5s contra os `inicio_s`/`fim_s` gravados) e o CTA laranja está no lugar.
+- ✅ **O `<Video muted>` está provado, não suposto** — e o teste importa porque **o clipe de origem
+  TEM trilha de áudio**. Prova: o clipe tem som **contínuo** (silêncio só nos primeiros 0,16s),
+  mas o MP4 final fica **mudo de 5,39s a 5,72s**, exatamente onde a narração cala. Se o áudio do
+  clipe estivesse somado, ali teria barulho — o clipe em loop estaria tocando.
+  - ⚠️ **O teste de nulo por inversão de fase NÃO serve aqui** e foi descartado: o AAC tem
+    *encoder delay*, o áudio sai deslocado e o cancelamento nunca fecha. Deu -22 dB de resíduo e
+    não provava nada. O teste de silêncio é que decide.
+- 🐛 **BUG DO PLANO, que travou o primeiro render:** o script era
+  `node --env-file=.env.local remotion/worker.mjs`, rodando da raiz. **O Remotion resolve o cache
+  do navegador em `<cwd>/node_modules/.remotion` — pelo diretório atual, não por onde o
+  `@remotion/renderer` está instalado.** Da raiz ele não enxergou o Chrome que já existia em
+  `remotion/node_modules/.remotion`, baixou uma **segunda cópia de 107 MB**, e a **extração
+  travou** depois de 2 arquivos. Sintoma: job preso em `processando` por 20+ minutos, **sem erro
+  nenhum**, sem processo de Chrome vivo. Corrigido para
+  `cd remotion && node --env-file=../.env.local worker.mjs` — o `--env-file` continua achando o
+  `.env.local` da raiz, e o Remotion acha o Chrome certo. **Na segunda rodada não houve download
+  nenhum.**
+- 📌 **O Chrome headless são 102,3 MB**, não os "150–300 MB" que o plano estimava.
+- ✅ **O retry é livre, e foi provado com job condenado:** falhou 3 vezes voltando para `pendente`
+  nas duas primeiras, virou `status='erro'` com a mensagem gravada na terceira, e **o processo do
+  worker continuou vivo** e voltou a esperar. É a diferença que justifica o desenho: render é
+  grátis, então insistir não custa nada — o oposto do `tipo='gerar'`, onde reprocessar
+  significaria cobrar de novo na WaveSpeed.
+
 **Agente de Copywriting:**
 
 - 🚨 **`max_tokens=16000` NÃO basta** com os 5 campos — o JSON sai cortado no meio. Com **32000** a geração passa inteira (medido: página 4618 · anúncio 1063 · imagens 2557 · vídeos 1320 · roteiros 491 caracteres).
@@ -169,7 +203,7 @@ Vale registrar porque o padrão se repete: o plano estava errado, e a verificaç
 - `compor_exige_narracao` — **não existe job de composição sem narração já paga**. É isso que torna o retry do worker seguro: renderizar é grátis, mas regerar narração gastaria cota. Mesma lição da WaveSpeed: *retry automático e cobrança não podem morar no mesmo lugar.*
 - `video_jobs_tipo_valido` — fecha o buraco em que `tipo='compour'` com typo escapava da trava de custo.
 
-### 📌 O que falta (Tasks 6 a 8)
+### 📌 O que falta (só a Task 8)
 
 - ~~**5 — rota de narração**~~ → **feita.** `src/lib/elevenlabs/{client,legendas}.ts` +
   `POST /api/video/narracao`, cache por hash de `texto|voz|modelo` no Storage
@@ -179,13 +213,16 @@ Vale registrar porque o padrão se repete: o plano estava errado, e a verificaç
 - ~~**6 — a bancada**~~ → **feita e testada na tela.** `src/app/video-maker/Bancada.tsx` (Player via
   `next/dynamic` com `ssr:false`) + `POST /api/video/compor`. O `grep` sobre a `.next` foi repetido
   aqui, com controle positivo, e passou. Detalhes e os 2 bugs corrigidos na seção de fatos medidos.
-- **7 — worker:** `remotion/worker.mjs` + script `video:compor`. Primeiro render baixa um Chrome headless (~150-300 MB).
+- ~~**7 — worker**~~ → **feito e provado.** `remotion/worker.mjs` + script `video:compor` (que
+  **entra em `remotion/` antes de rodar** — ver o bug do cwd na seção de fatos medidos). Render de
+  45s, MP4 conferido contra o Player, retry livre provado com job condenado.
 - **8 — ponta a ponta** + atualizar este arquivo e o segundo cérebro.
 
 ### 🧹 Pendências pequenas anotadas
 
 - `amostra-voz-sarah.mp3` e `amostra-voz-alice.mp3` na raiz — descartáveis, já no `.gitignore`. Pode apagar.
-- ~~Correção da Task 4 em voo (tirar o `^` das versões)~~ — **fechou** (`b1cc2f4`, re-revisão limpa). Os dois projetos agora travam `remotion`, `@remotion/player`, `@remotion/bundler`, `@remotion/renderer` em `4.0.409` e `zod` em `3.22.3`, sem range. Player e renderer não podem mais divergir num `npm install` futuro.
+- ~~Correção da Task 4 em voo (tirar o `^` das versões)~~ — **fechou** (`b1cc2f4`, re-revisão limpa). Todas as entradas Remotion dos dois manifestos estão em `4.0.409` exato e `zod` em `3.22.3`, sem range. Player e renderer não podem divergir num `npm install` futuro.
+  - 📌 **Correção de fato (02/08):** este item já disse que "os dois projetos travam `@remotion/bundler` e `@remotion/renderer`". **Não é verdade, e é melhor assim** — esses dois **não existem na raiz**, só em `remotion/`. A raiz tem apenas `remotion` e `@remotion/player`. Ou seja, a separação não depende só do `grep` sobre a `.next`: o renderer **não está instalado** do lado do Next. É garantia estrutural, não convenção.
 - O `ACHADOS.md` usa o termo "o Controlador" sem definir — jargão do processo, trocar por linguagem neutra.
 - `NOTA-REMOTION-BANCADA.md` na raiz virou a spec e o plano; a Task 8 apaga.
 
