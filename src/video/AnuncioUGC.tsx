@@ -170,7 +170,17 @@ export const AnuncioUGC: React.FC<AnuncioUgcProps> = ({
         </div>
       </div>
 
-      <Audio src={urlNarracao} />
+      {/*
+        🚨 So monta o <Audio> quando ha narracao. O Remotion LANCA
+        `No 'src' was passed to <Html5Audio>` com string vazia, e o
+        ErrorBoundary do Player engole a composicao inteira — a bancada abriria
+        quebrada, porque `urlNarracao` e '' ate voce clicar em "Gerar voz".
+        Medido em 01/08/2026 abrindo a tela; nao e defensividade preventiva.
+
+        No render final isto nunca e falso: a check `compor_exige_narracao` do
+        banco recusa job de composicao sem narracao.
+      */}
+      {urlNarracao ? <Audio src={urlNarracao} /> : null}
     </AbsoluteFill>
   );
 };

@@ -47,7 +47,7 @@
 
 ## 🔴 ONDE PARAMOS — retomar por aqui (01/08/2026, noite)
 
-> 🎬 **Bancada de anúncio com Remotion: 5 das 8 tarefas fechadas.** A rota de narração
+> 🎬 **Bancada de anúncio com Remotion: 6 das 8 tarefas fechadas.** A rota de narração
 > (Task 5) rodou contra a API real e devolveu áudio + legendas sincronizadas. Faltam 6, 7 e 8 —
 > a bancada, o worker e o ponta a ponta. Os desconhecidos acabaram: o contrato da ElevenLabs foi
 > medido, a voz está escolhida e aprovada de ouvido, as travas do banco foram provadas, e agora
@@ -60,7 +60,7 @@
 1. **Plano:** `docs/superpowers/plans/2026-08-01-remotion-bancada-anuncio.md` — 8 tarefas, código completo em cada passo.
 2. **Spec:** `docs/superpowers/specs/2026-08-01-remotion-bancada-anuncio-design.md`
 3. **O que já foi feito, tarefa por tarefa:** `.superpowers/sdd/2026-08-01-remotion-bancada-anuncio/progress.md` (git-ignored). **Este arquivo é o mapa de recuperação** — ele diz qual tarefa fechou, com qual commit, e o que ficou adiado.
-4. **Próximo passo:** Task 6 (a bancada). Nada a bloqueia.
+4. **Próximo passo:** Task 7 (o worker de render). Nada a bloqueia — há um job `compor` pendente esperando.
 
 ### O que ficou pronto
 
@@ -70,8 +70,9 @@
 | 2 — campo `roteiros_video` | ✅ revisão aprovada | `e104175` |
 | 3 — travas do `compor` | ✅ revisão aprovada | `1b754e5` |
 | 4 — composição `AnuncioUGC` | ✅ revisão aprovada, 1 correção em voo | `0d4c87c` |
-| 5 — rota de narração | ✅ rodou contra a API real, áudio ouvido e aprovado | ver seção abaixo |
-| 6 a 8 | ⬜ não começadas | — |
+| 5 — rota de narração | ✅ rodou contra a API real, áudio ouvido e aprovado | `b21744b` |
+| 6 — a bancada | ✅ ponta a ponta na tela; 2 bugs achados e corrigidos | ver seção abaixo |
+| 7 e 8 | ⬜ não começadas | — |
 
 ### 📏 Fatos MEDIDOS nesta sessão (não repetir a medição)
 
@@ -104,6 +105,33 @@
   por `node`/`fetch`, tudo chega intacto. **Ao testar rota que recebe texto em português, não use
   `curl` daqui** — use `node --env-file=.env.local script.mjs`. O par corrompido no Storage
   (hash `f6d99bdf…`) já foi removido.
+
+**A bancada (Task 6) — testada na tela, não só compilada:**
+
+- ✅ **Ponta a ponta funcionou:** digitar o gancho muda a faixa branca na hora; "Gerar voz" trouxe a
+  narração e a duração do Player passou de 0:04 (clipe) para 0:05 (narração); a legenda queimada
+  aparece sincronizada; "Renderizar" nasce apagado e só acende com narração; o job `compor` nasceu
+  `pendente` com `gancho`, `cta`, `cor_faixa`, `url_clipe`, `duracao_clipe_s=4`,
+  `duracao_narracao_s=5.666` e 4 legendas.
+- 🐛 **Bug 1 — a bancada abria QUEBRADA.** `<Audio src="">` faz o Remotion lançar
+  *"No 'src' was passed to `<Html5Audio>`"*, e o ErrorBoundary do Player engole a composição inteira.
+  E `urlNarracao` é `''` até você clicar em "Gerar voz" — ou seja, o estado **inicial** da tela.
+  Corrigido em `src/video/AnuncioUGC.tsx`: o `<Audio>` só monta quando há narração. No render final
+  isso nunca é falso, porque a check `compor_exige_narracao` recusa job sem narração.
+- 🐛 **Bug 2 — o Player estava cortado pela metade.** Medido: Player em 338×601 dentro de um wrapper
+  de **207px** de altura. Sumiam a faixa de CTA e a área da legenda — 2 dos 3 blocos do anúncio.
+  Causa: a div do Player é filha de um flex column e o flexbox a encolhia. Faltava `shrink-0`.
+  **Uma bancada que esconde o que você está aprovando é pior que bancada nenhuma** — e isso passaria
+  por `tsc` e por `build` sem um pio.
+- 🔒 **A prova de bundle agora vale (e na Task 4 não valia):** `@remotion/renderer`, `renderMedia` e
+  `selectComposition` **não aparecem** em `.next/static` nem em `.next/server`. E o teste tem
+  controle positivo — a string `"Arial Black"` do `AnuncioUGC` **está** em
+  `.next/static/chunks/911….js` e o runtime do Remotion está nos chunks do browser. Ou seja: o grep
+  comprovadamente enxerga código Remotion no bundle, e mesmo assim o renderer não está lá. O Player
+  entrou sem arrastar os 48 MB de binário nativo junto.
+- ⚠️ **`npm run build` falhou uma vez com `PageNotFoundError: /_document` e passou na segunda, com o
+  mesmo código.** Some com a lista de armadilhas conhecidas: não é o `EPERM` do standalone, é outra
+  coisa, transitória, sem causa diagnosticada. Se acontecer, **repita antes de investigar**.
 
 **Agente de Copywriting:**
 
@@ -146,7 +174,9 @@ Vale registrar porque o padrão se repete: o plano estava errado, e a verificaç
   (`criativos/narracao/<campanha_id>/<hash>.mp3` + o `.json` das legendas ao lado). Contrato que a
   Task 6 consome: `{ url_narracao, legendas, duracao_s, do_cache }`. ✅ **Ouvida e aprovada pelo
   Fernando**, que na ocasião trocou a voz para a Alice (ver acima).
-- **6 — a bancada:** `src/app/video-maker/Bancada.tsx` (Player via `next/dynamic` com `ssr:false`) + `POST /api/video/compor`. **Aqui se repete o `grep` sobre a `.next`** — só agora ele prova algo, porque é quando o `@remotion/player` entra na árvore de imports do Next.
+- ~~**6 — a bancada**~~ → **feita e testada na tela.** `src/app/video-maker/Bancada.tsx` (Player via
+  `next/dynamic` com `ssr:false`) + `POST /api/video/compor`. O `grep` sobre a `.next` foi repetido
+  aqui, com controle positivo, e passou. Detalhes e os 2 bugs corrigidos na seção de fatos medidos.
 - **7 — worker:** `remotion/worker.mjs` + script `video:compor`. Primeiro render baixa um Chrome headless (~150-300 MB).
 - **8 — ponta a ponta** + atualizar este arquivo e o segundo cérebro.
 

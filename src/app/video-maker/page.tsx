@@ -1,8 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { Search, Video, CheckCircle2, PlayCircle, Loader2, Check, X, MessageSquare, Plus, RefreshCw, FileText, Sparkles, AlertTriangle, DollarSign } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+
+// ssr:false obrigatorio: o @remotion/player toca DOM e video, e quebra na
+// renderizacao de servidor.
+const Bancada = dynamic(() => import('./Bancada'), { ssr: false });
 
 const DURACAO_MIN_S = 1;
 const DURACAO_MAX_S = 10;
@@ -156,7 +161,7 @@ export default function VideoMakerPage() {
     // copy. `campanhas_producao` é o pai de `workflow_copywriting`.
     const { data, error } = await supabase
       .from('workflow_copywriting')
-      .select('id, campanha_id, prompts_videos, data_criacao, campanhas_producao(nome_projeto, status_geral)')
+      .select('id, campanha_id, prompts_videos, roteiros_video, data_criacao, campanhas_producao(nome_projeto, status_geral)')
       .not('prompts_videos', 'is', null)
       .order('data_criacao', { ascending: false })
       .limit(20);
@@ -319,11 +324,23 @@ export default function VideoMakerPage() {
   const promptsDaOferta = useMemo(() => {
     if (!ofertaAtiva) return [];
     const separados = separarPromptsDeVideo(ofertaAtiva.prompts_videos || '');
+
+    // Roteiro pareado por INDICE: roteiro 1 e a narracao do video 1.
+    // Campanha antiga nao tem roteiro — a bancada abre com o campo vazio e
+    // voce escreve a mao. Nunca quebra por falta da coluna.
+    const roteiros = separarPromptsDeVideo(ofertaAtiva.roteiros_video || '');
+
     return separados.map((p, i) => {
       const jobsDoPrompt = jobs
         .filter((j) => normalizar(j.prompt) === normalizar(p.texto))
         .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
-      return { ...p, indice: i + 1, jobs: jobsDoPrompt, job: jobsDoPrompt[0] ?? null };
+      return {
+        ...p,
+        indice: i + 1,
+        jobs: jobsDoPrompt,
+        job: jobsDoPrompt[0] ?? null,
+        roteiro: roteiros[i]?.texto ?? '',
+      };
     });
   }, [ofertaAtiva, jobs]);
 
@@ -398,6 +415,24 @@ export default function VideoMakerPage() {
     return referencia && Date.now() - new Date(referencia).getTime() > AVISO_WORKER_PARADO_MS;
   });
 
+  // Diferente do aviso acima: job `compor` nasce 'pendente' e so sai dai se
+  // houver worker rodando. Nao ha servico externo demorando — parado em
+  // 'pendente' quer dizer uma coisa so, entao 2 minutos ja basta.
+  const composicaoParada = jobs.some(
+    (j) =>
+      j.tipo === 'compor' &&
+      j.status === 'pendente' &&
+      j.criado_em &&
+      Date.now() - new Date(j.criado_em).getTime() > 2 * 60_000,
+  );
+
+  // O roteiro do clipe selecionado, para pre-preencher a bancada.
+  const roteiroDoVideoAtivo = useMemo(() => {
+    if (!activeVideo) return '';
+    const p = promptsDaOferta.find((x) => x.jobs?.some((j: any) => j.id === activeVideo.id));
+    return p?.roteiro ?? '';
+  }, [activeVideo, promptsDaOferta]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Renderizando': return 'bg-status-yellow/20 text-status-yellow border-status-yellow/30';
@@ -452,6 +487,16 @@ export default function VideoMakerPage() {
           <p className="text-sm text-status-yellow">
             Há vídeo esperando processamento na WaveSpeed há mais de 10 minutos. O worker está rodando?{' '}
             <code className="ml-1 text-xs bg-surface-elevated px-1.5 py-0.5 rounded">npm run video:worker</code>
+          </p>
+        </div>
+      )}
+
+      {composicaoParada && (
+        <div className="bg-surface border border-status-yellow/30 rounded-lg p-3 mb-4 flex items-start gap-2 shrink-0">
+          <AlertTriangle size={16} className="text-status-yellow shrink-0 mt-0.5" />
+          <p className="text-sm text-status-yellow">
+            Há anúncio esperando render há mais de 2 minutos. O worker de composição está rodando?{' '}
+            <code className="ml-1 text-xs bg-surface-elevated px-1.5 py-0.5 rounded">npm run video:compor</code>
           </p>
         </div>
       )}
@@ -659,23 +704,43 @@ export default function VideoMakerPage() {
                 </div>
               </div>
 
-              {/* Video Player (Constrained to a mobile-like aspect or contained) */}
-              <div className="w-full flex-1 bg-black rounded-xl border border-surface-elevated relative overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] flex items-center justify-center">
-                {(activeVideo.url_video_download || activeVideo.thumbnail_url?.includes('.mp4') || activeVideo.video_url) ? (
-                  <video 
-                    src={activeVideo.url_video_download || activeVideo.video_url || activeVideo.thumbnail_url} 
-                    controls 
-                    className="w-full h-full max-h-[600px] object-contain outline-none"
-                  />
-                ) : (
-                  <div className="w-full h-full relative group cursor-pointer flex flex-col items-center justify-center max-h-[600px]">
-                    <img src={activeVideo.thumbnail_url} alt="Video cover" className="absolute inset-0 w-full h-full object-contain opacity-40" />
-                    <div className="relative z-10 w-16 h-16 bg-primary/90 text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.5)] group-hover:scale-110 transition-transform">
-                      <PlayCircle size={36} />
+              {/*
+                Clipe PRONTO no Storage vira bancada de montagem; qualquer outra
+                coisa (ainda gerando, so thumbnail, video antigo da WaveSpeed)
+                cai no player simples de antes.
+
+                ⚠️ `key={activeVideo.id}` nao e enfeite: sem ele, trocar de clipe
+                reaproveita o componente e mantem gancho, roteiro e NARRACAO do
+                video anterior — voce renderizaria a voz errada por cima do
+                clipe certo.
+              */}
+              {activeVideo.url_saida && activeVideo.id ? (
+                <Bancada
+                  key={activeVideo.id}
+                  campanhaId={activeVideo.campanha_id ?? null}
+                  jobFonteId={activeVideo.id}
+                  urlClipe={activeVideo.url_saida}
+                  duracaoClipeS={activeVideo.duracao_s ?? 5}
+                  roteiroInicial={roteiroDoVideoAtivo}
+                />
+              ) : (
+                <div className="w-full flex-1 bg-black rounded-xl border border-surface-elevated relative overflow-hidden shadow-[0_0_30px_rgba(0,0,0,0.5)] flex items-center justify-center">
+                  {(activeVideo.url_video_download || activeVideo.thumbnail_url?.includes('.mp4') || activeVideo.video_url) ? (
+                    <video
+                      src={activeVideo.url_video_download || activeVideo.video_url || activeVideo.thumbnail_url}
+                      controls
+                      className="w-full h-full max-h-[600px] object-contain outline-none"
+                    />
+                  ) : (
+                    <div className="w-full h-full relative group cursor-pointer flex flex-col items-center justify-center max-h-[600px]">
+                      <img src={activeVideo.thumbnail_url} alt="Video cover" className="absolute inset-0 w-full h-full object-contain opacity-40" />
+                      <div className="relative z-10 w-16 h-16 bg-primary/90 text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.5)] group-hover:scale-110 transition-transform">
+                        <PlayCircle size={36} />
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Action Footer */}
               <div className="p-4 border border-surface-elevated bg-surface rounded-xl space-y-2 shrink-0">
