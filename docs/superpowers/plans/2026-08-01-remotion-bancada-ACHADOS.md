@@ -25,7 +25,9 @@ Três chamadas reais foram feitas:
    (Keren, "Young Brazilian Female") — tentando usar a única voz pt-BR feminina da
    conta. **Devolveu HTTP 402**, não 200 (ver seção dedicada abaixo).
 4. `POST /v1/text-to-speech/{voice_id}/with-timestamps` com a voz `EXAVITQu4vr4xnSDxMaL`
-   (Sarah, premade) — voz de fallback, que funcionou (HTTP 200) e foi a escolhida.
+   (Sarah, premade) — voz de fallback, que funcionou (HTTP 200). É dela que saem
+   as medidas de tamanho/duração deste documento. **Não é a voz final** — ver
+   "Voz escolhida".
 
 Todas usaram o texto fixo do brief: `"Você treina há meses e o joelho ainda dói.
 Não é falta de esforço."` (66 caracteres).
@@ -163,10 +165,17 @@ separada, em outro momento. O `.env.local` foi então revertido para
 
 ## Voz escolhida
 
-**`ELEVENLABS_VOICE_ID=EXAVITQu4vr4xnSDxMaL`** — "Sarah - Mature, Reassuring,
-Confident" (`premade`, `gender:female`, `language:en`, `accent:american`,
-`use_case:entertainment_tv`). **Confirmada de ouvido pelo Fernando em
-01/08/2026 — não é mais inferência por metadado, é fato verificado.**
+**`ELEVENLABS_VOICE_ID=Xb7hH8MSUJpSbSDYk0k2`** — "Alice" (`premade`,
+`gender:female`, `language:en`). **Confirmada de ouvido pelo Fernando em
+01/08/2026 — não é inferência por metadado, é fato verificado.**
+
+> ⚠️ **Esta escolha mudou no meio do dia.** A primeira audição elegeu a **Sarah**
+> (`EXAVITQu4vr4xnSDxMaL`); ao ouvir as duas de novo, já com a narração real
+> saindo da rota `/api/video/narracao`, o Fernando preferiu a **Alice**:
+> *"agora ouvindo novamente a alice é mais suave e melhor"*. O parágrafo abaixo
+> descreve a primeira rodada e fica de propósito — ele explica **como** se chegou
+> a um par de finalistas em inglês, que é o achado que importa. O que mudou foi
+> qual das duas ganhou, não o raciocínio.
 
 **Como chegou nisso: não há voz pt-BR premade disponível nesta conta/plano** — a
 voz feminina pt-BR que existe (`Keren`) está bloqueada por plano (`HTTP 402`,
@@ -176,20 +185,35 @@ técnico foi "voz multilíngue feminina" rodando com
 válido — voz nativamente rotulada como inglês falando português, não uma voz
 pt-BR nativa.
 
-**A confirmação real:** o Controlador gerou duas amostras com um roteiro real do
-agente Copywriting — *"Cansado de ser arrastado no passeio? Dá pra reverter
-isso em poucos minutos por dia. Método Elo-Leve: seu cão andando na guia
-solta."* — nas vozes `EXAVITQu4vr4xnSDxMaL` (Sarah) e `Xb7hH8MSUJpSbSDYk0k2`
-(Alice). **O Fernando ouviu as duas e escolheu a Sarah**, textualmente: *"sarah
-ficou legal pode deixar ela"*. Isso substitui a leitura de metadado ("tom
-confiante, reassuring" no label) que orientou a escolha inicial desta sonda —
-a escolha final foi por audição real, com texto de anúncio real, não com a
-frase de teste genérica desta task.
+**Rodada 1 — as amostras soltas.** Foram geradas duas amostras com um roteiro
+real do agente Copywriting — *"Cansado de ser arrastado no passeio? Dá pra
+reverter isso em poucos minutos por dia. Método Elo-Leve: seu cão andando na
+guia solta."* — nas vozes `EXAVITQu4vr4xnSDxMaL` (Sarah) e
+`Xb7hH8MSUJpSbSDYk0k2` (Alice). O Fernando ouviu as duas e escolheu a Sarah:
+*"sarah ficou legal pode deixar ela"*. Isso já substituiu a leitura de metadado
+("tom confiante, reassuring" no label) que orientou a escolha inicial desta
+sonda — a decisão passou a ser por audição real, com texto de anúncio real.
+
+**Rodada 2 — a decisão que vale, e a razão de ela existir.** Depois que a Task 5
+ficou pronta, a narração passou a sair da rota de verdade
+(`POST /api/video/narracao`) em vez de um script de amostra. Ouvindo de novo
+nesse contexto, o Fernando inverteu a escolha: *"agora ouvindo novamente a alice
+é mais suave e melhor"*. **Voz final: Alice, `Xb7hH8MSUJpSbSDYk0k2`.** O
+`.env.local` foi atualizado e a narração regerada — `duracao_s` 6,502s e
+`ffprobe` 6,501587s no MP3 resultante, ou seja, a troca de voz não afetou a
+sincronia entre alignment e áudio.
+
+⚠️ **Trocar `ELEVENLABS_VOICE_ID` invalida o cache de propósito** — a chave é o
+hash de `texto|voz|modelo`. Confirmado na prática nesta troca: a primeira
+chamada com a Alice voltou `do_cache: false` e um caminho novo no Storage; a
+segunda voltou `do_cache: true`. Sem os três no hash, a troca de voz devolveria
+o MP3 velho em silêncio.
 
 Alternativas premade femininas na mesma conta, testadas ou não, para referência
-futura: `hpp4J3VqNfWAUOO0d1Us` (Bella), `cgSgspJ2msm6clMCkdW9` (Jessica),
-`XrExE9yKIg1WjnnlVkGX` (Matilda), `Xb7hH8MSUJpSbSDYk0k2` (Alice — ouvida e
-preterida), `FGY2WhTYpPnrIDTdsKH5` (Laura), `pFZP5JQG7iQjIQuC4Bku` (Lily).
+futura: `EXAVITQu4vr4xnSDxMaL` (Sarah — ouvida, escolhida na rodada 1 e
+preterida na 2), `hpp4J3VqNfWAUOO0d1Us` (Bella), `cgSgspJ2msm6clMCkdW9`
+(Jessica), `XrExE9yKIg1WjnnlVkGX` (Matilda), `FGY2WhTYpPnrIDTdsKH5` (Laura),
+`pFZP5JQG7iQjIQuC4Bku` (Lily).
 
 **Em aberto, sem editorializar — spec §4.6
 (`docs/superpowers/specs/2026-08-01-remotion-bancada-anuncio-design.md`):** o
@@ -217,10 +241,11 @@ escopo técnico.
 
 ## Ainda NÃO confirmado
 
-- ~~Se o sotaque/prosódia da voz Sarah falando português soa aceitável~~ —
-  **confirmado em 01/08/2026:** o Fernando ouviu Sarah e Alice narrando um
-  roteiro real de anúncio e escolheu Sarah (ver "Voz escolhida" acima). O que
-  continua em aberto é só a licença de uso comercial (spec §4.6), não a
+- ~~Se o sotaque/prosódia de uma voz inglesa falando português soa aceitável~~ —
+  **confirmado em 01/08/2026, em duas audições:** o Fernando ouviu Sarah e Alice
+  narrando um roteiro real de anúncio e, na segunda audição (já com a narração
+  saindo da rota de verdade), escolheu **Alice** (ver "Voz escolhida" acima). O
+  que continua em aberto é só a licença de uso comercial (spec §4.6), não a
   qualidade da voz.
 - Máximo de caracteres por request e comportamento de rate limit/cota mensal.
 - Se `Lax`/`Keren` (as únicas vozes com label pt-BR) ficariam utilizáveis com um
@@ -244,7 +269,10 @@ escopo técnico.
    conferir os termos de atribuição/uso comercial do plano gratuito da
    ElevenLabs (spec §4.6). Voz já está decidida — falta só essa checagem de
    licença.
-2. Tasks 5 e 7 usam os nomes de campo confirmados acima
-   (`alignment.characters` / `character_start_times_seconds` /
-   `character_end_times_seconds`, `audio_base64`) e `ELEVENLABS_VOICE_ID=EXAVITQu4vr4xnSDxMaL`
-   sem precisar chamar a API de novo para descobrir o shape ou re-testar a voz.
+2. ~~Tasks 5 e 7 usam os nomes de campo confirmados acima~~ — **a Task 5 já usou,
+   e eles estavam certos.** `alignment.characters` /
+   `character_start_times_seconds` / `character_end_times_seconds` /
+   `audio_base64` foram consumidos por `src/lib/elevenlabs/client.ts` sem
+   nenhum ajuste, e a rota devolveu áudio + legendas na primeira tentativa.
+   Voz em uso: `ELEVENLABS_VOICE_ID=Xb7hH8MSUJpSbSDYk0k2` (Alice). A Task 7 lê o
+   MP3 pronto do Storage e **não chama esta API** — ver o cabeçalho do client.

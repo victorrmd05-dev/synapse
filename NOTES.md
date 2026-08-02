@@ -1,10 +1,11 @@
 # 📝 Notas do Projeto — Alavanca Synapse
 > Diário de bordo do projeto. **Sempre atualizar este arquivo após validar cada tarefa**
 > (e replicar no segundo cérebro: `02_Projetos/Alavanca_Synapse.md` no vault Obsidian/nexus.ai).
-> Última atualização: 2026-08-01 (noite) — 🎬 **Bancada de anúncio com Remotion: 4 de 8
-> tarefas fechadas**, todas revisadas e aprovadas. Contrato da ElevenLabs **medido** (usar
-> `alignment`, não `normalized_alignment`), voz **decidida de ouvido** (Sarah — não existe
-> voz pt-BR no plano gratuito, dá 402), campo `roteiros_video` no contrato do Copywriting
+> Última atualização: 2026-08-01 (noite) — 🎬 **Bancada de anúncio com Remotion: 5 de 8
+> tarefas fechadas.** Contrato da ElevenLabs **medido** (usar
+> `alignment`, não `normalized_alignment`), voz **decidida de ouvido** (Alice — não existe
+> voz pt-BR no plano gratuito, dá 402), **rota de narração rodando contra a API real** com
+> legendas sincronizadas ao milissegundo, campo `roteiros_video` no contrato do Copywriting
 > (exigiu `max_tokens=32000`), travas do `compor` provadas no banco, e a composição
 > `AnuncioUGC` compartilhada entre Player e render. **14 commits LOCAIS, nada empurrado.**
 > Faltam as Tasks 5 a 8 — metade, e é a da integração. Detalhes em "ONDE PARAMOS".
@@ -46,19 +47,20 @@
 
 ## 🔴 ONDE PARAMOS — retomar por aqui (01/08/2026, noite)
 
-> 🎬 **Bancada de anúncio com Remotion: 4 das 8 tarefas fechadas, todas revisadas e aprovadas.**
-> As quatro que faltam (5, 6, 7, 8) são as que costuram tudo. **Não falta pouco — falta metade**,
-> e é a metade da integração. Mas os desconhecidos acabaram: o contrato da ElevenLabs foi medido,
-> a voz está escolhida e aprovada de ouvido, e as travas do banco foram provadas.
+> 🎬 **Bancada de anúncio com Remotion: 5 das 8 tarefas fechadas.** A rota de narração
+> (Task 5) rodou contra a API real e devolveu áudio + legendas sincronizadas. Faltam 6, 7 e 8 —
+> a bancada, o worker e o ponta a ponta. Os desconhecidos acabaram: o contrato da ElevenLabs foi
+> medido, a voz está escolhida e aprovada de ouvido, as travas do banco foram provadas, e agora
+> existe narração de verdade no Storage.
 >
-> ⚠️ **14 commits LOCAIS, nada empurrado.** `origin/main` segue em `3b881e6`.
+> ⚠️ **Commits LOCAIS, nada empurrado.** `origin/main` segue em `3b881e6`.
 
 ### Como retomar em uma linha
 
 1. **Plano:** `docs/superpowers/plans/2026-08-01-remotion-bancada-anuncio.md` — 8 tarefas, código completo em cada passo.
 2. **Spec:** `docs/superpowers/specs/2026-08-01-remotion-bancada-anuncio-design.md`
 3. **O que já foi feito, tarefa por tarefa:** `.superpowers/sdd/2026-08-01-remotion-bancada-anuncio/progress.md` (git-ignored). **Este arquivo é o mapa de recuperação** — ele diz qual tarefa fechou, com qual commit, e o que ficou adiado.
-4. **Próximo passo:** Task 5 (rota de narração). Nada a bloqueia.
+4. **Próximo passo:** Task 6 (a bancada). Nada a bloqueia.
 
 ### O que ficou pronto
 
@@ -68,7 +70,8 @@
 | 2 — campo `roteiros_video` | ✅ revisão aprovada | `e104175` |
 | 3 — travas do `compor` | ✅ revisão aprovada | `1b754e5` |
 | 4 — composição `AnuncioUGC` | ✅ revisão aprovada, 1 correção em voo | `0d4c87c` |
-| 5 a 8 | ⬜ não começadas | — |
+| 5 — rota de narração | ✅ rodou contra a API real, áudio ouvido e aprovado | ver seção abaixo |
+| 6 a 8 | ⬜ não começadas | — |
 
 ### 📏 Fatos MEDIDOS nesta sessão (não repetir a medição)
 
@@ -78,9 +81,29 @@
 - 🚨 **Usar `alignment`, NÃO `normalized_alignment`.** O normalizado vem com um espaço a mais no início **e** no fim (23 chars contra 21 no texto enviado); esses dois caracteres entrariam na primeira e na última legenda. O plano supunha o contrário — foi corrigido depois de medir.
 - **A geração NÃO é determinística** (~8% de variação de tamanho entre chamadas idênticas). Isso reforça o cache: sem ele, "Renderizar" produziria uma narração diferente da que foi aprovada no Player.
 - 💸 **Não existe voz pt-BR utilizável no plano gratuito.** A única feminina brasileira da conta (Keren, `33B4UnXyTNbgLmdEDh5P`) é `category: professional` e devolve **HTTP 402** — *"Free users cannot use library voices via the API"*. Confirmado duas vezes, inclusive com o ID posto à mão no `.env.local`. É o **plano** que recusa, não a chave.
-- ✅ **Voz decidida: Sarah, `EXAVITQu4vr4xnSDxMaL`** — o Fernando ouviu duas amostras lendo um roteiro real e escolheu ("sarah ficou legal pode deixar ela"). É voz **inglesa** falando português via `eleven_multilingual_v2`.
+- ✅ **Voz decidida: Alice, `Xb7hH8MSUJpSbSDYk0k2`** — é voz **inglesa** falando português via `eleven_multilingual_v2`. **A escolha mudou no meio do dia e vale registrar por quê:** na primeira audição, com amostras geradas por script, o Fernando ficou com a Sarah (`EXAVITQu4vr4xnSDxMaL`); ao ouvir de novo já com a narração saindo da rota de verdade, inverteu — *"agora ouvindo novamente a alice é mais suave e melhor"*. A lição prática: **julgar voz por amostra solta não é o mesmo que julgar no contexto de produção.**
+- 🔑 **Trocar `ELEVENLABS_VOICE_ID` invalida o cache de propósito** — a chave do cache é o hash de `texto|voz|modelo`. Provado nesta troca: 1ª chamada com a Alice → `do_cache: false` + caminho novo; 2ª → `do_cache: true`. Se só o texto entrasse no hash, trocar a voz devolveria o MP3 antigo em silêncio, e ninguém entenderia por quê.
 - ⚠️ **Em aberto:** a restrição de uso comercial e a exigência de atribuição do plano gratuito. Não trava nada agora; **conferir antes de o áudio subir num anúncio pago no Meta**. O Starter (~US$5) resolveria isso e liberaria a Keren de quebra.
 - ⚠️ A chave anterior foi **revogada** — um subagente imprimiu o valor dela no terminal durante a investigação. A chave atual é nova e tem os escopos certos.
+
+**Rota de narração (Task 5) — medido em 01/08, contra a API real:**
+
+- ✅ **A duração do alignment bate com o áudio ao milissegundo.** `duracao_s` derivado do último
+  `character_end_times_seconds` = **6,177s**; `ffprobe` no MP3 baixado do Storage = **6,176508s**.
+  Isso é a prova de que a legenda não vai derivar do áudio — era o risco central da Task 5, e caiu.
+- ✅ **Cache provado:** a segunda chamada idêntica voltou `do_cache: true`, mesma `url_narracao`,
+  legendas com os **mesmos tempos exatos**. É ele que segura a cota quando você ajustar a cor da
+  faixa dez vezes.
+- ✅ **O teto de 1.200 caracteres recusa ANTES de gastar** — provado no contador da própria
+  ElevenLabs (`GET /v1/user/subscription`): 586 usados antes, **586 depois** do 400. Prova mais
+  forte do que o log do dev, que o plano sugeria.
+- 📊 Cota consumida até aqui: **586 de 10.000 caracteres** do plano gratuito.
+- 🚨 **Armadilha de encoding, e ela não é do código:** `curl` no Git Bash do Windows manda o corpo
+  em **cp1252**, e o acento chega no servidor como **U+FFFD** (replacement char) — que aí vai para
+  a ElevenLabs e para as legendas gravadas. `Você` virou `Voc<FFFD>`. Com a mesma requisição feita
+  por `node`/`fetch`, tudo chega intacto. **Ao testar rota que recebe texto em português, não use
+  `curl` daqui** — use `node --env-file=.env.local script.mjs`. O par corrompido no Storage
+  (hash `f6d99bdf…`) já foi removido.
 
 **Agente de Copywriting:**
 
@@ -116,9 +139,13 @@ Vale registrar porque o padrão se repete: o plano estava errado, e a verificaç
 - `compor_exige_narracao` — **não existe job de composição sem narração já paga**. É isso que torna o retry do worker seguro: renderizar é grátis, mas regerar narração gastaria cota. Mesma lição da WaveSpeed: *retry automático e cobrança não podem morar no mesmo lugar.*
 - `video_jobs_tipo_valido` — fecha o buraco em que `tipo='compour'` com typo escapava da trava de custo.
 
-### 📌 O que falta (Tasks 5 a 8)
+### 📌 O que falta (Tasks 6 a 8)
 
-- **5 — rota de narração:** `src/lib/elevenlabs/{client,legendas}.ts` + `POST /api/video/narracao`. Cache por hash de texto+voz+modelo no Storage. **Gasta cota.**
+- ~~**5 — rota de narração**~~ → **feita.** `src/lib/elevenlabs/{client,legendas}.ts` +
+  `POST /api/video/narracao`, cache por hash de `texto|voz|modelo` no Storage
+  (`criativos/narracao/<campanha_id>/<hash>.mp3` + o `.json` das legendas ao lado). Contrato que a
+  Task 6 consome: `{ url_narracao, legendas, duracao_s, do_cache }`. ✅ **Ouvida e aprovada pelo
+  Fernando**, que na ocasião trocou a voz para a Alice (ver acima).
 - **6 — a bancada:** `src/app/video-maker/Bancada.tsx` (Player via `next/dynamic` com `ssr:false`) + `POST /api/video/compor`. **Aqui se repete o `grep` sobre a `.next`** — só agora ele prova algo, porque é quando o `@remotion/player` entra na árvore de imports do Next.
 - **7 — worker:** `remotion/worker.mjs` + script `video:compor`. Primeiro render baixa um Chrome headless (~150-300 MB).
 - **8 — ponta a ponta** + atualizar este arquivo e o segundo cérebro.
