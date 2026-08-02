@@ -226,6 +226,55 @@ Vale registrar porque o padrão se repete: o plano estava errado, e a verificaç
 - O `ACHADOS.md` usa o termo "o Controlador" sem definir — jargão do processo, trocar por linguagem neutra.
 - ~~`NOTA-REMOTION-BANCADA.md` na raiz virou a spec e o plano; a Task 8 apaga.~~ → **apagado em 02/08**, junto da faxina da raiz (abaixo).
 
+### 🤝 Provisionar o Synapse num Supabase de terceiro (02/08/2026)
+
+O Fernando entregou o projeto para um amigo, com o banco já montado daqui. Isso virou dois
+scripts reutilizáveis e destapou um buraco sério no repo.
+
+**🚨 O buraco: `agentes_config` NUNCA foi versionada.** A tabela existia só no banco de
+produção, criada à mão por um `setup_agentes_config_v2.sql` que o `CLAUDE.md` citava e que
+**não existe mais no repositório**. Consequência: **as migrations não conseguiam reconstruir
+o próprio banco de origem** — montar um banco novo morria em
+`42P01 relation "public.agentes_config" does not exist`, na migration que adiciona
+`template_md`. Corrigido com `20260625145900_create_agentes_config.sql` (timestamp um minuto
+antes da que dependia dela), schema extraído do banco real coluna por coluna. De quebra, a
+função do trigger ganhou `SET search_path`, que o linter do Supabase acusava.
+
+**Dois scripts novos, ambos validados contra bancos reais:**
+- `scripts/setup-banco-novo.mjs` — aplica as 25 migrations em ordem, cria o bucket `criativos`
+  e confere no fim. **Idempotente de propósito:** duas migrations criam policy com
+  `EXECUTE format('CREATE POLICY …')` sem `IF NOT EXISTS` e explodem no segundo run; o script
+  trata "já existe" (42P07/42710/42701) como sucesso. Também **cria o bucket, que NÃO está nas
+  migrations** — no app ele nasce em runtime pelo `garantirBucket()`, então um banco montado só
+  com migrations fica sem lugar para guardar arquivo e quebra no primeiro upload.
+- `scripts/sync-agentes-remoto.mjs` — popula `agentes_config` a partir da pasta `agentes/`.
+  Espelha o `syncAgentsFromFolder()` **inclusive nas limitações** (só 6 arquivos; `WORKER.md` e
+  `COLETA.md` não vão para o banco, nem aqui nem no app).
+
+**Três armadilhas de rede/ambiente medidas no caminho:**
+1. **A conexão direta `db.<ref>.supabase.co` não resolve** — nem a do amigo, nem a nossa. O
+   Supabase tornou o host direto IPv6-only. **Use o pooler:**
+   `postgres.<ref>@aws-0-<regiao>.pooler.supabase.com:5432` (porta 5432 = session mode, que é
+   o que suporta DDL). A região se descobre tentando autenticar em cada uma.
+2. **A `DATABASE_URL` do ambiente do Windows sequestrou o `--env-file`** — ela aponta para
+   `nafpijwkdzqagfiigqvi`, um projeto que **não existe mais**, e o Node não sobrescreve
+   `process.env` já preenchido. Por isso o `sync-agentes-remoto.mjs` põe a env em **último**
+   na precedência (argumento > REST > env): se ela viesse primeiro, um `--env-file` inocente
+   mandaria o sync para o banco errado.
+3. **Por isso o sync fala dois transportes** — `pg` (quando se tem a senha) e **REST com a
+   service_role** (que funciona de qualquer lugar e é a mesma porta do `supabaseServer`).
+
+**📌 `tracking_config` sem policy NÃO é bug — é o certo.** Ela é lida só por `supabaseServer`
+(service_role, que ignora RLS) e guarda o `capi_token` do Meta. Criar policy pública ali
+exporia o token para qualquer um com a anon key. **Nos dois bancos, deixar fechada.**
+
+**Resultado:** banco do amigo com as 20 tabelas, policies, Realtime, bucket e os 7 agentes
+(conferidos por SHA-256 contra os arquivos locais). E o **nosso** banco estava com `autopsia` e
+`minerador` desatualizados — sincronizados também, porque fazia tempo que ninguém clicava em
+`/agents`. É a armadilha do `CLAUDE.md` na prática: editar o `.md` não faz nada até rodar o sync.
+
+---
+
 ### 🚨 O repo é PÚBLICO — e o que isso implica no banco (02/08/2026)
 
 Conferido na API do GitHub: **`private: false`**. O `CLAUDE.md` afirmava "privado" havia meses,
