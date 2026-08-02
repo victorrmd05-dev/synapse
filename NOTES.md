@@ -53,7 +53,9 @@
 > medido, a voz está escolhida e aprovada de ouvido, as travas do banco foram provadas, e agora
 > existe narração de verdade no Storage.
 >
-> ⚠️ **Commits LOCAIS, nada empurrado.** `origin/main` segue em `3b881e6`.
+> ✅ **EMPURRADO em 02/08/2026.** `origin/main` saiu de `3b881e6` e foi para `46cc1cd` — 20
+> commits de uma vez, autorizados pelo Fernando. Antes disso o trabalho todo estava só local.
+> Conferido antes do push: `.env.local` não rastreado e nenhum segredo literal no diff.
 
 ### Como retomar em uma linha
 
