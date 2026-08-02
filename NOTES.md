@@ -226,6 +226,44 @@ Vale registrar porque o padrão se repete: o plano estava errado, e a verificaç
 - O `ACHADOS.md` usa o termo "o Controlador" sem definir — jargão do processo, trocar por linguagem neutra.
 - ~~`NOTA-REMOTION-BANCADA.md` na raiz virou a spec e o plano; a Task 8 apaga.~~ → **apagado em 02/08**, junto da faxina da raiz (abaixo).
 
+### 🚨 O repo é PÚBLICO — e o que isso implica no banco (02/08/2026)
+
+Conferido na API do GitHub: **`private: false`**. O `CLAUDE.md` afirmava "privado" havia meses,
+e era **falso** — o README de 01/08 repetiu o erro de boa-fé. Corrigido nos dois. O Fernando
+decidiu **manter público**.
+
+**A varredura de segredo deu limpa**, e isso é o que mais importa: o `.env.local` **nunca** foi
+commitado, nenhum `.env` real entrou em commit nenhum, e o histórico inteiro não tem chave da
+Anthropic, OpenAI, GitHub, Meta nem ElevenLabs. O único hit da busca foi um `placeholder=` de
+campo de senha com o prefixo que todo JWT tem. O `.gitignore` segurou desde o primeiro commit.
+
+⚠️ **MAS o `get_advisors` do Supabase acendeu o que realmente importa agora que o repo é
+público — 17 tabelas com policy `USING (true)` para INSERT/UPDATE/DELETE:**
+`ads_minerados`, `campanhas_producao`, `workflow_copywriting`, `workflow_design`,
+`workflow_video`, `workflow_tracking`, `workflow_relatorios_trafego`, `video_jobs`,
+`autopsias`, `autopsia_jobs`, `autopsia_criativos`, `agentes_config`, `agent_files`,
+`lp_biblioteca`, `meta_campaigns`, `meta_campaign_metrics`, `meta_ai_diagnostics`,
+`meta_optimization_plans`, `tracking_eventos`. Ou seja: **quem tiver a anon key lê, escreve e
+APAGA tudo.**
+
+**O que ainda protege:** a anon key **não está no repositório**. O que ficou público foi só o
+project ref (`apdjykklderoyiosmytw`, nas URLs de Storage citadas neste arquivo), e ref sozinho
+não é credencial.
+
+**O risco real:** a anon key é, por natureza, entregue ao navegador. **No dia em que o painel
+for publicado em qualquer lugar** — Vercel, Cloudflare, um deploy de teste — ela vira pública,
+e aí project ref público + anon key pública + `USING (true)` = qualquer pessoa do mundo pode
+ler e apagar o banco inteiro. Hoje o painel só roda em `localhost`, então a porta está fechada
+**por acidente, não por design**.
+
+**Antes de publicar o painel, é obrigatório** trocar as policies `USING (true)` por policies
+com autenticação de verdade (é o item "Desenhar RLS real" que já estava na lista de próximos
+passos — agora com prazo: **antes do primeiro deploy**).
+
+📌 `tracking_config` tem RLS ligado e **zero policies** — essa está trancada, não aberta.
+
+---
+
 ### 🧹 Faxina da raiz + enxugamento do CLAUDE.md (02/08/2026)
 
 **Apagados** (já tinham cumprido o papel, e o conteúdo vive em `docs/superpowers/` ou aqui):
@@ -2703,7 +2741,7 @@ mineração.
 - [ ] **Validação do ciclo de compra:** subir a campanha de compras (loja Shopify) e conferir que o
       funil inteiro acende (checkout → venda → ROAS via `omni_purchase`/`purchase_roas`).
 - [ ] **Segurança:** rotacionar `META_ACCESS_TOKEN` (apareceu no chat durante o build de 29/06).
-- [ ] Desenhar RLS real quando houver autenticação.
+- [ ] 🚨 **Desenhar RLS real — AGORA COM PRAZO: antes do primeiro deploy público do painel.** 17 tabelas estão com policy `USING (true)` (leitura, escrita e DELETE liberados). Hoje só não é explorável porque a anon key não saiu do `localhost`. Ver a seção "🚨 O repo é PÚBLICO" acima.
 
 ---
 

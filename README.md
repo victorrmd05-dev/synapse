@@ -184,18 +184,19 @@ python -m pip install faster-whisper
 
 ### 2.1 Baixar o código
 
-O repositório é **privado**: você precisa ter sido convidado para a conta
-`victorrmd05-dev` no GitHub.
+O repositório é **público** — não precisa de convite nem de login para baixar:
 
 ```bash
 git clone https://github.com/victorrmd05-dev/synapse.git
 cd synapse
 ```
 
-Se pedir usuário e senha: o usuário é seu login do GitHub, e a "senha" é um **Personal
-Access Token** — o GitHub não aceita mais senha comum. Crie um em
-<https://github.com/settings/tokens> → *Generate new token (classic)* → marque a
-permissão **`repo`**.
+> 🔑 **O código é público, as chaves não.** O `.env.local` (onde ficam todas as senhas e
+> chaves de API) **nunca** entrou no repositório e nunca vai entrar. Clonar te dá o
+> código; para rodar, você precisa das suas próprias chaves — é a **Parte 3**.
+>
+> Só precisa de token do GitHub quem for **enviar** alterações de volta (`git push`), o
+> que exige ser colaborador do repositório. Para só baixar e rodar, não precisa de nada.
 
 ### 2.2 Instalar as dependências
 
@@ -614,8 +615,15 @@ fechado. O painel avisa na tela quando há tarefa parada esperando tempo demais.
 
 ### Não consigo clonar o repositório
 
-Ele é **privado**. Você precisa (a) ter sido convidado para a conta `victorrmd05-dev` e
-(b) usar um **Personal Access Token** como senha, não a senha da conta. Veja a Parte 2.1.
+O repositório é **público**, então `git clone` funciona sem login. Se falhar, quase sempre é
+uma destas: o Git não está instalado (Parte 1.2), a URL foi digitada errada, ou a rede
+bloqueia o GitHub. Teste com `git --version` e abra
+<https://github.com/victorrmd05-dev/synapse> no navegador.
+
+Se aparecer pedido de **usuário e senha**, você provavelmente tentou `git push` — isso sim
+exige ser colaborador e usar um **Personal Access Token** como senha (o GitHub não aceita
+mais senha comum). Crie um em <https://github.com/settings/tokens> → *Generate new token
+(classic)* → permissão **`repo`**.
 
 ---
 

@@ -23,7 +23,11 @@ Ao despachar subagentes, repasse a regra.
 
 ## 🚨 GIT — a conta certa é `victorrmd05-dev`, NUNCA `Thuglife22741`
 
-- **Repo do código:** `https://github.com/victorrmd05-dev/synapse` (privado). O `origin` já aponta para lá.
+- **Repo do código:** `https://github.com/victorrmd05-dev/synapse`. O `origin` já aponta para lá.
+- ⚠️ **O repo é PÚBLICO** (conferido na API do GitHub em 02/08/2026 — este arquivo dizia
+  "privado" havia meses, e era falso). Decisão consciente do Fernando. **Consequência prática:
+  tudo que entra no histórico é mundialmente legível e não dá para "desfazer" de verdade.**
+  Redobre o cuidado com chave, token e dado de cliente antes de qualquer commit.
 - **Identidade local:** `user.name = victorrmd05-dev`, `user.email = victor.rmd.05@gmail.com`.
 - **Auth:** `GITHUB_TOKEN` do `.env.local`, já embutido na URL do `origin`. **Nunca commite o token.**
 - ⚠️ **Armadilha real:** o Credential Manager do Windows já teve a credencial da conta ERRADA
