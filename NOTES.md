@@ -220,11 +220,38 @@ Vale registrar porque o padrão se repete: o plano estava errado, e a verificaç
 
 ### 🧹 Pendências pequenas anotadas
 
-- `amostra-voz-sarah.mp3` e `amostra-voz-alice.mp3` na raiz — descartáveis, já no `.gitignore`. Pode apagar.
+- `amostra-voz-sarah.mp3` e `amostra-voz-alice.mp3` na raiz — **ficam** (decisão do Fernando em 02/08). Já estão no `.gitignore` e não são rastreadas, então nunca sobem para o GitHub.
 - ~~Correção da Task 4 em voo (tirar o `^` das versões)~~ — **fechou** (`b1cc2f4`, re-revisão limpa). Todas as entradas Remotion dos dois manifestos estão em `4.0.409` exato e `zod` em `3.22.3`, sem range. Player e renderer não podem divergir num `npm install` futuro.
   - 📌 **Correção de fato (02/08):** este item já disse que "os dois projetos travam `@remotion/bundler` e `@remotion/renderer`". **Não é verdade, e é melhor assim** — esses dois **não existem na raiz**, só em `remotion/`. A raiz tem apenas `remotion` e `@remotion/player`. Ou seja, a separação não depende só do `grep` sobre a `.next`: o renderer **não está instalado** do lado do Next. É garantia estrutural, não convenção.
 - O `ACHADOS.md` usa o termo "o Controlador" sem definir — jargão do processo, trocar por linguagem neutra.
-- `NOTA-REMOTION-BANCADA.md` na raiz virou a spec e o plano; a Task 8 apaga.
+- ~~`NOTA-REMOTION-BANCADA.md` na raiz virou a spec e o plano; a Task 8 apaga.~~ → **apagado em 02/08**, junto da faxina da raiz (abaixo).
+
+### 🧹 Faxina da raiz + enxugamento do CLAUDE.md (02/08/2026)
+
+**Apagados** (já tinham cumprido o papel, e o conteúdo vive em `docs/superpowers/` ou aqui):
+`NOTA-REMOTION-BANCADA.md` (virou spec + plano), `PLANO-AUTOPSIA-CONCORRENTE.md` (módulo
+implementado e validado em 27/07), `RESUMO-SESSAO-2026-07-31.md`, `kickoff_opencode_zen.md`
+(migração para o Zen concluída há muito).
+
+**MOVIDOS, não apagados** — os dois descrevem trabalho **que ainda não existe**, e jogar fora
+teria perdido a informação:
+- `PLANO-REMOTION-VARIACOES.md` → `docs/superpowers/plans/2026-07-29-remotion-variacoes-PLANO.md`
+- `PLANO-VISUAL-VISAO-GERAL.md` → `docs/superpowers/plans/2026-07-27-visao-geral-visual-PLANO.md`
+
+**`CLAUDE.md` cortado em 70%** — de 32.562 para 9.496 caracteres (653 → 189 linhas), ~9.300 →
+~2.700 tokens estimados. **Motivo:** ele sobe no início de toda conversa com a IA, então cada
+linha morta custa contexto em todo prompt. O que saiu foi o que estava duplicado ou obsoleto:
+tabela de agentes e stack (agora no `README.md`), status por página e lista de prioridades
+(desatualizados — a verdade é este arquivo), estratégia de deploy em 3 opções (já implementada),
+o `CREATE TABLE` inteiro do `agentes_config`, e a seção longa do sync GitHub. O que **ficou**
+foi só o que quebra alguma coisa se ignorado: regra nº 1, conta do git, política de custo,
+os dois pares que não podem ser trocados (clients Supabase e os dois sistemas de agente), as
+9 armadilhas verificadas, design system e o processo de validação.
+
+⚠️ **A conta da Anthropic está SEM CRÉDITO** — medido em 02/08 ao tentar usar `count_tokens`:
+`HTTP 400 · "Your credit balance is too low to access the Anthropic API"`. Por isso a estimativa
+de tokens acima é por caractere, não medida. E é por isso que as rotas `/api/ai/diagnostic` e
+`/api/ai/deep-diagnostic` **não funcionam hoje** — elas não têm caminho gratuito, de propósito.
 
 ---
 

@@ -269,6 +269,7 @@ em detalhe, com os avisos de custo.
 | Para usar… | Precisa de | Onde pegar |
 |---|---|---|
 | Gerar copy, dossiê, diagnóstico (**grátis**) | `OPENCODE_API_KEY` | <https://opencode.ai/> |
+| 💸 Análise profunda / auditoria de campanha | `ANTHROPIC_API_KEY` | <https://console.anthropic.com/> — **ver 3.4 abaixo** |
 | Minerar anúncios | `SCRAPE_CREATORS_API_KEY` | <https://scrapecreators.com/> |
 | Meta Ads (dashboard, campanhas) | `META_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID` | <https://developers.facebook.com/> |
 | Publicar landing page | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | <https://dash.cloudflare.com/> |
@@ -281,7 +282,51 @@ em detalhe, com os avisos de custo.
 > que queima dinheiro a cada clique é a **WaveSpeed** (geração de clipe), que é pré-paga
 > e não reembolsável. Nada nela dispara sozinho, em loop ou como fallback.
 
-### 3.4 Três regras que evitam dor de cabeça
+### 3.4 🧠 A API da Anthropic — para análise profunda de verdade
+
+O provider gratuito dá conta de rascunho: gerar copy, montar um dossiê, produzir um
+primeiro diagnóstico. **Para julgamento — auditoria de campanha, análise profunda de
+concorrente, decisão sobre onde mexer no tráfego — a diferença de modelo aparece.** É
+para isso que existe a chave da Anthropic neste projeto.
+
+```env
+ANTHROPIC_API_KEY=
+```
+
+Pegue a chave em **<https://console.anthropic.com/>** → *API Keys*. É pré-paga: você põe
+crédito e ele é consumido por uso. Sem crédito, as rotas de diagnóstico falham (e o
+projeto **não** cai para um modelo pago sem você mandar).
+
+**Onde ela é usada:** `/api/ai/diagnostic` e `/api/ai/deep-diagnostic` — as auditorias de
+campanha do Gestor Meta Ads. Essas duas **não têm caminho gratuito**, de propósito: rodam
+sob demanda, quando você clica, nunca em loop.
+
+#### Qual modelo escolher
+
+O modelo é configurável — se você não definir nada, o projeto usa `claude-sonnet-5`:
+
+```env
+ANTHROPIC_DIAGNOSTIC_MODEL=claude-sonnet-5
+```
+
+| Modelo | ID | Preço (entrada / saída por 1M tokens) | Quando usar |
+|---|---|---|---|
+| **Claude Opus 5** | `claude-opus-5` | US$ 5,00 / US$ 25,00 | **Análise profunda de verdade** — a mais capaz. Raciocínio complexo, decisão de tráfego, auditoria que você vai seguir. |
+| **Claude Sonnet 5** | `claude-sonnet-5` | US$ 3,00 / US$ 15,00 | **O default do projeto.** Equilíbrio de qualidade e custo; dá conta da maioria das auditorias. |
+| **Claude Haiku 4.5** | `claude-haiku-4-5` | US$ 1,00 / US$ 5,00 | Tarefas **simples** — classificar, extrair, resumir. Corta o custo, mas **não** é o modelo para análise profunda. |
+
+> ⚠️ **Cuidado com uma confusão fácil:** existe um comentário no código
+> ([`src/lib/anthropic.ts`](src/lib/anthropic.ts)) sugerindo `claude-haiku-4-5` como forma
+> de **cortar custo em 5×**. Isso é uma opção de economia, **não** uma recomendação de
+> qualidade. Se o objetivo é "rodar a análise profunda com uma LLM boa", o caminho é
+> `claude-opus-5` (ou o `claude-sonnet-5` padrão) — Haiku é o mais barato e mais rápido,
+> feito para o trabalho simples.
+
+Para trocar, basta editar a variável no `.env.local` e reiniciar o `npm run dev`. O modelo
+usado no **Designer** é separado, na `ANTHROPIC_DESIGN_MODEL`, e a
+`DESIGN_PROVIDER=anthropic` é o que liga o Designer na Anthropic (💸 passa a custar).
+
+### 3.5 Três regras que evitam dor de cabeça
 
 1. 🔒 **NUNCA commite o `.env.local`.** Ele já está no `.gitignore` e o Git o ignora
    sozinho — não force. Se uma chave vazar para o GitHub, ela tem que ser trocada.
@@ -535,7 +580,7 @@ No PowerShell: `Remove-Item -Recurse -Force .next`
 ### Configurei a chave no `.env.local` mas o projeto ignora
 
 Você provavelmente tem **uma variável de ambiente do Windows com o mesmo nome**. Ela
-sobrepõe o arquivo **em silêncio** (Parte 3.4, regra 2). Para confirmar:
+sobrepõe o arquivo **em silêncio** (Parte 3.5, regra 2). Para confirmar:
 
 ```bash
 node -e "console.log(process.env.NOME_DA_VARIAVEL ? 'existe no sistema' : 'nao existe no sistema')"

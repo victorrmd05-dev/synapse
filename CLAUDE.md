@@ -1,651 +1,188 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-# 🧠 Alavanca Synapse — CLAUDE.md
-> Guia definitivo para o Claude Code operar neste projeto. Leia este arquivo COMPLETO antes de qualquer ação.
-> Última atualização: rebranding para Alavanca Synapse + diagnóstico completo do estado real do código.
+Guia do Claude Code neste repositório. **Este arquivo sobe em toda conversa** — mantenha-o
+enxuto. O que é história vai para o [`NOTES.md`](NOTES.md); o que é instalação vai para o
+[`README.md`](README.md). Aqui ficam só as regras que, se ignoradas, quebram alguma coisa.
 
 ---
 
 ## 🛑 REGRA Nº 1 — NUNCA COMMITAR SEM O FERNANDO PEDIR
 
-**Não execute `git commit` nem `git push` por conta própria. Nunca.** Edite arquivos,
-rode as verificações, e **pare**. Diga quais arquivos estão prontos e qual seria a
-mensagem de commit — mas não execute.
+**Não execute `git commit` nem `git push` por conta própria.** Edite, verifique, e **pare**.
+Diga quais arquivos estão prontos e qual seria a mensagem — mas não execute.
 
-Isso vale **inclusive dentro de fluxos automatizados**: execução de plano, subagentes,
-skills que listam "commit" como passo. **Se o plano manda commitar, esta regra ganha** —
-pare no ponto do commit e pergunte. Ao despachar subagentes, repasse esta regra a eles.
+Vale **inclusive dentro de fluxos automatizados**: execução de plano, subagentes, skills que
+listam "commit" como passo. **Se o plano manda commitar, esta regra ganha** — pare e pergunte.
+Ao despachar subagentes, repasse a regra.
 
-**Por quê:** o Fernando é dev solo e quer controlar o que entra no histórico do
-repositório. Commit automático enche o histórico de coisa que ele ainda não revisou.
+**Por quê:** o Fernando é dev solo e quer controlar o que entra no histórico.
 
-**Quando ele autorizar:** commit direto na `main` (ver seção abaixo), sem criar branch e
-sem PR, a menos que ele peça.
+**Quando ele autorizar:** commit direto na `main`, sem branch e sem PR, a menos que peça.
 
 ---
 
-## 🚨 GIT — Conta e Repositório CORRETOS (LEIA ANTES DE QUALQUER COMMIT/PUSH)
+## 🚨 GIT — a conta certa é `victorrmd05-dev`, NUNCA `Thuglife22741`
 
-**A conta GitHub correta deste projeto é `victorrmd05-dev` — NUNCA `Thuglife22741`.**
+- **Repo do código:** `https://github.com/victorrmd05-dev/synapse` (privado). O `origin` já aponta para lá.
+- **Identidade local:** `user.name = victorrmd05-dev`, `user.email = victor.rmd.05@gmail.com`.
+- **Auth:** `GITHUB_TOKEN` do `.env.local`, já embutido na URL do `origin`. **Nunca commite o token.**
+- ⚠️ **Armadilha real:** o Credential Manager do Windows já teve a credencial da conta ERRADA
+  cacheada, e pushes foram para o repo errado. **Antes de empurrar, confira `git remote -v` e
+  `git config user.email`.**
 
-- **Repo do CÓDIGO (este app Next.js):** `https://github.com/victorrmd05-dev/synapse` (privado).
-  É para onde vão commits e pushes do código da aplicação. O `origin` local já aponta para cá.
-- **Identidade do git (já configurada local no repo):**
-  `user.name = victorrmd05-dev`, `user.email = victor.rmd.05@gmail.com` (de `.env.local`:
-  `GITHUB_USERNAME` / `GITHUB_EMAIL`).
-- **Autenticação:** use o `GITHUB_TOKEN` do `.env.local` (PAT do victor). O `origin` está com
-  o token embutido na URL (`https://victorrmd05-dev:<GITHUB_TOKEN>@github.com/...`).
-  **NUNCA commite o token** — ele vive só no `.env.local` e no `.git/config` local.
-- **⚠️ Armadilha que já causou erro:** o Git Credential Manager do Windows tinha a credencial
-  da conta ERRADA (`Thuglife22741`) cacheada para `github.com`, e o `origin` antigo apontava
-  para `Thuglife22741/alavanca-ai-core` com o token do Thuglife na URL. Por isso pushes iam
-  para a conta errada. **Antes de empurrar, confira `git remote -v` e `git config user.email`.**
-
-**NÃO confundir com os repos de AGENTES** (`victorrmd05-dev/agents` e
-`victorrmd05-dev/agents_alavanca_synapse`): esses contêm só os `.md` do "cérebro" dos agentes
-(pastas `agents/`, `skills/`) e são lidos via sync — **não** é onde vai o código do app.
+Não confundir com os repos de **agentes** (`victorrmd05-dev/agents`,
+`agents_alavanca_synapse`): esses só têm os `.md` do "cérebro", não o código do app.
 
 ---
 
-## ⚠️ Estado Real do Código (verificado contra o código — leia antes de confiar no resto deste arquivo)
+## 💸 Política de custo — o default é GRATUITO
 
-Boa parte deste CLAUDE.md descreve a **intenção/arquitetura desejada**. O código já
-divergiu em pontos importantes. Onde houver conflito, **o código abaixo manda**:
-
-1. **Nome do pacote ainda é `metascale-app`** (`package.json`) — herança do monorepo
-   anterior. Não é bug, só não foi renomeado.
-
-2. **Não existe `npm run type-check`.** Scripts reais: `dev`, `build`, `start`, `lint`.
-   Para checagem de tipos use `npx tsc --noEmit`.
-
-3. **💸 POLÍTICA DE CUSTO — o default é GRATUITO (28/07/2026).** O padrão "Anthropic
-   em todo agente" descrito mais abaixo é **aspiracional e obsoleto**. A regra real:
-   - **Provider padrão = OpenCode Zen** (`src/lib/opencode.ts`, `chatComZen`), endpoint
-     compatível com OpenAI em `https://opencode.ai/zen/v1`, modelo
-     `deepseek-v4-flash-free`, via `OPENCODE_API_KEY`. **Não gera fatura.**
-   - **Provider PAGO só por escolha explícita.** Nunca por fallback silencioso. Hoje só
-     dois caminhos cobram: `DESIGN_PROVIDER=openai|anthropic` no `.env.local`, e agente
-     com `modelo` começando em `gpt` na tabela `agentes_config`. Se um modelo `claude*`
-     estiver na config, o `generateWithProvider` tenta a Anthropic **primeiro** e só cai
-     no Zen se falhar — ou seja, com crédito na conta ele **paga**.
-   - **Exceção conhecida:** `/api/ai/diagnostic` e `/api/ai/deep-diagnostic` chamam a
-     Anthropic direto (`callDiagnostic`/`callDeepDiagnostic`), **sem caminho gratuito**.
-     Rodam no `ANTHROPIC_DIAGNOSTIC_MODEL` (default `claude-sonnet-5`). É intencional:
-     são sob demanda, não rodam em loop.
-   - **Julgamento de verdade não roda no app.** Copy final, landing page e dossiê são
-     feitos no Claude Code (skills `copy`, `landing-page-vendas`) e gravados direto no
-     Supabase. As rotas do painel geram rascunho.
-   - ⚠️ **`callOptimizationPlan` em `src/lib/anthropic.ts` é CÓDIGO MORTO** — nenhuma
-     rota chama. O `/api/meta/optimize/plan` usa o `generateWithProvider`.
-   - ⚠️ **Pegadinha do Zen:** `deepseek-v4-flash` é modelo de RACIOCÍNIO. Medido em
-     28/07: de 1032 tokens de saída, **965 foram raciocínio** — sobraram ~67 de resposta.
-     Com `max_tokens` baixo o `content` volta **VAZIO, com HTTP 200 e sem erro**. Por
-     isso `chatComZen` aplica um piso (`OPENCODE_MIN_MAX_TOKENS`, default 8000). Nunca
-     chame o Zen sem esse piso.
-
-4. **Existem DOIS sistemas de configuração de agente paralelos e conflitantes** —
-   este é o maior risco de confusão do repo:
-   - **Sistema A — sync do GitHub (markdown):** tabela `agentes_config`, rota
-     `src/app/api/agents/sync/route.ts`, helper `src/lib/agents/buildSystemPrompt.ts`
-     com `getAgentConfig(slug)` que retorna `{ agents_md, soul_md, tools_md, skill_md, ... }`.
-     Indexado por `slug` (português). É o que as rotas de IA (ex: copywriting) consomem.
-   - **Sistema B — config editável pela UI (JSONB):** tabelas `agent_configurations` +
-     `agent_files`, server actions `src/app/actions/agentConfig.ts` + `agentFiles.ts`,
-     páginas em `src/app/agents/[agentRole]/`. Indexado por `agent_role` (inglês), com
-     `getAgentConfig(agentRole)` retornando `{ identity_config, model_config, ... }`.
-   - **Atenção ao import:** existem DUAS funções `getAgentConfig` com o mesmo nome e
-     assinaturas/tabelas diferentes — `@/lib/agents/buildSystemPrompt` (Sistema A) vs
-     `@/app/actions/agentConfig` (Sistema B). Importar a errada quebra silenciosamente.
-
-5. **Dois clients Supabase distintos — nunca trocar:**
-   - `src/lib/supabase.ts` → **anon key**, respeita RLS, usar em `"use client"` (browser).
-   - `src/lib/supabase-server.ts` (`supabaseServer`) → **service_role key**, ignora RLS,
-     APENAS server-side (Route Handlers, Server Actions, Server Components). Nunca importar
-     no browser. Lança erro no boot se `SUPABASE_SERVICE_ROLE_KEY` não estiver setada.
-
-6. **Migrations vivem em `supabase/migrations/`** (`*_create_agent_files.sql`,
-   `*_create_agent_configurations.sql`). As tabelas do Sistema B têm RLS com policies
-   públicas (read/insert/update/delete liberados) — não há auth real ainda.
-
-7. **Variável de ambiente extra real:** `OPENCODE_API_KEY` (além das já listadas adiante).
-
-8. **Rotas existentes além das listadas na tabela de páginas:** `/agents` e
-   `/agents/[agentRole]/{configuration,instructions,skills}` (link "Agents Config" na
-   Sidebar, separado de `/configuracoes`), `/como-funciona`, `/settings`, e APIs em
-   `src/app/api/{ai/diagnostic,meta/sync,meta/accounts,simulations}`.
-
-9. **A env do scraper é `SCRAPE_CREATORS_API_KEY`** (com underscore entre SCRAPE e
-   CREATORS) — este documento já documentou errado como `SCRAPECREATORS_API_KEY`.
-   O código (`mineracao/run`, `autopsia/coleta`) usa a primeira.
-
-10. **O sync de agentes que vale é o da pasta local `agentes/`** — server action
-    `syncAgentsFromFolder()` em `src/app/actions/syncAgents.ts`, disparada em `/agents`.
-    Ela varre `agentes/*/` e faz upsert em `agentes_config`, então agente novo é só
-    criar a pasta. A rota `src/app/api/agents/sync/route.ts` (GitHub Contents API +
-    `AGENT_MAP` explícito) é a versão antiga e **não** conhece o agente `autopsia`.
+- **Provider padrão = OpenCode Zen** (`src/lib/opencode.ts`, `chatComZen`), endpoint compatível
+  com OpenAI, modelo `deepseek-v4-flash-free`, via `OPENCODE_API_KEY`. **Não gera fatura.**
+- **Provider pago só por escolha explícita**, nunca por fallback silencioso. Hoje cobram:
+  `DESIGN_PROVIDER=openai|anthropic`, e agente com `modelo` começando em `gpt` na `agentes_config`.
+  Com um modelo `claude*` na config, o `generateWithProvider` tenta a Anthropic **primeiro**.
+- **Exceção intencional:** `/api/ai/diagnostic` e `/api/ai/deep-diagnostic` chamam a Anthropic
+  direto, **sem caminho gratuito** (`ANTHROPIC_DIAGNOSTIC_MODEL`, default `claude-sonnet-5`).
+  Rodam sob demanda, nunca em loop.
+- 💸 **WaveSpeed é o único que queima dinheiro a cada clique** — pré-pago, não reembolsável.
+  Nada nela pode disparar sozinho, em loop, ou como fallback.
+- ⚠️ **Pegadinha do Zen:** `deepseek-v4-flash` é modelo de RACIOCÍNIO. Medido: de 1032 tokens de
+  saída, **965 foram raciocínio**. Com `max_tokens` baixo o `content` volta **VAZIO, com HTTP 200
+  e sem erro**. Por isso `chatComZen` aplica um piso (`OPENCODE_MIN_MAX_TOKENS`, default 8000).
+  **Nunca chame o Zen sem esse piso.**
+- **Julgamento de verdade não roda no app.** Copy final, landing page e dossiê são feitos no
+  Claude Code (skills `copy`, `landing-page-vendas`) e gravados direto no Supabase.
+- ⚠️ `callOptimizationPlan` em `src/lib/anthropic.ts` é **código morto** — nenhuma rota chama.
 
 ---
 
-## 🔁 Processo OBRIGATÓRIO — ao validar cada tarefa
+## ⚠️ Armadilhas verificadas (o código manda, não a intenção)
 
-Sempre que uma tarefa for **validada** (testada e funcionando, não só escrita), antes de
-considerar concluída, execute os dois passos de documentação:
-
-1. **Atualizar `NOTES.md`** (na raiz) — o diário de bordo do projeto: o que foi feito, por quê,
-   bugs encontrados e como foram resolvidos, e os próximos passos. Manter sempre fiel ao estado real.
-2. **Atualizar o segundo cérebro (nexus.ai via MCP Obsidian)** — a nota
-   `02_Projetos/Alavanca_Synapse.md` no vault, mantendo também o `Alavanca_Synapse.canvas`
-   e as skills relacionadas (`01_Global_Skills/`) em dia. O objetivo é um cérebro
-   **auto-evolutivo**: cada aprendizado validado vira conhecimento permanente e linkado.
-
-Convenções do vault: projetos em `02_Projetos/`, skills globais em `01_Global_Skills/`
-(seguindo `04_Templates/Template_Skill.md`), índice em `02_Projetos/00_Mapa_Mestre.md`.
-Não duplicar notas — atualizar a existente.
-
----
-
-## 🏢 Contexto do Negócio
-
-**Alavanca Synapse** é a plataforma própria de orquestração de agentes da Alavanca AI (agência de marketing digital), com 8 agentes especializados operando em sincronia — substituindo o Paperclip (que era engessado demais para este caso de uso). A ideia é: **mesma filosofia de "empresa de agentes", mas no código e banco de dados do próprio Fernando, sem dependência de plataforma externa.**
-
-O nome "Synapse" reflete a arquitetura real: os 8 agentes funcionam como neurônios de um mesmo organismo, disparando em sequência (e às vezes em paralelo) através do Supabase como sinapse central — diferente do Paperclip, que tratava cada agente como uma execução isolada e genérica.
-
-| # | Agente | Responsabilidade | Tabela Supabase |
-|---|--------|-----------------|-----------------|
-| 01 | CEO Alavanca AI | Aprovações de alto nível (representa o usuário) | — |
-| 02 | CTO | Infraestrutura, chaves de API, suporte técnico aos outros agentes | `agentes_config` |
-| 03 | Minerador | Scraping de anúncios validados via Meta Ad Library (ScrapeCreators) | `ads_minerados` |
-| 04 | Copywriting | Copy de anúncios e páginas de vendas | `workflow_copywriting` |
-| 05 | Revisor | QA das copies geradas — aprova ou pede revisão | `workflow_copywriting` (revisor_ok) |
-| 06 | Designer-Webmaster | Criação e deploy de landing pages | `workflow_design` |
-| 07 | Video-Maker | Criação de vídeos criativos via WaveSpeed AI + Remotion | `workflow_video`, `video_jobs` |
-| 08 | Gestor-Meta-Ads | Gestão e otimização de campanhas de tráfego pago | `campanhas_meta_ads` (ver Meta Ads abaixo) |
-
-**Pipeline de produção:**
-```
-ads_minerados → [CEO aprova] → campanhas_producao → workflow_copywriting
-  → [Revisor aprova] → workflow_design → [Designer gera HTML + deploy]
-  → workflow_video → [Video-Maker gera criativo] → Gestor-Meta-Ads sobe campanha
-```
+1. **O pacote ainda se chama `metascale-app`** (`package.json`) — herança do monorepo anterior.
+2. **Não existe `npm run type-check`.** Scripts reais: `dev`, `build`, `start`, `lint`,
+   `video:worker`, `video:compor`, `agents:pull`, `agents:push`. Para tipos: **`npx tsc --noEmit`**.
+3. **Não existe suíte de testes.** "Testar" = `npx tsc --noEmit` + abrir a tela e olhar. Os dois
+   bugs mais recentes da bancada de vídeo passavam pelo `tsc` e pelo `build` sem um pio.
+4. 🚨 **`npm run build` deixa a `.next` pela metade quando falha, e `build` e `dev` compartilham
+   essa pasta** — rodar build com o dev de pé **derruba o CSS do painel**. Se precisar do build:
+   derrube o dev antes, e `rm -rf .next` depois.
+5. **Env do Windows sobrepõe o `.env.local`, em silêncio.** Já custou uma sessão inteira. Se um
+   valor "não pega", confira as variáveis do sistema.
+6. **A env do scraper é `SCRAPE_CREATORS_API_KEY`** (underscore entre SCRAPE e CREATORS).
+7. **O worker do Remotion precisa rodar com o cwd em `remotion/`** — o Remotion procura o Chrome
+   em `<cwd>/node_modules/.remotion`. Da raiz ele baixa uma segunda cópia e trava na extração,
+   deixando o job preso em `processando` **sem erro nenhum**. Use `npm run video:compor`.
+8. **`npm install` exige `--legacy-peer-deps`** — `@remotion/zod-types` fixa `zod@3.22.3` exato e
+   os SDKs da Anthropic/OpenAI pedem `^3.25||^4.0`. Nenhuma versão satisfaz os dois.
+9. **Para testar rota com texto em português, não use `curl` do Git Bash** — ele manda cp1252 e o
+   acento chega corrompido no servidor. Use `node --env-file=.env.local script.mjs`.
 
 ---
 
-## 🏗️ Arquitetura e Stack
+## 🧩 Os dois pares que nunca podem ser trocados
 
-- **Framework:** Next.js 14 App Router (`src/app/`)
-- **Linguagem:** TypeScript strict
-- **Estilo:** Tailwind CSS — design system dark glassmorphism (tokens na seção Design System)
-- **Banco de Dados:** Supabase (PostgreSQL + Realtime via `postgres_changes`)
-- **IA:** Anthropic API (`claude-sonnet-4-6`) via `src/lib/anthropic.ts`
-- **Monorepo único** — o app Next mora na raiz. NUNCA criar subpastas isoladas para o
-  código do app, como `workspace/` ou `packages/`.
-  - **Exceção autorizada (29/07/2026): `remotion/`.** É um projeto Node com
-    `package.json` próprio, e tem que ser assim: o `@remotion/renderer` traz binário
-    nativo por plataforma (~48 MB no Windows) e baixa um Chrome headless, coisas que
-    não podem entrar no bundle do Next. Regra: **`remotion/` nunca é importado pelo app
-    Next.** A comunicação entre os dois é pela fila no Supabase, igual ao worker da
-    autópsia. Se um dia aparecer um segundo caso assim, ele também vira exceção
-    nomeada aqui — não uma regra genérica de "pode criar subprojeto".
+**1. Clients do Supabase:**
+- `src/lib/supabase.ts` → **anon key**, respeita RLS. Só no browser (`"use client"`).
+- `src/lib/supabase-server.ts` (`supabaseServer`) → **service_role**, **ignora RLS**. Só no
+  servidor. Importar no browser expõe o banco inteiro.
 
-### Variáveis de Ambiente obrigatórias (`.env.local`)
-```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-ANTHROPIC_API_KEY=
-META_ADS_API_TOKEN=
-SCRAPE_CREATORS_API_KEY=
-CLOUDFLARE_API_TOKEN=
-CLOUDFLARE_ACCOUNT_ID=
-GITHUB_TOKEN=
-WAVESPEED_API_KEY=
-WAVESPEED_MODEL=
-TELEGRAM_BOT_TOKEN=
-```
-**NUNCA hardcode chaves no código.** Sempre via `process.env`. Nunca commitar `.env.local`.
+**2. Configuração de agente — existem DOIS sistemas paralelos, e este é o maior risco do repo:**
+
+| | Sistema A (o que vale) | Sistema B (legado) |
+|---|---|---|
+| Tabela | `agentes_config` | `agent_configurations` + `agent_files` |
+| Índice | `slug` (português) | `agent_role` (inglês) |
+| Fonte | pasta local `agentes/`, via `syncAgentsFromFolder()` em `/agents` | UI em `/agents/[agentRole]/` |
+| Helper | `@/lib/agents/buildSystemPrompt` | `@/app/actions/agentConfig` |
+
+⚠️ **As DUAS exportam uma função chamada `getAgentConfig`**, com assinaturas e tabelas
+diferentes. Importar a errada quebra em silêncio.
+
+⚠️ **Editar `AGENTS.md`/`SKILL.md` não faz NADA até rodar o sync** — a rota lê o markdown da
+tabela, não do disco. O sintoma é idêntico ao de `max_tokens` baixo.
+
+⚠️ **`max_tokens` mora em `agentes/<agente>/_agente.json`, NUNCA em SQL** — o sync grava o valor
+do arquivo por cima do banco.
 
 ---
 
-## 🗄️ Banco de Dados — Tabelas e Relacionamentos
+## 🏗️ Arquitetura
 
-```sql
-ads_minerados (id, ad_archive_id, page_name, ad_title, ad_copy, image_url,
-               video_urls[], score_escala, raw_json, data_mineracao, ...)
-      ↓ aprovado pelo CEO (botão "Aprovar Anúncio para Produção" em /mineracao)
-campanhas_producao (id, ad_minerado_id, nome_projeto, status_geral, data_criacao)
-      ↓ agente Copywriting gera (precisa ser conectado — ver Prioridade 1)
-workflow_copywriting (id, campanha_id, tipo_copy, conteudo_texto, meta_ads_copy,
-                      atributos_json, revisor_ok, notas_revisao,
-                      data_criacao, data_aprovacao)
-      ↓ agente Revisor aprova (revisor_ok = true, data_aprovacao preenchida)
-workflow_design (id, campanha_id, tipo_design, url_recurso, codigo_html,
-                 revisor_ok, notas_revisao, data_criacao, data_aprovacao)
-      ↓ deploy real da LP (precisa ser implementado — ver Prioridade 3)
-workflow_video (id, campanha_id, tipo_video, url_video_download,
-                revisor_ok, notas_revisao, data_criacao, data_aprovacao)
-```
+- **Next.js 14 App Router** + TypeScript strict + Tailwind. **Monorepo único**, o app mora na raiz.
+- **Supabase** (Postgres + Realtime via `postgres_changes`). Bucket de arquivos: `criativos`.
+- **Exceção autorizada: `remotion/`** é um projeto Node separado, e tem que ser assim — o
+  `@remotion/renderer` traz binário nativo (~48 MB) e baixa um Chrome próprio, que não podem
+  entrar no bundle do Next. **Regra: `remotion/` NUNCA é importado pelo app Next.** A seta é
+  sempre `remotion/` → `src/video/`. A comunicação é pela fila no Supabase.
+- **Nada de API específica de versão do React** dentro de `src/video/` — esse código é compilado
+  pelo React 18 (app) e pelo React 19 (`remotion/`).
 
-**Tabela `agentes_config`** — arquitetura GitHub → Supabase (ver seção dedicada abaixo):
-A fonte da verdade dos agentes é o repositório **github.com/victorrmd05-dev/agents**
-(que já contém `AGENTS.md`, `SOUL.md`, `HEARTBEAT.md`, `TOOLS.md` por agente e
-`SKILL.md` por skill). A tabela `agentes_config` é um **cache sincronizado** desse
-repositório, atualizado via botão "Sincronizar Agentes" em `/configuracoes`
-(rota `POST /api/agents/sync`). Nunca editar o conteúdo markdown direto no
-Supabase de forma permanente — editar no GitHub, commitar, sincronizar de novo.
+Padrão de Realtime, usado em todas as páginas:
 
-```sql
-CREATE TABLE IF NOT EXISTS agentes_config (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  slug TEXT UNIQUE NOT NULL,
-  nome TEXT NOT NULL,
-  github_agent_path TEXT,
-  github_skill_path TEXT,
-  agents_md TEXT,
-  soul_md TEXT,
-  heartbeat_md TEXT,
-  tools_md TEXT,
-  skill_md TEXT,
-  modelo TEXT DEFAULT 'claude-sonnet-4-6',
-  max_tokens INTEGER DEFAULT 4000,
-  ativo BOOLEAN DEFAULT true,
-  ultimo_sync_em TIMESTAMP WITH TIME ZONE,
-  ultimo_commit_sha TEXT,
-  data_atualizacao TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
-Ver arquivo completo: `setup_agentes_config_v2.sql`.
-
-### Padrão de query Supabase com Realtime (já usado em todas as páginas)
-```typescript
+```ts
 const channel = supabase.channel('nome_changes')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'nome_tabela' }, () => {
-    fetchDados();
-  })
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'nome_tabela' }, fetchDados)
   .subscribe();
-
 return () => { supabase.removeChannel(channel); };
 ```
 
----
-
-## 🔄 Arquitetura de Sincronização GitHub → Supabase (substitui o Paperclip)
-
-### Por que isso existe
-O Paperclip prendia a edição de instruções de agentes dentro da sua UI proprietária.
-Aqui, a fonte da verdade é **github.com/victorrmd05-dev/agents** — um repositório
-que já existe com a estrutura:
-```
-agents/
-  ├── alavanca-ceo/  (AGENTS.md, SOUL.md, HEARTBEAT.md)
-  ├── cto/           (AGENTS.md, TOOLS.md)
-  ├── copywriting/   (AGENTS.md)
-  ├── revisor/       (AGENTS.md)
-  ├── designer-webmaster/ (AGENTS.md)
-  ├── video-maker/   (AGENTS.md)
-  ├── gestor-meta-ads/ (AGENTS.md)
-  └── minerador/     (AGENTS.md, HEARTBEAT.md)
-skills/
-  ├── alavanca-ceo-skill/SKILL.md
-  ├── infra-tech-skill/SKILL.md
-  ├── minerador-skill/SKILL.md
-  ├── copywriting/SKILL.md
-  ├── quality-check-skill/SKILL.md
-  ├── webmaster-skill/SKILL.md
-  ├── video-maker-skill/SKILL.md
-  └── gestor-meta-ads/SKILL.md
-```
-
-**Importante:** os nomes de pasta em `agents/` e `skills/` NÃO seguem a mesma
-convenção (ex: `designer-webmaster` ↔ `webmaster-skill`, `revisor` ↔
-`quality-check-skill`). Por isso o mapa `AGENT_MAP` na rota de sync é
-**explícito**, não adivinhado por convenção de nome. Se renomear pastas no
-GitHub, atualize o `AGENT_MAP` também.
-
-### Fluxo de trabalho do dia a dia
-1. Edita os `.md` localmente (ou em terminal com IA, como você já faz)
-2. Comita e dá push pro repositório `victorrmd05-dev/agents`
-3. Abre `/configuracoes` no Alavanca Synapse, clica em "Sincronizar Agentes"
-4. A rota `POST /api/agents/sync` busca os arquivos atualizados via GitHub
-   Contents API e faz upsert na tabela `agentes_config`
-5. Toda próxima chamada a um agente já usa o conteúdo atualizado
-
-### Arquivos de referência já implementados (usar como base, não reinventar)
-- `setup_agentes_config_v2.sql` — schema da tabela + seed dos 8 agentes (sem `system_prompt` pronto — conteúdo vem do sync)
-- `api_agents_sync_route.ts` → colar em `src/app/api/agents/sync/route.ts`
-- `buildSystemPrompt.ts` → colar em `src/lib/agents/buildSystemPrompt.ts`
-
-### Como montar o system prompt final ao chamar um agente
-```typescript
-import { getAgentConfig, buildSystemPrompt } from '@/lib/agents/buildSystemPrompt';
-
-const config = await getAgentConfig('copywriting');
-if (!config) {
-  return Response.json({ error: 'Agente não sincronizado ou inativo' }, { status: 400 });
-}
-
-const systemPrompt = buildSystemPrompt(config); // concatena SOUL + AGENTS + TOOLS + SKILL
-
-const response = await anthropic.messages.create({
-  model: config.modelo,
-  max_tokens: config.max_tokens,
-  system: systemPrompt,
-  messages: [{ role: 'user', content: promptDoUsuario }]
-});
-```
-
-### Variável de ambiente adicional
-```
-GITHUB_TOKEN=   # Personal Access Token com permissão de leitura no repo
-                # victorrmd05-dev/agents. Sem token, a sync ainda funciona
-                # (repo é público) mas com rate limit anônimo do GitHub
-                # (60 req/hora em vez de 5000 req/hora).
-```
-
-### Nota sobre a integração nativa "Supabase + GitHub"
-Essa integração existe no painel do Supabase, mas serve para outra coisa:
-versionar **migrations de schema** (criar tabelas/colunas), não para sincronizar
-conteúdo de negócio como instruções de agentes. Não é a ferramenta certa para
-este caso — por isso construímos a rota `/api/agents/sync` própria.
-
----
-
-## 🎨 Design System (OBRIGATÓRIO seguir — já implementado, só replicar)
-
-```
-bg-[#0D0D14]            → fundo global
-bg-surface              → card/painel
-bg-surface-elevated     → hover state / bordas
-border-surface-elevated → bordas padrão
-text-text-primary / text-white → texto principal
-text-secondary          → texto secundário
-bg-primary              → roxo (#6366f1) — ações principais
-bg-primary-hover        → hover do primário
-text-status-green       → verde (#22c55e)
-text-status-yellow      → amarelo (#eab308)
-text-status-red         → vermelho (#ef4444)
-animate-pulse           → indicadores de status ao vivo
-```
-
-### PROIBIDO no design
-- Fundo branco ou claro
-- Cores fora do design system acima
-- Borders grossas (`border`, nunca `border-2`)
-- Gradientes arco-íris, animações excessivas, "AI Slop"
-
----
-
-## 📄 Páginas Existentes e Status REAL (diagnóstico atualizado)
-
-| Rota | Status | O que já funciona | O que falta |
-|------|--------|--------------------|--------------|
-| `/` | ✅ Completo | Dashboard home | — |
-| `/mineracao` | ✅ Completo | Lista `ads_minerados`, modal estilo Facebook, aprovar → `campanhas_producao`, excluir | — |
-| `/producao` | ✅ Completo | Kanban de `campanhas_producao` com Realtime | — |
-| `/copywriting` | ⚠️ UI pronta, motor ausente | Lê `workflow_copywriting`, parseia gancho/mecanismo/CTA, exibe fila | **Não existe geração via IA.** Falta botão "Gerar Copy com IA" chamando `/api/copywriting/generate` |
-| `/revisor` | ⚠️ UI pronta, lógica parcial | Lê itens com `revisor_ok = true` e `data_aprovacao = null`, editor TipTap funcional | Falta: fluxo de aprovação real (update no Supabase), acionar agente Revisor IA, botão "pedir revisão" que regenera copy |
-| `/design` | ⚠️ UI pronta, deploy ausente | Lê `workflow_design`, preview, botão "Aprovar para Tráfego" (Rocket) | **Não existe deploy real.** Botão não chama nenhuma API de deploy. Falta geração de HTML via agente Designer + deploy Cloudflare/GitHub |
-| `/video-maker` | ⚠️ Casca — só UI | Lê `workflow_video` com Realtime. **346 linhas e nenhum caminho de geração**: não existe rota de API de vídeo | Tudo. Ver o spec de 31/07 (WaveSpeed + Remotion) |
-| `/meta-ads/dashboard` | ✅ Completo | Dashboard com Anthropic audit (`ClaudeAdsHealth.tsx`) | — |
-| `/meta-ads/campanhas` | ✅ Completo | Lista campanhas Meta | — |
-| `/meta-ads/simulador` | ✅ Completo | Simulador ROAS/CPA | — |
-| `/configuracoes` | ⚠️ Apenas visual | Abas "Chaves de API (Agentes)", "Chaves Meta Ads", "Database" | **Não salva nada de fato.** Falta conectar a `agentes_config` e a tabela de secrets |
-
-**Resumo do diagnóstico:** o problema não é falta de UI — é falta do "motor" por trás dos botões. As páginas parecem prontas mas são interfaces sem a chamada de API/IA implementada. É exatamente esse hiato que travava no Paperclip (que tentava fazer isso de forma genérica) e que vamos resolver direto no código, sob seu controle total.
-
----
-
-## 🤖 Padrão de Implementação dos Agentes IA
-
-### Padrão de Route Handler (usar para TODOS os agentes)
-```typescript
-// src/app/api/[agente]/route.ts
-import Anthropic from '@anthropic-ai/sdk';
-import { supabase } from '@/lib/supabase';
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-
-    // 1. Buscar system_prompt da tabela agentes_config (NUNCA hardcoded)
-    const { data: config, error: configError } = await supabase
-      .from('agentes_config')
-      .select('*')
-      .eq('slug', 'copywriting')
-      .eq('ativo', true)
-      .single();
-
-    if (configError || !config) {
-      return Response.json({ error: 'Agente não configurado ou inativo' }, { status: 400 });
-    }
-
-    // 2. Chamar Anthropic
-    const response = await anthropic.messages.create({
-      model: config.modelo,
-      max_tokens: config.max_tokens,
-      system: config.system_prompt,
-      messages: [{ role: 'user', content: body.prompt }]
-    });
-
-    const resultado = response.content[0].type === 'text' ? response.content[0].text : '';
-
-    // 3. Salvar no Supabase
-    // ... insert/update na tabela correspondente
-
-    return Response.json({ resultado });
-  } catch (err) {
-    console.error('[api/copywriting] erro:', err);
-    return Response.json({ error: 'Falha ao gerar copy' }, { status: 500 });
-  }
-}
-```
-
-### De onde vem o system prompt de cada agente
-Não há mais "seeds" de prompt escritos à mão neste documento — o conteúdo real
-vem do repositório `victorrmd05-dev/agents` (AGENTS.md + SOUL.md + TOOLS.md +
-SKILL.md por agente), sincronizado via `/api/agents/sync` conforme detalhado na
-seção **🔄 Arquitetura de Sincronização GitHub → Supabase** acima. Use
-`getAgentConfig(slug)` + `buildSystemPrompt(config)` em todo Route Handler de
-agente, em vez de hardcodar texto de prompt no código.
-
-### CEO e CTO
-Não geram conteúdo de marketing via IA diretamente — atuam como camada de
-aprovação (CEO, representado pelo próprio Fernando nas telas de aprovação) e
-suporte técnico (CTO, que pode validar configs/chaves antes de cada chamada
-externa). Ambos já têm pasta própria no repositório de agentes e podem ser
-chamados via IA também caso você queira automatizar relatórios/cobranças de
-status (ver `HEARTBEAT.md` do `alavanca-ceo` no repositório — define gatilhos
-autônomos de cobrança de status e preparação de pautas para o CEO humano).
-
----
-
-## 🚀 Deploy de Landing Pages (gap crítico — prioridade 3)
-
-### Estratégia com fallback em cadeia
-```typescript
-// src/app/api/deploy/route.ts
-// 1. Tenta Cloudflare Pages
-// 2. Se falhar, tenta GitHub Pages
-// 3. Salva URL final em workflow_design.url_recurso
-```
-
-**Opção 1 — Cloudflare Pages:**
-```
-POST https://api.cloudflare.com/client/v4/accounts/{account_id}/pages/projects/{project}/deployments
-Header: Authorization: Bearer {CLOUDFLARE_API_TOKEN}
-```
-⚠️ Histórico conhecido: essa API às vezes falha silenciosamente com a chave atual.
-Implementar log detalhado de erro (status/body completo da resposta) para
-diagnosticar antes de assumir que "não funciona".
-
-**Opção 2 — GitHub Pages (fallback confiável):**
-```
-PUT https://api.github.com/repos/{owner}/{repo}/contents/lps/{slug}.html
-Branch gh-pages → URL pública automática em {owner}.github.io/{repo}/lps/{slug}.html
-```
-
-**Opção 3 — Vercel API (alternativa simples, geralmente mais previsível que Cloudflare):**
-```
-POST https://api.vercel.com/v13/deployments
-Body: { files: [{ file: 'index.html', data: htmlContent }], name: 'lp-alavanca-{slug}' }
-```
-
-**Recomendação:** comece pela Opção 2 (GitHub Pages) como fallback confiável e
-deixe Cloudflare como tentativa otimista — assim você nunca fica bloqueado
-esperando resolver o bug da Cloudflare.
-
----
-
-## 🔌 Integrações Externas
-
-### Meta Ads API + Mineração
-- Token: `META_ADS_API_TOKEN`
-- Mineração via ScrapeCreators (Facebook Ad Library): `SCRAPE_CREATORS_API_KEY`
-- Endpoint de sync já existe: `src/app/api/meta/sync/route.ts`
-
-### WaveSpeed AI (Video-Maker) — substitui a Higgsfield
-> ⚠️ **A Higgsfield foi abandonada (31/07/2026) e NUNCA foi integrada.** Não existe
-> uma linha dela no `src/`. Se este documento ou o `.env.local` ainda mencionarem
-> `HIGGSFIELD_API_KEY` em algum canto, é resíduo — ignore.
-
-- Chave: `WAVESPEED_API_KEY` · modelo padrão em `WAVESPEED_MODEL` (`owner/nome/versao`)
-- Base: `https://api.wavespeed.ai/api/v3` · auth `Authorization: Bearer <key>`
-- Submeter: `POST /{owner}/{modelo}/{versao}` → devolve `data.id`
-- Consultar: `GET /predictions/{id}/result` → `status` + `outputs[]`
-- Status: `created` · `processing` · `completed` · `failed` · `cancelled` · `timeout`
-
-**💸 É PAGO E NÃO TEM CAMADA GRATUITA.** Crédito pré-pago, não reembolsável, e a
-chave só funciona depois de um top-up. É a primeira coisa do projeto que queima
-dinheiro a cada clique — nada aqui pode disparar sozinho, em loop ou como fallback.
-
-**A divisão com o Remotion (não confundir):** a WaveSpeed gera o **clipe cru**; o
-Remotion faz as **variações** em cima dele (legenda queimada, narração, formatos).
-O caro e remoto se faz uma vez; o barato e local se repete. Variação nunca é
-trabalho da WaveSpeed.
-
-**A trava contra duplo-gasto é do BANCO, não do código:** a tabela `video_jobs` tem
-`check (tipo <> 'gerar' or wavespeed_task_id is not null)`. Uma linha de geração
-não existe sem tarefa já submetida, então não sobra nada para um worker "iniciar" —
-e iniciar, aqui, significaria cobrar de novo. Motivo: o `pegar_job()` da autópsia
-reprocessa job travado, e retry automático não pode conviver com cobrança.
-
-Design completo em `docs/superpowers/specs/2026-07-31-video-wavespeed-remotion-design.md`.
-
-### Telegram Bot (Notificações CTO)
-- Bot: HermesClipBot
-- Notificar: aprovações, erros críticos, status de deploy
-- Token: `TELEGRAM_BOT_TOKEN`
-
----
-
-## ⚡ Tarefas Prioritárias (em ordem — peça ao Claude Code uma por vez)
-
-### PRIORIDADE 1 — Conectar IA real em `/copywriting`
-- Rodar `setup_agentes_config_v2.sql` no Supabase (cria tabela + seed de paths)
-- Criar `src/app/api/agents/sync/route.ts` (conteúdo já pronto em `api_agents_sync_route.ts`)
-- Criar `src/lib/agents/buildSystemPrompt.ts` (conteúdo já pronto)
-- Rodar a sincronização uma vez (manualmente via `curl` ou botão temporário) para popular `agentes_config`
-- Criar `src/app/api/copywriting/generate/route.ts` usando `getAgentConfig('copywriting')` + `buildSystemPrompt()`
-- Adicionar botão "Gerar Copy com IA" na UI existente, chamando essa API
-- Salvar resultado em `workflow_copywriting` (campos `conteudo_texto` e `meta_ads_copy`)
-
-### PRIORIDADE 2 — Fechar fluxo real de `/revisor`
-- Criar `src/app/api/revisor/review/route.ts` (chama agente Revisor IA, retorna score/notas)
-- Botão "Aprovar" → `UPDATE workflow_copywriting SET revisor_ok = true, data_aprovacao = NOW()`
-- Botão "Solicitar Revisão" → salva `notas_revisao`, aciona agente Copywriting de novo com o feedback como contexto
-- Ao aprovar, atualizar `campanhas_producao.status_geral = 'Aprovado'`
-
-### PRIORIDADE 3 — Deploy real em `/design`
-- Criar `src/app/api/design/generate/route.ts` (agente Designer gera HTML, salva em `workflow_design.codigo_html`)
-- Criar `src/app/api/deploy/route.ts` com fallback GitHub Pages → Cloudflare
-- Conectar botão "Aprovar para Tráfego" (já existe, ícone Rocket) para de fato disparar o deploy
-- Salvar URL pública resultante em `workflow_design.url_recurso`
-
-### PRIORIDADE 4 — `/configuracoes` funcional
-- Adicionar botão "🔄 Sincronizar Agentes" que chama `POST /api/agents/sync`
-- Exibir o relatório de retorno (quais agentes sincronizaram OK, quais deram erro)
-- Mostrar `ultimo_sync_em` de cada agente na lista (para saber se está desatualizado)
-- Toggle `ativo` por agente direto na UI (update simples na tabela, não via GitHub)
-- Visualização somente-leitura do conteúdo sincronizado (agents_md, soul_md, etc.) — edição de conteúdo deve ser feita no GitHub, não aqui
-
-### PRIORIDADE 5 — Video-Maker e Gestor-Meta-Ads
-- Geração de vídeo em `/video-maker` via **WaveSpeed + Remotion** (não Higgsfield —
-  ver a seção de integrações). Design em
-  `docs/superpowers/specs/2026-07-31-video-wavespeed-remotion-design.md`
-- Lógica de sugestão de estrutura de campanha no Gestor-Meta-Ads (pode reaproveitar `ClaudeAdsHealth.tsx` como referência de padrão)
-
----
-
-## 🛡️ Regras Críticas de Segurança
-
-1. **NUNCA** commitar `.env.local` ou qualquer chave de API
-2. **NUNCA** expor `ANTHROPIC_API_KEY` ou qualquer chave no client — sempre via Route Handler (`/api/`)
-3. Toda chamada externa (Anthropic, Cloudflare, GitHub, WaveSpeed, Meta) deve ter `try/catch` com erro tratado e logado
-4. Supabase queries sempre com verificação de `error` antes de usar `data` (padrão já seguido no projeto)
-5. Sanitizar inputs do usuário antes de enviar à IA (evitar prompt injection vindo de copy de concorrentes minerada)
-
----
-
-## 🔧 Comandos Úteis
-
-```bash
-npm run dev          # Servidor local (porta 3000)
-npm run build        # Build de produção (Next.js)
-npm run start        # Servir o build de produção
-npm run lint         # ESLint (next lint)
-npx tsc --noEmit     # Checagem de tipos (NÃO existe script "type-check")
-```
-> Não há suíte de testes configurada (sem `test` no package.json). "Testar" aqui
-> significa `npm run dev` + verificar a tela, ou `npm run build` para pegar erros de tipo/SSR.
-
----
-
-## 📐 Padrão de Componente de Página (já usado em mineracao, producao, etc.)
-
-```tsx
-"use client";
-
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
-
-export default function NomePage() {
-  const [dados, setDados] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchDados();
-    const channel = supabase.channel('nome_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'nome_tabela' }, fetchDados)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
-
-  async function fetchDados() {
-    setLoading(true);
-    const { data, error } = await supabase.from('nome_tabela').select('*').order('data_criacao', { ascending: false });
-    if (!error && data) setDados(data);
-    setLoading(false);
-  }
-
-  return (
-    <div className="relative min-h-full pb-20 animate-in fade-in duration-500">
-      {/* Header, título, grid de cards — seguir padrão visual do projeto */}
-    </div>
-  );
-}
+Padrão de rota de agente — **nunca hardcode prompt no código**:
+
+```ts
+const config = await getAgentConfig('copywriting');   // Sistema A
+const systemPrompt = buildSystemPrompt(config);       // SOUL + AGENTS + TOOLS + SKILL
 ```
 
 ---
 
-## 🔗 Referências
+## 🎨 Design System (obrigatório)
 
-- **Repositório (código do app):** https://github.com/victorrmd05-dev/synapse (privado) — ver seção "🚨 GIT" no topo
-- **Skills dos agentes:** `src/lib/ai-agents/skills/` (dezenas de SKILL.md especializados — usar como contexto extra)
-- **Agentes detalhados:** `src/lib/ai-agents/agents/` (copy-writer.md, visual-designer.md, audit-meta.md, etc.)
-- **Referências Meta Ads:** `src/lib/ai-agents/ads/references/meta-audit.md`
+```
+bg-[#0D0D14]  fundo global      ·  bg-surface / bg-surface-elevated  card e hover
+border-surface-elevated  bordas ·  text-text-primary / text-secondary
+bg-primary (#6366f1) ações      ·  text-status-green/yellow/red
+```
+
+**Proibido:** fundo branco ou claro, cores fora dessa lista, `border-2`, gradiente arco-íris,
+animação excessiva, "AI Slop".
+
+---
+
+## 🛡️ Segurança
+
+1. **Nunca** commitar `.env.local` nem chave de API.
+2. **Nunca** expor chave no client — sempre via Route Handler (`/api/`).
+3. Toda chamada externa em `try/catch`, com erro logado e mensagem útil.
+4. Query Supabase sempre confere `error` antes de usar `data`.
+5. Sanitizar input antes de mandar para a IA (copy minerada de concorrente é texto hostil).
+
+---
+
+## 🔁 Processo ao VALIDAR uma tarefa
+
+Só quando estiver **testado e funcionando** (não só escrito):
+
+1. **Atualizar o [`NOTES.md`](NOTES.md)** — o diário de bordo: o que foi feito, por quê, o que
+   quebrou e como. Fiel ao estado real, sempre.
+2. **Atualizar o segundo cérebro** (nexus.ai via MCP Obsidian): nota
+   `02_Projetos/Alavanca_Synapse.md`, canvas em `03_Workflows/`, skills em `01_Global_Skills/`.
+   Não duplicar nota — atualizar a existente.
+3. **Rodar o Graphify** no cofre `C:\Users\cerqu\Documents\Obsidian\Nexus.AI`, com o Python
+   global `C:\Python313\python.exe`: `python -m graphify update . --force`
+
+---
+
+## 📍 Onde está o resto
+
+| Procurando | Vá para |
+|---|---|
+| Como instalar e rodar do zero | [`README.md`](README.md) |
+| O que já foi feito, o que quebrou e por quê | [`NOTES.md`](NOTES.md) |
+| Specs e planos de implementação | [`docs/superpowers/`](docs/superpowers/) |
+| Cérebro dos agentes | [`agentes/`](agentes/) |
+| Todas as variáveis de ambiente, comentadas | [`.env.local.example`](.env.local.example) |
+| Histórico do banco | [`supabase/migrations/`](supabase/migrations/) |
 
 ---
 
